@@ -1,0 +1,288 @@
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::SampleFormat;
+use parking_lot::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum AudioError {
+    #[error("No input device available")]
+    NoInputDevice,
+    #[error("Failed to get device config: {0}")]
+    DeviceConfig(String),
+    #[error("Failed to build stream: {0}")]
+    BuildStream(String),
+    #[error("Failed to start stream: {0}")]
+    StartStream(String),
+}
+
+const WHISPER_SAMPLE_RATE: u32 = 16000;
+
+/// Maximum buffer size: ~10 minutes of audio at 16kHz (16000 samples/sec * 600 sec)
+const MAX_BUFFER_SAMPLES: usize = 9_600_000;
+
+/// Thread-safe audio buffer that can be shared across threads
+#[derive(Clone)]
+pub struct AudioBuffer {
+    data: Arc<Mutex<Vec<f32>>>,
+}
+
+impl AudioBuffer {
+    pub fn new() -> Self {
+        Self {
+            data: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    pub fn push(&self, samples: &[f32]) {
+        let mut data = self.data.lock();
+        data.extend_from_slice(samples);
+        // Truncate oldest samples if buffer exceeds the ~10 minute limit
+        if data.len() > MAX_BUFFER_SAMPLES {
+            let excess = data.len() - MAX_BUFFER_SAMPLES;
+            data.drain(0..excess);
+        }
+    }
+
+    pub fn take(&self) -> Vec<f32> {
+        std::mem::take(&mut *self.data.lock())
+    }
+
+    pub fn get_level(&self) -> f32 {
+        let buffer = self.data.lock();
+        if buffer.is_empty() {
+            return 0.0;
+        }
+
+        let samples_100ms = (WHISPER_SAMPLE_RATE as usize) / 10;
+        let start = buffer.len().saturating_sub(samples_100ms);
+        let recent = &buffer[start..];
+
+        if recent.is_empty() {
+            return 0.0;
+        }
+
+        let sum_sq: f32 = recent.iter().map(|s| s * s).sum();
+        (sum_sq / recent.len() as f32).sqrt()
+    }
+
+    /// Get multiple audio levels for spectrum visualization
+    /// Returns `num_bars` levels, each representing a time slice of recent audio
+    pub fn get_spectrum(&self, num_bars: usize) -> Vec<f32> {
+        let buffer = self.data.lock();
+        if buffer.is_empty() || num_bars == 0 {
+            return vec![0.0; num_bars];
+        }
+
+        // Use last 200ms of audio, divided into num_bars segments
+        let samples_200ms = (WHISPER_SAMPLE_RATE as usize) / 5;
+        let total_samples = buffer.len().min(samples_200ms);
+        let start = buffer.len().saturating_sub(total_samples);
+        let recent = &buffer[start..];
+
+        if recent.is_empty() {
+            return vec![0.0; num_bars];
+        }
+
+        let samples_per_bar = (recent.len() / num_bars).max(1);
+        let mut levels = Vec::with_capacity(num_bars);
+
+        for i in 0..num_bars {
+            let bar_start = i * samples_per_bar;
+            let bar_end = ((i + 1) * samples_per_bar).min(recent.len());
+
+            if bar_start >= recent.len() {
+                levels.push(0.0);
+                continue;
+            }
+
+            let slice = &recent[bar_start..bar_end];
+            if slice.is_empty() {
+                levels.push(0.0);
+                continue;
+            }
+
+            // Calculate RMS for this segment
+            let sum_sq: f32 = slice.iter().map(|s| s * s).sum();
+            let rms = (sum_sq / slice.len() as f32).sqrt();
+
+            // Normalize and amplify for better visualization (0.0 to 1.0)
+            // Typical speech RMS is around 0.01-0.1, amplify significantly
+            let normalized = (rms * 15.0).min(1.0);
+            levels.push(normalized);
+        }
+
+        levels
+    }
+}
+
+/// Handle to stop audio capture - when dropped or stop() called, the stream is cleaned up
+#[derive(Clone)]
+pub struct AudioCaptureHandle {
+    stop_signal: Arc<AtomicBool>,
+}
+
+impl AudioCaptureHandle {
+    /// Signal the audio stream to stop
+    pub fn stop(&self) {
+        self.stop_signal.store(true, Ordering::SeqCst);
+    }
+}
+
+impl Drop for AudioCaptureHandle {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+/// Starts audio capture and returns a buffer and handle to stop it
+/// The stream is created and managed on a dedicated thread
+pub fn start_capture() -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> {
+    use std::sync::mpsc;
+
+    let buffer = AudioBuffer::new();
+    let buffer_clone = buffer.clone();
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    let stop_signal_clone = stop_signal.clone();
+
+    // Channel to receive initialization result from the audio thread
+    let (tx, rx) = mpsc::channel::<Result<(), AudioError>>();
+
+    // Spawn dedicated thread that owns the stream
+    std::thread::spawn(move || {
+        let result = (|| -> Result<cpal::Stream, AudioError> {
+            let host = cpal::default_host();
+            let device = host
+                .default_input_device()
+                .ok_or(AudioError::NoInputDevice)?;
+
+            let config = device
+                .default_input_config()
+                .map_err(|e| AudioError::DeviceConfig(e.to_string()))?;
+
+            let sample_rate = config.sample_rate().0;
+            let channels = config.channels() as usize;
+
+            let stream = match config.sample_format() {
+                SampleFormat::F32 => build_stream::<f32>(
+                    &device,
+                    &config.into(),
+                    buffer_clone,
+                    sample_rate,
+                    WHISPER_SAMPLE_RATE,
+                    channels,
+                )?,
+                SampleFormat::I16 => build_stream::<i16>(
+                    &device,
+                    &config.into(),
+                    buffer_clone,
+                    sample_rate,
+                    WHISPER_SAMPLE_RATE,
+                    channels,
+                )?,
+                SampleFormat::U16 => build_stream::<u16>(
+                    &device,
+                    &config.into(),
+                    buffer_clone,
+                    sample_rate,
+                    WHISPER_SAMPLE_RATE,
+                    channels,
+                )?,
+                _ => return Err(AudioError::DeviceConfig("Unsupported sample format".into())),
+            };
+
+            stream
+                .play()
+                .map_err(|e| AudioError::StartStream(e.to_string()))?;
+
+            Ok(stream)
+        })();
+
+        match result {
+            Ok(stream) => {
+                // Signal success
+                let _ = tx.send(Ok(()));
+
+                // Keep stream alive until stop signal
+                while !stop_signal_clone.load(Ordering::SeqCst) {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+
+                // Stream is dropped here when loop exits
+                drop(stream);
+            }
+            Err(e) => {
+                let _ = tx.send(Err(e));
+            }
+        }
+    });
+
+    // Wait for initialization result
+    rx.recv()
+        .map_err(|_| AudioError::BuildStream("Audio thread failed to start".to_string()))??;
+
+    let handle = AudioCaptureHandle { stop_signal };
+
+    Ok((buffer, handle))
+}
+
+fn build_stream<T>(
+    device: &cpal::Device,
+    config: &cpal::StreamConfig,
+    buffer: AudioBuffer,
+    input_sample_rate: u32,
+    target_sample_rate: u32,
+    channels: usize,
+) -> Result<cpal::Stream, AudioError>
+where
+    T: cpal::Sample + cpal::SizedSample + Send + 'static,
+    f32: cpal::FromSample<T>,
+{
+    let resample_ratio = target_sample_rate as f64 / input_sample_rate as f64;
+    let mut resample_buffer: Vec<f32> = Vec::new();
+    let mut resample_pos: f64 = 0.0;
+
+    let stream = device
+        .build_input_stream(
+            config,
+            move |data: &[T], _: &cpal::InputCallbackInfo| {
+                // Convert to f32 and mono
+                let mono_samples: Vec<f32> = data
+                    .chunks(channels)
+                    .map(|frame| {
+                        let sum: f32 = frame.iter().map(|s| s.to_sample::<f32>()).sum();
+                        sum / channels as f32
+                    })
+                    .collect();
+
+                // Simple linear resampling to 16kHz
+                resample_buffer.extend(mono_samples.iter());
+
+                let mut resampled = Vec::new();
+                while resample_pos < resample_buffer.len() as f64 - 1.0 {
+                    let idx = resample_pos as usize;
+                    let frac = resample_pos - idx as f64;
+                    let sample = resample_buffer[idx] * (1.0 - frac as f32)
+                        + resample_buffer[idx + 1] * frac as f32;
+                    resampled.push(sample);
+                    resample_pos += 1.0 / resample_ratio;
+                }
+
+                // Keep remainder for next callback
+                let consumed = resample_pos as usize;
+                if consumed > 0 && consumed < resample_buffer.len() {
+                    resample_buffer.drain(0..consumed);
+                    resample_pos -= consumed as f64;
+                }
+
+                // Add to buffer
+                buffer.push(&resampled);
+            },
+            |err| eprintln!("Audio stream error: {}", err),
+            None,
+        )
+        .map_err(|e| AudioError::BuildStream(e.to_string()))?;
+
+    Ok(stream)
+}

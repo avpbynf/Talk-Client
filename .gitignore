@@ -1,0 +1,28 @@
+# Rust
+src-tauri/target/
+src-tauri/gen/
+
+# Node
+node_modules/
+dist/
+
+# Lock files
+package-lock.json
+bun.lock
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Build artifacts
+*.exe
+*.msi
+build/

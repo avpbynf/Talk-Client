@@ -1,0 +1,828 @@
+use crate::{audio, audio_encoder, context_detection, screenshot, server_transcription, settings, AppState, RecordingMode};
+use crate::settings::TranscriptionMode;
+use directories::ProjectDirs;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tauri::{AppHandle, Emitter, EventTarget, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use thiserror::Error;
+
+#[cfg(windows)]
+fn send_media_play_pause() {
+    use enigo::{Enigo, Key, Keyboard, Settings};
+    if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
+        let _ = enigo.key(Key::MediaPlayPause, enigo::Direction::Click);
+    }
+}
+
+#[cfg(windows)]
+fn is_media_playing() -> bool {
+    use windows::Media::Control::{
+        GlobalSystemMediaTransportControlsSessionManager,
+        GlobalSystemMediaTransportControlsSessionPlaybackStatus,
+    };
+    let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
+        .and_then(|op| op.GetResults());
+    let Ok(manager) = manager else { return false };
+    manager
+        .GetCurrentSession()
+        .and_then(|session| session.GetPlaybackInfo())
+        .and_then(|info| info.PlaybackStatus())
+        .map(|status| status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing)
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+fn resume_media_if_paused(state: &AppState) {
+    let did_pause = std::mem::replace(&mut *state.did_pause_media.lock(), false);
+    if did_pause && !is_media_playing() {
+        send_media_play_pause();
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum HotkeyError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HotkeyConfig {
+    pub shortcut: String,
+    #[serde(default = "default_cancel_shortcut")]
+    pub cancel_shortcut: String,
+    pub mode: RecordingMode,
+}
+
+fn default_cancel_shortcut() -> String {
+    "Ctrl+F1".to_string()
+}
+
+impl Default for HotkeyConfig {
+    fn default() -> Self {
+        Self {
+            shortcut: "Ctrl+Space".to_string(),
+            cancel_shortcut: default_cancel_shortcut(),
+            mode: RecordingMode::Toggle,
+        }
+    }
+}
+
+fn get_config_path() -> PathBuf {
+    ProjectDirs::from("com", "nicolasavpbynf", "whisper-flow")
+        .map(|dirs| dirs.config_dir().join("hotkeys.json"))
+        .unwrap_or_else(|| PathBuf::from("hotkeys.json"))
+}
+
+pub fn load_config() -> Result<HotkeyConfig, HotkeyError> {
+    let path = get_config_path();
+    if path.exists() {
+        let content = std::fs::read_to_string(&path)?;
+        Ok(serde_json::from_str(&content)?)
+    } else {
+        Ok(HotkeyConfig::default())
+    }
+}
+
+pub fn save_config(config: &HotkeyConfig) -> Result<(), HotkeyError> {
+    let path = get_config_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let content = serde_json::to_string_pretty(config)?;
+    std::fs::write(&path, content)?;
+    Ok(())
+}
+
+pub fn setup_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let config = load_config().unwrap_or_default();
+    let global_shortcut = app.global_shortcut();
+
+    // Clean up any existing shortcuts first
+    let _ = global_shortcut.unregister_all();
+
+    eprintln!("Setting up shortcuts:");
+    eprintln!("  Main: {}", config.shortcut);
+    eprintln!("  Cancel: {}", config.cancel_shortcut);
+
+    // Parse and register main shortcut
+    if let Ok(shortcut) = parse_shortcut(&config.shortcut) {
+        let app_handle = app.handle().clone();
+
+        if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+            handle_shortcut_event(&app_handle, event.state);
+        }) {
+            eprintln!("  Main shortcut handler error: {}", e);
+        }
+
+        if let Err(e) = global_shortcut.register(shortcut) {
+            eprintln!("  Main shortcut register error: {} - try a different shortcut", e);
+        } else {
+            eprintln!("  Main shortcut registered OK");
+        }
+    } else {
+        eprintln!("  Main shortcut parse error for: {}", config.shortcut);
+    }
+
+    // Register cancel shortcut
+    if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
+        let app_handle_cancel = app.handle().clone();
+
+        if let Err(e) = global_shortcut.on_shortcut(cancel_parsed, move |_app, _shortcut, event| {
+            if matches!(event.state, ShortcutState::Pressed) {
+                cancel_recording(&app_handle_cancel);
+            }
+        }) {
+            eprintln!("  Cancel shortcut handler error: {}", e);
+        }
+
+        if let Err(e) = global_shortcut.register(cancel_parsed) {
+            eprintln!("  Cancel shortcut register error: {}", e);
+        } else {
+            eprintln!("  Cancel shortcut registered OK");
+        }
+    } else {
+        eprintln!("  Cancel shortcut parse error");
+    }
+
+    Ok(())
+}
+
+pub fn disable_shortcuts(app: &AppHandle) {
+    let global_shortcut = app.global_shortcut();
+    if let Err(e) = global_shortcut.unregister_all() {
+        eprintln!("Warning: failed to unregister shortcuts: {}", e);
+    }
+}
+
+pub fn enable_shortcuts(app: &AppHandle) {
+    let config = load_config().unwrap_or_default();
+    let global_shortcut = app.global_shortcut();
+
+    // Re-register main shortcut
+    if let Ok(main_parsed) = parse_shortcut(&config.shortcut) {
+        let app_handle = app.clone();
+        let _ = global_shortcut.on_shortcut(main_parsed, move |_app, _shortcut, event| {
+            handle_shortcut_event(&app_handle, event.state);
+        });
+        let _ = global_shortcut.register(main_parsed);
+    }
+
+    // Re-register cancel shortcut
+    if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
+        let app_handle_cancel = app.clone();
+        let _ = global_shortcut.on_shortcut(cancel_parsed, move |_app, _shortcut, event| {
+            if matches!(event.state, ShortcutState::Pressed) {
+                cancel_recording(&app_handle_cancel);
+            }
+        });
+        let _ = global_shortcut.register(cancel_parsed);
+    }
+}
+
+pub fn update_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // First, validate the new shortcut can be parsed
+    let new_parsed = parse_shortcut(new_shortcut)?;
+
+    let global_shortcut = app.global_shortcut();
+
+    // Unregister ALL shortcuts first to avoid conflicts
+    if let Err(e) = global_shortcut.unregister_all() {
+        eprintln!("Warning: failed to unregister shortcuts: {}", e);
+    }
+
+    // Register the new shortcut with handler
+    let app_handle = app.clone();
+    if let Err(e) = global_shortcut.on_shortcut(new_parsed, move |_app, _shortcut, event| {
+        handle_shortcut_event(&app_handle, event.state);
+    }) {
+        eprintln!("Warning: on_shortcut failed (may already exist): {}", e);
+    }
+
+    // Try to register main shortcut
+    if let Err(e) = global_shortcut.register(new_parsed) {
+        eprintln!("Warning: register failed: {} - will work after restart", e);
+    }
+
+    // Re-register cancel shortcut
+    let config = load_config().unwrap_or_default();
+    if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
+        let app_handle_cancel = app.clone();
+        let _ = global_shortcut.on_shortcut(cancel_parsed, move |_app, _shortcut, event| {
+            if matches!(event.state, ShortcutState::Pressed) {
+                cancel_recording(&app_handle_cancel);
+            }
+        });
+        let _ = global_shortcut.register(cancel_parsed);
+    }
+
+    // Save to config - always save even if register failed
+    let mut config = load_config().unwrap_or_default();
+    config.shortcut = new_shortcut.to_string();
+    if let Err(e) = save_config(&config) {
+        eprintln!("Warning: failed to save config: {}", e);
+    }
+
+    Ok(())
+}
+
+pub fn update_cancel_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Validate the new shortcut can be parsed
+    let new_parsed = parse_shortcut(new_shortcut)?;
+
+    let global_shortcut = app.global_shortcut();
+
+    // Unregister ALL shortcuts first
+    if let Err(e) = global_shortcut.unregister_all() {
+        eprintln!("Warning: failed to unregister shortcuts: {}", e);
+    }
+
+    // Re-register main shortcut
+    let config = load_config().unwrap_or_default();
+    if let Ok(main_parsed) = parse_shortcut(&config.shortcut) {
+        let app_handle = app.clone();
+        let _ = global_shortcut.on_shortcut(main_parsed, move |_app, _shortcut, event| {
+            handle_shortcut_event(&app_handle, event.state);
+        });
+        let _ = global_shortcut.register(main_parsed);
+    }
+
+    // Register new cancel shortcut
+    let app_handle_cancel = app.clone();
+    let _ = global_shortcut.on_shortcut(new_parsed, move |_app, _shortcut, event| {
+        if matches!(event.state, ShortcutState::Pressed) {
+            cancel_recording(&app_handle_cancel);
+        }
+    });
+    let _ = global_shortcut.register(new_parsed);
+
+    // Save to config
+    let mut config = load_config().unwrap_or_default();
+    config.cancel_shortcut = new_shortcut.to_string();
+    if let Err(e) = save_config(&config) {
+        eprintln!("Warning: failed to save config: {}", e);
+    }
+
+    Ok(())
+}
+
+fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, Box<dyn std::error::Error>> {
+    let parts: Vec<&str> = shortcut_str.split('+').collect();
+
+    let mut modifiers = Modifiers::empty();
+    let mut key_code = None;
+
+    for part in parts {
+        let part = part.trim();
+        match part.to_lowercase().as_str() {
+            "ctrl" | "control" => modifiers |= Modifiers::CONTROL,
+            "shift" => modifiers |= Modifiers::SHIFT,
+            "alt" => modifiers |= Modifiers::ALT,
+            "super" | "win" | "meta" => modifiers |= Modifiers::SUPER,
+            "space" => key_code = Some(Code::Space),
+            "enter" | "return" => key_code = Some(Code::Enter),
+            "tab" => key_code = Some(Code::Tab),
+            "escape" | "esc" => key_code = Some(Code::Escape),
+            "backspace" => key_code = Some(Code::Backspace),
+            "delete" => key_code = Some(Code::Delete),
+            "insert" => key_code = Some(Code::Insert),
+            "home" => key_code = Some(Code::Home),
+            "end" => key_code = Some(Code::End),
+            "pageup" => key_code = Some(Code::PageUp),
+            "pagedown" => key_code = Some(Code::PageDown),
+            "up" | "arrowup" => key_code = Some(Code::ArrowUp),
+            "down" | "arrowdown" => key_code = Some(Code::ArrowDown),
+            "left" | "arrowleft" => key_code = Some(Code::ArrowLeft),
+            "right" | "arrowright" => key_code = Some(Code::ArrowRight),
+            // F-keys
+            "f1" => key_code = Some(Code::F1),
+            "f2" => key_code = Some(Code::F2),
+            "f3" => key_code = Some(Code::F3),
+            "f4" => key_code = Some(Code::F4),
+            "f5" => key_code = Some(Code::F5),
+            "f6" => key_code = Some(Code::F6),
+            "f7" => key_code = Some(Code::F7),
+            "f8" => key_code = Some(Code::F8),
+            "f9" => key_code = Some(Code::F9),
+            "f10" => key_code = Some(Code::F10),
+            "f11" => key_code = Some(Code::F11),
+            "f12" => key_code = Some(Code::F12),
+            // Numbers
+            "0" | "digit0" => key_code = Some(Code::Digit0),
+            "1" | "digit1" => key_code = Some(Code::Digit1),
+            "2" | "digit2" => key_code = Some(Code::Digit2),
+            "3" | "digit3" => key_code = Some(Code::Digit3),
+            "4" | "digit4" => key_code = Some(Code::Digit4),
+            "5" | "digit5" => key_code = Some(Code::Digit5),
+            "6" | "digit6" => key_code = Some(Code::Digit6),
+            "7" | "digit7" => key_code = Some(Code::Digit7),
+            "8" | "digit8" => key_code = Some(Code::Digit8),
+            "9" | "digit9" => key_code = Some(Code::Digit9),
+            // Letters
+            "a" => key_code = Some(Code::KeyA),
+            "b" => key_code = Some(Code::KeyB),
+            "c" => key_code = Some(Code::KeyC),
+            "d" => key_code = Some(Code::KeyD),
+            "e" => key_code = Some(Code::KeyE),
+            "f" => key_code = Some(Code::KeyF),
+            "g" => key_code = Some(Code::KeyG),
+            "h" => key_code = Some(Code::KeyH),
+            "i" => key_code = Some(Code::KeyI),
+            "j" => key_code = Some(Code::KeyJ),
+            "k" => key_code = Some(Code::KeyK),
+            "l" => key_code = Some(Code::KeyL),
+            "m" => key_code = Some(Code::KeyM),
+            "n" => key_code = Some(Code::KeyN),
+            "o" => key_code = Some(Code::KeyO),
+            "p" => key_code = Some(Code::KeyP),
+            "q" => key_code = Some(Code::KeyQ),
+            "r" => key_code = Some(Code::KeyR),
+            "s" => key_code = Some(Code::KeyS),
+            "t" => key_code = Some(Code::KeyT),
+            "u" => key_code = Some(Code::KeyU),
+            "v" => key_code = Some(Code::KeyV),
+            "w" => key_code = Some(Code::KeyW),
+            "x" => key_code = Some(Code::KeyX),
+            "y" => key_code = Some(Code::KeyY),
+            "z" => key_code = Some(Code::KeyZ),
+            _ => {}
+        }
+    }
+
+    let code = key_code.ok_or("No valid key found in shortcut")?;
+
+    Ok(Shortcut::new(Some(modifiers), code))
+}
+
+fn handle_shortcut_event(app: &AppHandle, state: ShortcutState) {
+    let app_state = app.state::<AppState>();
+    let mode = *app_state.recording_mode.lock();
+
+    match mode {
+        RecordingMode::PushToTalk => {
+            match state {
+                ShortcutState::Pressed => {
+                    // Start recording
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = start_recording_internal(&app);
+                    });
+                }
+                ShortcutState::Released => {
+                    // Stop recording and transcribe
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = stop_recording_internal(&app).await;
+                    });
+                }
+            }
+        }
+        RecordingMode::Toggle => {
+            if matches!(state, ShortcutState::Pressed) {
+                let is_recording = *app_state.is_recording.lock();
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if is_recording {
+                        let _ = stop_recording_internal(&app).await;
+                    } else {
+                        let _ = start_recording_internal(&app);
+                    }
+                });
+            }
+        }
+    }
+}
+
+pub fn cancel_recording(app: &AppHandle) {
+    let state = app.state::<AppState>();
+
+    // Only cancel if we're actually recording
+    if !*state.is_recording.lock() {
+        return;
+    }
+
+    // Stop recording flag
+    *state.is_recording.lock() = false;
+
+    // Stop audio capture and clear buffer
+    *state.audio_capture_handle.lock() = None;
+    *state.audio_buffer.lock() = None;
+
+    // Resume media playback if we paused it
+    #[cfg(windows)]
+    resume_media_if_paused(&state);
+
+    // Hide overlay
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        let _ = overlay.hide();
+    }
+
+    // Emit cancelled event
+    let _ = app.emit("recording-cancelled", ());
+}
+
+fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
+
+    if *state.is_recording.lock() {
+        return Ok(());
+    }
+
+    // Detect context NOW while the user is still in their editor (Zed, VS Code, etc.)
+    // This must happen before showing overlay which would change the active window
+    let detected_context = context_detection::detect();
+    *state.last_detected_context.lock() = Some(detected_context.clone());
+    eprintln!(
+        "[context_detection] Context captured at recording start: language={:?}, workspace={:?}",
+        detected_context.language, detected_context.workspace
+    );
+
+    // Emit context-updated event for UI
+    let user_vocabulary = state.vocabulary.lock().clone();
+    let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
+    let available_languages = context_detection::get_available_languages();
+    let has_real_context = detected_context.language.is_some() || !detected_context.symbols.is_empty();
+
+    let _ = app.emit("context-updated", serde_json::json!({
+        "has_real_context": has_real_context,
+        "language": detected_context.language,
+        "symbols": detected_context.symbols,
+        "workspace": detected_context.workspace,
+        "frameworks": detected_context.frameworks,
+        "window_title": detected_context.window_title,
+        "domain": detected_context.domain,
+        "vocabulary_prompt": vocabulary_prompt,
+        "available_languages": available_languages,
+    }));
+
+    // Capture screenshot if correction or paste path is enabled
+    let use_screenshot_for_correction = *state.use_screenshot_for_correction.lock();
+    let paste_screenshot_path = *state.paste_screenshot_path.lock();
+    let use_screenshot = use_screenshot_for_correction || paste_screenshot_path;
+
+    // Show overlay first (without taking focus to keep cursor in place)
+    if app.get_webview_window("overlay").is_none() {
+        let app_settings = settings::load_settings();
+        let (width, height) = app_settings.overlay_size.dimensions();
+
+        let mut builder = WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("/overlay".into()))
+            .title("")
+            .inner_size(width, height)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .focused(false);
+
+        // Use saved position or center
+        if let Some(pos) = app_settings.overlay_position {
+            builder = builder.position(pos.x, pos.y);
+        } else {
+            builder = builder.center();
+        }
+
+        match builder.build() {
+            Ok(window) => {
+                // Force show and always on top
+                let _ = window.show();
+                let _ = window.set_always_on_top(true);
+            }
+            Err(e) => {
+                eprintln!("Failed to create overlay window: {}", e);
+            }
+        }
+    } else if let Some(overlay) = app.get_webview_window("overlay") {
+        let _ = overlay.show();
+        let _ = overlay.set_always_on_top(true);
+    }
+
+    // Small delay to ensure overlay is visible before we emit state
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
+    // Start screenshot capture in parallel if enabled
+    if use_screenshot {
+        let screenshot_mode = *state.screenshot_mode.lock();
+        *state.screenshot_capture_in_progress.lock() = true;
+        *state.screenshot_paths.lock() = Vec::new(); // Clear previous paths
+
+        let app_for_screenshot = app.clone();
+        std::thread::spawn(move || {
+            let state = app_for_screenshot.state::<AppState>();
+            match screenshot::capture_screens(screenshot_mode) {
+                Ok(paths) => {
+                    *state.screenshot_paths.lock() = paths;
+                }
+                Err(e) => {
+                    eprintln!("Failed to capture screenshots: {}", e);
+                }
+            }
+            *state.screenshot_capture_in_progress.lock() = false;
+        });
+    }
+
+    // Start audio capture immediately (parallel with screenshots)
+    let (buffer, handle) = audio::start_capture().map_err(|e| e.to_string())?;
+    let buffer_for_spectrum = buffer.clone();
+
+    *state.audio_buffer.lock() = Some(buffer);
+    *state.audio_capture_handle.lock() = Some(handle);
+    *state.is_recording.lock() = true;
+
+    // Pause media playback if enabled AND something is actually playing
+    #[cfg(windows)]
+    {
+        let should_pause = *state.pause_media_on_record.lock();
+        if should_pause && is_media_playing() {
+            send_media_play_pause();
+            *state.did_pause_media.lock() = true;
+        }
+    }
+
+    // Emit recording state
+    let _ = app.emit("recording-started", ());
+
+    // Start spectrum emission thread
+    let app_for_spectrum = app.clone();
+    std::thread::spawn(move || {
+        let num_bars = 8;
+        loop {
+            // Check if still recording
+            let state = app_for_spectrum.state::<AppState>();
+            if !*state.is_recording.lock() {
+                break;
+            }
+
+            // Get spectrum levels and emit to overlay
+            let levels = buffer_for_spectrum.get_spectrum(num_bars);
+            let _ = app_for_spectrum.emit_to(
+                EventTarget::webview_window("overlay"),
+                "audio-spectrum",
+                levels,
+            );
+
+            // Emit every 50ms for smooth animation
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    });
+
+    Ok(())
+}
+
+async fn enhance_with_claude(text: &str, model: &str, screenshot_paths: &[PathBuf]) -> Result<String, String> {
+    crate::claude_api::enhance_transcription(text, model, screenshot_paths).await
+}
+
+async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
+    let state = app.state::<AppState>();
+
+    if !*state.is_recording.lock() {
+        return Err("Not recording".to_string());
+    }
+
+    let audio_data = {
+        let buffer_lock = state.audio_buffer.lock();
+        if let Some(ref buffer) = *buffer_lock {
+            buffer.take()
+        } else {
+            #[cfg(windows)]
+            resume_media_if_paused(&state);
+            return Err("No audio buffer found".to_string());
+        }
+    };
+
+    // Stop audio capture - dropping the handle signals the stream thread to exit
+    *state.audio_capture_handle.lock() = None;
+    *state.is_recording.lock() = false;
+
+    let _ = app.emit("recording-stopped", ());
+
+    // Helper to emit to overlay window
+    let emit_to_overlay = |app: &AppHandle, processing_state: &str| {
+        let _ = app.emit_to(EventTarget::webview_window("overlay"), "processing-state", processing_state);
+    };
+
+    // Emit transcribing state
+    emit_to_overlay(app, "transcribing");
+
+    // Get transcription mode settings
+    let transcription_mode = *state.transcription_mode.lock();
+    let server_url = state.server_url.lock().clone();
+    let server_fallback = *state.server_fallback.lock();
+    let server_timeout = *state.server_timeout.lock();
+    let server_token = state.server_token.lock().clone();
+
+    // Get server formatting settings
+    let server_formatting_enabled = *state.server_formatting_enabled.lock();
+    let server_format_backend = state.server_format_backend.lock().clone();
+    let server_format_style_prompt = state.server_format_style_prompt.lock().clone();
+    let server_format_intensity = *state.server_format_intensity.lock();
+
+    eprintln!("[DEBUG] Transcription mode: {:?}", transcription_mode);
+    eprintln!("[DEBUG] Server URL: {}", server_url);
+    eprintln!("[DEBUG] Server fallback: {}", server_fallback);
+
+    // Use context detected at recording start (when user was still in their editor)
+    let detected_context = state
+        .last_detected_context
+        .lock()
+        .clone()
+        .unwrap_or_default();
+    let user_vocabulary = state.vocabulary.lock().clone();
+    let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
+    let raw_vocabulary = context_detection::build_vocabulary(&user_vocabulary);
+
+    eprintln!("[DEBUG] Using context from recording start: language={:?}, symbols={}",
+        detected_context.language,
+        detected_context.symbols.len()
+    );
+
+    // Transcribe based on mode
+    let mut transcription = match transcription_mode {
+        TranscriptionMode::Server => {
+            // Try server transcription
+            emit_to_overlay(app, "streaming");
+
+            // Encode audio to WAV
+            let wav_data = audio_encoder::encode_wav(&audio_data, 16000, 1)
+                .map_err(|e| format!("Failed to encode WAV: {}", e))?;
+
+            // Create callback for streaming segments
+            let app_for_stream = app.clone();
+            let on_segment = move |segment: server_transcription::TranscriptionSegment| {
+                let _ = app_for_stream.emit_to(
+                    EventTarget::webview_window("overlay"),
+                    "transcription-segment",
+                    &segment,
+                );
+            };
+
+            // Create callback for step changes
+            let app_for_step = app.clone();
+            let on_step = move |step: String| {
+                let overlay_state = match step.as_str() {
+                    "transcribing" => "server_transcribing",
+                    "correcting" => "server_correcting",
+                    "formatting" => "server_formatting",
+                    _ => return,
+                };
+                let _ = app_for_step.emit_to(
+                    EventTarget::webview_window("overlay"),
+                    "processing-state",
+                    overlay_state,
+                );
+            };
+
+            // Determine format params to send
+            let format_backend = if server_formatting_enabled {
+                Some(server_format_backend.as_str())
+            } else {
+                None
+            };
+            let format_prompt = if server_formatting_enabled {
+                Some(server_format_style_prompt.as_str())
+            } else {
+                None
+            };
+            let format_intensity = if server_formatting_enabled {
+                Some(server_format_intensity)
+            } else {
+                None
+            };
+
+            // Try server transcription
+            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, vocabulary_prompt.as_deref(), raw_vocabulary.as_deref(), server_token.as_deref(), format_backend, format_prompt, format_intensity, on_segment, on_step).await {
+                Ok(text) => text,
+                Err(e) => {
+                    eprintln!("Server transcription failed: {}", e);
+
+                    // Fallback to local if enabled
+                    if server_fallback {
+                        eprintln!("Falling back to local Whisper transcription");
+                        emit_to_overlay(app, "transcribing");
+
+                        let app_clone = app.clone();
+                        let engine_lock = state.whisper_engine.lock();
+                        if let Some(ref engine) = *engine_lock {
+                            engine
+                                .transcribe_with_options(&audio_data, vocabulary_prompt.as_deref(), move |progress| {
+                                    let _ = app_clone.emit_to(
+                                        EventTarget::webview_window("overlay"),
+                                        "transcription-progress",
+                                        progress,
+                                    );
+                                })
+                                .map_err(|e| e.to_string())?
+                        } else {
+                            emit_to_overlay(app, "idle");
+                            #[cfg(windows)]
+                            resume_media_if_paused(&state);
+                            return Err(format!("Server failed: {}. No local model loaded for fallback.", e));
+                        }
+                    } else {
+                        emit_to_overlay(app, "idle");
+                        #[cfg(windows)]
+                        resume_media_if_paused(&state);
+                        return Err(format!("Server transcription failed: {}", e));
+                    }
+                }
+            }
+        }
+        TranscriptionMode::Local => {
+            // Local Whisper transcription
+            let app_clone = app.clone();
+            let engine_lock = state.whisper_engine.lock();
+            if let Some(ref engine) = *engine_lock {
+                engine
+                    .transcribe_with_options(&audio_data, vocabulary_prompt.as_deref(), move |progress| {
+                        let _ = app_clone.emit_to(
+                            EventTarget::webview_window("overlay"),
+                            "transcription-progress",
+                            progress,
+                        );
+                    })
+                    .map_err(|e| e.to_string())?
+            } else {
+                emit_to_overlay(app, "idle");
+                #[cfg(windows)]
+                resume_media_if_paused(&state);
+                return Err("No model loaded".to_string());
+            }
+        }
+    };
+
+    // Wait for screenshot capture to complete if still in progress (max 10 seconds)
+    let screenshot_wait_start = std::time::Instant::now();
+    while *state.screenshot_capture_in_progress.lock() {
+        if screenshot_wait_start.elapsed() > std::time::Duration::from_secs(10) {
+            eprintln!("Warning: screenshot capture timed out after 10 seconds, continuing without screenshots");
+            *state.screenshot_capture_in_progress.lock() = false;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+
+    // Get screenshot paths for Claude (if any)
+    let screenshot_paths: Vec<PathBuf> = std::mem::take(&mut *state.screenshot_paths.lock());
+
+    let use_screenshot_for_correction = *state.use_screenshot_for_correction.lock();
+    let paste_screenshot_path = *state.paste_screenshot_path.lock();
+
+    // Optionally enhance transcription with Claude
+    // Skip Claude enhancement if server formatting is enabled in server mode
+    // (the server already handled formatting)
+    let skip_claude = server_formatting_enabled && transcription_mode == TranscriptionMode::Server;
+    let use_llm = *state.use_llm_enhancement.lock();
+    if use_llm && !transcription.is_empty() && !skip_claude {
+        emit_to_overlay(app, "enhancing");
+        let claude_model = state.claude_model.lock().clone();
+        // Pass screenshots to Claude for contextual correction if enabled
+        let screenshots_for_correction = if use_screenshot_for_correction {
+            &screenshot_paths[..]
+        } else {
+            &[]
+        };
+        if let Ok(enhanced) = enhance_with_claude(&transcription, &claude_model, screenshots_for_correction).await {
+            transcription = enhanced;
+        }
+    }
+
+    emit_to_overlay(app, "idle");
+
+    // Resume media playback if we paused it
+    #[cfg(windows)]
+    resume_media_if_paused(&state);
+
+    // Hide overlay
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        let _ = overlay.hide();
+    }
+
+    // Copy and paste
+    #[cfg(windows)]
+    {
+        let preserve = *state.preserve_clipboard.lock();
+
+        // Include screenshot paths if paste_screenshot_path is enabled
+        if paste_screenshot_path && !screenshot_paths.is_empty() {
+            // Copy text + all image paths to clipboard
+            if let Err(e) = crate::clipboard::type_text_with_images(&transcription, &screenshot_paths, preserve) {
+                eprintln!("Failed to copy with images, falling back to text only: {}", e);
+                let _ = crate::clipboard::type_text(&transcription, preserve);
+            }
+        } else {
+            // Just copy text
+            let _ = crate::clipboard::type_text(&transcription, preserve);
+        }
+    }
+
+    // Note: We don't cleanup screenshots immediately because Claude CLI
+    // needs to read them from the path. They're stored in the system temp
+    // folder and will be cleaned up by the OS eventually.
+
+    let _ = app.emit("transcription-complete", &transcription);
+
+    Ok(transcription)
+}

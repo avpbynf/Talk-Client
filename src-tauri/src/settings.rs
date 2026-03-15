@@ -1,0 +1,246 @@
+use crate::screenshot::ScreenshotMode;
+use crate::transcription::{AcceleratorBackend, GpuVendor};
+use directories::ProjectDirs;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TranscriptionMode {
+    Local,
+    Server,
+}
+
+impl Default for TranscriptionMode {
+    fn default() -> Self {
+        Self::Local
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlaySize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl Default for OverlaySize {
+    fn default() -> Self {
+        Self::Medium
+    }
+}
+
+impl OverlaySize {
+    pub fn dimensions(&self) -> (f64, f64) {
+        match self {
+            Self::Small => (160.0, 44.0),
+            Self::Medium => (220.0, 60.0),
+            Self::Large => (280.0, 76.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OverlayPosition {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppSettings {
+    pub last_model: Option<String>,
+    pub use_llm_enhancement: bool,
+    #[serde(default = "default_claude_model")]
+    pub claude_model: String,
+    #[serde(default = "default_accelerator")]
+    pub accelerator_backend: AcceleratorBackend,
+    #[serde(default)]
+    pub gpu_vendor: GpuVendor,
+    #[serde(default)]
+    pub overlay_position: Option<OverlayPosition>,
+    #[serde(default)]
+    pub overlay_size: OverlaySize,
+    #[serde(default)]
+    pub use_screenshot_for_correction: bool,  // Send screenshot to Claude for STT correction
+    #[serde(default)]
+    pub paste_screenshot_path: bool,  // Paste screenshot path with text
+    #[serde(default)]
+    pub screenshot_mode: ScreenshotMode,
+    /// Custom vocabulary words to help Whisper recognize specific terms
+    #[serde(default)]
+    pub vocabulary: Vec<String>,
+    /// Transcription mode: local Whisper or remote server
+    #[serde(default)]
+    pub transcription_mode: TranscriptionMode,
+    /// Server URL for remote transcription
+    #[serde(default = "default_server_url")]
+    pub server_url: String,
+    /// Enable fallback to local Whisper if server unavailable
+    #[serde(default = "default_true")]
+    pub server_fallback: bool,
+    /// Server request timeout in milliseconds
+    #[serde(default = "default_server_timeout")]
+    pub server_timeout: u64,
+    /// Server API token for authentication
+    #[serde(default)]
+    pub server_token: Option<String>,
+    /// Whether the setup wizard has been completed
+    #[serde(default)]
+    pub setup_completed: bool,
+    /// Whether to launch the app at system startup
+    #[serde(default)]
+    pub autostart_enabled: bool,
+    /// Whether to start minimized to tray
+    #[serde(default)]
+    pub start_minimized: bool,
+    /// Pause media playback during recording
+    #[serde(default)]
+    pub pause_media_on_record: bool,
+    /// Preserve clipboard content after pasting transcription
+    #[serde(default)]
+    pub preserve_clipboard: bool,
+    /// Enable server-side LLM formatting after transcription
+    #[serde(default)]
+    pub server_formatting_enabled: bool,
+    /// Formatting backend: "goblin" or "llm"
+    #[serde(default = "default_format_backend")]
+    pub server_format_backend: String,
+    /// Style prompt for server formatting (Goblin conversion type or LLM instruction)
+    #[serde(default = "default_format_style_prompt")]
+    pub server_format_style_prompt: String,
+    /// Formatting intensity (1-5)
+    #[serde(default = "default_format_intensity")]
+    pub server_format_intensity: u8,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_claude_model() -> String {
+    "haiku".to_string()
+}
+
+fn default_server_url() -> String {
+    "http://localhost:8000".to_string()
+}
+
+fn default_server_timeout() -> u64 {
+    30000 // 30 seconds
+}
+
+fn default_format_backend() -> String {
+    "goblin".to_string()
+}
+
+fn default_format_style_prompt() -> String {
+    "grammatical".to_string()
+}
+
+fn default_format_intensity() -> u8 {
+    3
+}
+
+pub fn default_accelerator() -> AcceleratorBackend {
+    AcceleratorBackend::Cpu
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            last_model: None,
+            use_llm_enhancement: false,
+            claude_model: default_claude_model(),
+            accelerator_backend: default_accelerator(),
+            gpu_vendor: GpuVendor::default(),
+            overlay_position: None,
+            overlay_size: OverlaySize::default(),
+            use_screenshot_for_correction: false,
+            paste_screenshot_path: false,
+            screenshot_mode: ScreenshotMode::default(),
+            vocabulary: Vec::new(),
+            transcription_mode: TranscriptionMode::default(),
+            server_url: default_server_url(),
+            server_fallback: true,
+            server_timeout: default_server_timeout(),
+            server_token: None,
+            setup_completed: false,
+            autostart_enabled: false,
+            start_minimized: false,
+            pause_media_on_record: false,
+            preserve_clipboard: false,
+            server_formatting_enabled: false,
+            server_format_backend: default_format_backend(),
+            server_format_style_prompt: default_format_style_prompt(),
+            server_format_intensity: default_format_intensity(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranscriptionEntry {
+    pub id: String,
+    pub text: String,
+    pub timestamp: String,
+    pub model: Option<String>,
+    pub enhanced: bool,
+}
+
+fn get_config_dir() -> PathBuf {
+    ProjectDirs::from("com", "nicolasavpbynf", "whisper-flow")
+        .map(|dirs| dirs.config_dir().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn get_settings_path() -> PathBuf {
+    get_config_dir().join("settings.json")
+}
+
+fn get_history_path() -> PathBuf {
+    get_config_dir().join("history.json")
+}
+
+pub fn load_settings() -> AppSettings {
+    let path = get_settings_path();
+    if path.exists() {
+        std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|content| serde_json::from_str(&content).ok())
+            .unwrap_or_default()
+    } else {
+        AppSettings::default()
+    }
+}
+
+pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
+    let path = get_settings_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let content = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn load_history() -> Vec<TranscriptionEntry> {
+    let path = get_history_path();
+    if path.exists() {
+        std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|content| serde_json::from_str(&content).ok())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+pub fn save_history(history: &[TranscriptionEntry]) -> Result<(), String> {
+    let path = get_history_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let content = serde_json::to_string_pretty(history).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
