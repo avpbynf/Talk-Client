@@ -46,7 +46,8 @@
         "languages": ["French", "English"],
         "displayLanguageSelector": true,
         "headerImage": "icons/nsis-header.bmp",
-        "sidebarImage": "icons/nsis-sidebar.bmp"
+        "sidebarImage": "icons/nsis-sidebar.bmp",
+        "installerHooks": "nsis-hooks.nsh"
       }
     }
   },
