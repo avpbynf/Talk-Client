@@ -1,4 +1,4 @@
-use crate::{audio, audio_encoder, context_detection, server_transcription, settings, AppState, RecordingMode};
+use crate::{audio, audio_encoder, server_transcription, settings, AppState, RecordingMode};
 use crate::settings::TranscriptionMode;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -23,12 +23,13 @@ fn resume_media_if_paused(state: &AppState) {
     }
 }
 
+/// Check if audio is currently playing on the default render device.
+/// Uses IAudioMeterInformation to read the peak level — if > 0, something is playing.
 #[cfg(windows)]
-fn mute_system_mic() -> bool {
+fn is_audio_playing() -> bool {
     use windows::Win32::Media::Audio::{
-        eCapture, eConsole, IMMDeviceEnumerator, MMDeviceEnumerator,
+        eRender, eConsole, IAudioMeterInformation, IMMDeviceEnumerator, MMDeviceEnumerator,
     };
-    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
 
     unsafe {
@@ -36,36 +37,10 @@ fn mute_system_mic() -> bool {
         let enumerator: Result<IMMDeviceEnumerator, _> =
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL);
         let Ok(enumerator) = enumerator else { return false };
-        let Ok(device) = enumerator.GetDefaultAudioEndpoint(eCapture, eConsole) else { return false };
-        let Ok(volume) = device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None) else { return false };
-        let was_muted = volume.GetMute().unwrap_or_default().as_bool();
-        if !was_muted {
-            let _ = volume.SetMute(true, std::ptr::null());
-            return true; // we changed the state
-        }
-        false // was already muted, don't restore later
-    }
-}
-
-#[cfg(windows)]
-fn unmute_system_mic() {
-    use windows::Win32::Media::Audio::{
-        eCapture, eConsole, IMMDeviceEnumerator, MMDeviceEnumerator,
-    };
-    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
-    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
-
-    unsafe {
-        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-        let enumerator: Result<IMMDeviceEnumerator, _> =
-            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL);
-        if let Ok(enumerator) = enumerator {
-            if let Ok(device) = enumerator.GetDefaultAudioEndpoint(eCapture, eConsole) {
-                if let Ok(volume) = device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None) {
-                    let _ = volume.SetMute(false, std::ptr::null());
-                }
-            }
-        }
+        let Ok(device) = enumerator.GetDefaultAudioEndpoint(eRender, eConsole) else { return false };
+        let Ok(meter) = device.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None) else { return false };
+        let Ok(peak) = meter.GetPeakValue() else { return false };
+        peak > 0.001
     }
 }
 
@@ -442,13 +417,6 @@ pub fn cancel_recording(app: &AppHandle) {
     // Resume media playback if we paused it
     #[cfg(windows)]
     resume_media_if_paused(&state);
-    #[cfg(windows)]
-    {
-        let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
-        if did_mute {
-            unmute_system_mic();
-        }
-    }
 
     // Hide overlay
     if let Some(overlay) = app.get_webview_window("overlay") {
@@ -465,31 +433,6 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     if *state.is_recording.lock() {
         return Ok(());
     }
-
-    // Detect context NOW while the user is still in their editor (Zed, VS Code, etc.)
-    // This must happen before showing overlay which would change the active window
-    let detected_context = context_detection::detect();
-    *state.last_detected_context.lock() = Some(detected_context.clone());
-    eprintln!(
-        "[context_detection] Context captured at recording start: language={:?}, workspace={:?}",
-        detected_context.language, detected_context.workspace
-    );
-
-    // Emit context-updated event for UI
-    let user_vocabulary = state.vocabulary.lock().clone();
-    let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
-    let has_real_context = detected_context.language.is_some() || !detected_context.symbols.is_empty();
-
-    let _ = app.emit("context-updated", serde_json::json!({
-        "has_real_context": has_real_context,
-        "language": detected_context.language,
-        "symbols": detected_context.symbols,
-        "workspace": detected_context.workspace,
-        "frameworks": detected_context.frameworks,
-        "window_title": detected_context.window_title,
-        "domain": detected_context.domain,
-        "vocabulary_prompt": vocabulary_prompt,
-    }));
 
     // Show overlay first (without taking focus to keep cursor in place)
     if app.get_webview_window("overlay").is_none() {
@@ -543,20 +486,9 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
         let should_pause = *state.pause_media_on_record.lock();
-        if should_pause {
+        if should_pause && is_audio_playing() {
             send_media_play_pause();
             *state.did_pause_media.lock() = true;
-        }
-    }
-
-    // Mute system microphone if enabled
-    #[cfg(windows)]
-    {
-        let should_mute = *state.mute_mic_on_record.lock();
-        if should_mute {
-            if mute_system_mic() {
-                *state.did_mute_mic.lock() = true;
-            }
         }
     }
 
@@ -604,13 +536,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         } else {
             #[cfg(windows)]
             resume_media_if_paused(&state);
-            #[cfg(windows)]
-            {
-                let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
-                if did_mute {
-                    unmute_system_mic();
-                }
-            }
             return Err("No audio buffer found".to_string());
         }
     };
@@ -618,6 +543,10 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     // Stop audio capture - dropping the handle signals the stream thread to exit
     *state.audio_capture_handle.lock() = None;
     *state.is_recording.lock() = false;
+
+    // Resume media playback immediately at recording stop (not after transcription)
+    #[cfg(windows)]
+    resume_media_if_paused(&state);
 
     let _ = app.emit("recording-stopped", ());
 
@@ -635,14 +564,13 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let server_fallback = *state.server_fallback.lock();
     let server_timeout = *state.server_timeout.lock();
 
-    // Use context detected at recording start (when user was still in their editor)
-    let detected_context = state
-        .last_detected_context
-        .lock()
-        .clone()
-        .unwrap_or_default();
+    // Build vocabulary prompt from custom words only (comma-separated, no prefix)
     let user_vocabulary = state.vocabulary.lock().clone();
-    let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
+    let vocabulary_prompt = if user_vocabulary.is_empty() {
+        None
+    } else {
+        Some(user_vocabulary.join(", "))
+    };
 
     // Transcribe based on mode
     let transcription = match transcription_mode {
@@ -692,28 +620,10 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                                 .map_err(|e| e.to_string())?
                         } else {
                             emit_to_overlay(app, "idle");
-                            #[cfg(windows)]
-                            resume_media_if_paused(&state);
-                            #[cfg(windows)]
-                            {
-                                let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
-                                if did_mute {
-                                    unmute_system_mic();
-                                }
-                            }
                             return Err(format!("Server failed: {}. No local model loaded for fallback.", e));
                         }
                     } else {
                         emit_to_overlay(app, "idle");
-                        #[cfg(windows)]
-                        resume_media_if_paused(&state);
-                        #[cfg(windows)]
-                        {
-                            let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
-                            if did_mute {
-                                unmute_system_mic();
-                            }
-                        }
                         return Err(format!("Server transcription failed: {}", e));
                     }
                 }
@@ -735,15 +645,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                     .map_err(|e| e.to_string())?
             } else {
                 emit_to_overlay(app, "idle");
-                #[cfg(windows)]
-                resume_media_if_paused(&state);
-                #[cfg(windows)]
-                {
-                    let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
-                    if did_mute {
-                        unmute_system_mic();
-                    }
-                }
                 return Err("No model loaded".to_string());
             }
         }
@@ -751,32 +652,16 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
 
     emit_to_overlay(app, "idle");
 
-    // Resume media playback if we paused it
-    #[cfg(windows)]
-    resume_media_if_paused(&state);
-    #[cfg(windows)]
-    {
-        let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
-        if did_mute {
-            unmute_system_mic();
-        }
-    }
-
     // Hide overlay
     if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.hide();
     }
 
-    // Copy and paste — use direct typing for terminals (SendInput doesn't work with WinUI)
+    // Copy to clipboard and simulate paste
     #[cfg(windows)]
     {
-        let is_terminal = detected_context.domain.as_deref() == Some("terminal");
-        if is_terminal {
-            let _ = crate::clipboard::type_text_direct(&transcription);
-        } else {
-            let preserve = *state.preserve_clipboard.lock();
-            let _ = crate::clipboard::type_text(&transcription, preserve);
-        }
+        let preserve = *state.preserve_clipboard.lock();
+        let _ = crate::clipboard::type_text(&transcription, preserve);
     }
 
     let _ = app.emit("transcription-complete", &transcription);

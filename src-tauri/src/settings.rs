@@ -87,9 +87,6 @@ pub struct AppSettings {
     /// Preserve clipboard content after pasting transcription
     #[serde(default)]
     pub preserve_clipboard: bool,
-    /// Mute system microphone during recording (useful during calls)
-    #[serde(default)]
-    pub mute_mic_on_record: bool,
 }
 
 fn default_true() -> bool {
@@ -140,7 +137,6 @@ impl Default for AppSettings {
             start_minimized: false,
             pause_media_on_record: false,
             preserve_clipboard: false,
-            mute_mic_on_record: false,
         }
     }
 }

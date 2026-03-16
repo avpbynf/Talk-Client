@@ -1,7 +1,6 @@
 mod audio;
 mod audio_encoder;
 mod clipboard;
-mod context_detection;
 mod hotkeys;
 mod models;
 mod server_transcription;
@@ -32,8 +31,6 @@ pub struct AppState {
     pub gpu_vendor: Mutex<GpuVendor>,
     /// Custom vocabulary words to help Whisper recognize specific terms
     pub vocabulary: Mutex<Vec<String>>,
-    /// Last detected context from a real transcription (for debug display)
-    pub last_detected_context: Mutex<Option<context_detection::DetectedContext>>,
     /// Transcription mode: local or server
     pub transcription_mode: Mutex<TranscriptionMode>,
     /// Server URL for remote transcription
@@ -46,10 +43,6 @@ pub struct AppState {
     pub pause_media_on_record: Mutex<bool>,
     /// Track if we paused media (to resume on stop)
     pub did_pause_media: Mutex<bool>,
-    /// Mute mic during recording
-    pub mute_mic_on_record: Mutex<bool>,
-    /// Track if we muted mic (to restore on stop)
-    pub did_mute_mic: Mutex<bool>,
     /// Preserve clipboard content after pasting transcription
     pub preserve_clipboard: Mutex<bool>,
 }
@@ -67,15 +60,12 @@ impl Default for AppState {
             accelerator_backend: Mutex::new(AcceleratorBackend::Cpu),
             gpu_vendor: Mutex::new(GpuVendor::Cpu),
             vocabulary: Mutex::new(Vec::new()),
-            last_detected_context: Mutex::new(None),
             transcription_mode: Mutex::new(TranscriptionMode::default()),
             server_url: Mutex::new("https://stt.example.com".to_string()),
             server_fallback: Mutex::new(true),
             server_timeout: Mutex::new(30000),
             pause_media_on_record: Mutex::new(false),
             did_pause_media: Mutex::new(false),
-            mute_mic_on_record: Mutex::new(false),
-            did_mute_mic: Mutex::new(false),
             preserve_clipboard: Mutex::new(false),
         }
     }
@@ -512,41 +502,6 @@ fn remove_vocabulary_word(word: String, state: tauri::State<'_, AppState>) {
     }
 }
 
-/// Response for detected context (for UI display)
-#[derive(serde::Serialize)]
-struct DetectedContextResponse {
-    /// Whether this is from a real transcription (true) or just showing available languages (false)
-    has_real_context: bool,
-    language: Option<String>,
-    symbols: Vec<String>,
-    workspace: Option<String>,
-    frameworks: Vec<String>,
-    window_title: Option<String>,
-    domain: Option<String>,
-    vocabulary_prompt: Option<String>,
-}
-
-#[tauri::command]
-fn get_detected_context(state: tauri::State<'_, AppState>) -> DetectedContextResponse {
-    // Detect current context in real-time (reads VS Code context file if available)
-    let detected = context_detection::detect();
-    let has_real_context = detected.language.is_some() || !detected.symbols.is_empty();
-
-    let user_vocabulary = state.vocabulary.lock().clone();
-    let vocabulary_prompt = context_detection::build_prompt(&detected, &user_vocabulary);
-
-    DetectedContextResponse {
-        has_real_context,
-        language: detected.language,
-        symbols: detected.symbols,
-        workspace: detected.workspace,
-        frameworks: detected.frameworks,
-        window_title: detected.window_title,
-        domain: detected.domain,
-        vocabulary_prompt,
-    }
-}
-
 #[tauri::command]
 async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
     // Check if overlay already exists
@@ -695,21 +650,6 @@ fn set_pause_media_on_record(enabled: bool, state: tauri::State<'_, AppState>) {
 }
 
 #[tauri::command]
-fn get_mute_mic_on_record(state: tauri::State<'_, AppState>) -> bool {
-    *state.mute_mic_on_record.lock()
-}
-
-#[tauri::command]
-fn set_mute_mic_on_record(enabled: bool, state: tauri::State<'_, AppState>) {
-    *state.mute_mic_on_record.lock() = enabled;
-    let mut app_settings = settings::load_settings();
-    app_settings.mute_mic_on_record = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
 fn get_preserve_clipboard(state: tauri::State<'_, AppState>) -> bool {
     *state.preserve_clipboard.lock()
 }
@@ -811,7 +751,6 @@ pub fn run() {
             set_vocabulary,
             add_vocabulary_word,
             remove_vocabulary_word,
-            get_detected_context,
             get_transcription_mode,
             set_transcription_mode,
             get_server_url,
@@ -829,8 +768,6 @@ pub fn run() {
             set_start_minimized,
             get_pause_media_on_record,
             set_pause_media_on_record,
-            get_mute_mic_on_record,
-            set_mute_mic_on_record,
             get_preserve_clipboard,
             set_preserve_clipboard,
         ])
@@ -854,7 +791,6 @@ pub fn run() {
                 *state.server_fallback.lock() = app_settings.server_fallback;
                 *state.server_timeout.lock() = app_settings.server_timeout;
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
-                *state.mute_mic_on_record.lock() = app_settings.mute_mic_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
             }
 
