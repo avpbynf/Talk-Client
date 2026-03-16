@@ -40,9 +40,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "resources/ggml-large-v3-turbo-q5_0.bin"
-    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser",

@@ -120,7 +120,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     setGpus(availableGpus);
     setDetectedGpu(bestGpu);
 
-    // Pre-select large-v3-turbo-q5_0 as the default model (pre-installed in the bundle)
+    // Pre-select large-v3-turbo-q5_0 as the recommended model
     const recommendedModel = "large-v3-turbo-q5_0";
     if (downloaded.includes(recommendedModel)) {
       setSelectedModel(recommendedModel);

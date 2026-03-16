@@ -53,7 +53,12 @@ url = "2"
 enigo = "0.2"
 clipboard-win = "5"
 active-win-pos-rs = "0.8"
-windows = { version = "0.62", features = ["Media_Control", "Foundation"] }
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Win32_Media_Audio",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_System_Com",
+] }
 
 [dev-dependencies]
 tempfile = "3"

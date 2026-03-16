@@ -16,27 +16,54 @@ fn send_media_play_pause() {
 }
 
 #[cfg(windows)]
-fn is_media_playing() -> bool {
-    use windows::Media::Control::{
-        GlobalSystemMediaTransportControlsSessionManager,
-        GlobalSystemMediaTransportControlsSessionPlaybackStatus,
-    };
-    let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
-        .and_then(|op| op.GetResults());
-    let Ok(manager) = manager else { return false };
-    manager
-        .GetCurrentSession()
-        .and_then(|session| session.GetPlaybackInfo())
-        .and_then(|info| info.PlaybackStatus())
-        .map(|status| status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing)
-        .unwrap_or(false)
+fn resume_media_if_paused(state: &AppState) {
+    let did_pause = std::mem::replace(&mut *state.did_pause_media.lock(), false);
+    if did_pause {
+        send_media_play_pause();
+    }
 }
 
 #[cfg(windows)]
-fn resume_media_if_paused(state: &AppState) {
-    let did_pause = std::mem::replace(&mut *state.did_pause_media.lock(), false);
-    if did_pause && !is_media_playing() {
-        send_media_play_pause();
+fn mute_system_mic() -> bool {
+    use windows::Win32::Media::Audio::{
+        eCapture, eConsole, IAudioEndpointVolume, IMMDeviceEnumerator, MMDeviceEnumerator,
+    };
+    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let enumerator: Result<IMMDeviceEnumerator, _> =
+            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL);
+        let Ok(enumerator) = enumerator else { return false };
+        let Ok(device) = enumerator.GetDefaultAudioEndpoint(eCapture, eConsole) else { return false };
+        let Ok(volume) = device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None) else { return false };
+        let was_muted = volume.GetMute().unwrap_or_default().as_bool();
+        if !was_muted {
+            let _ = volume.SetMute(true, std::ptr::null());
+            return true; // we changed the state
+        }
+        false // was already muted, don't restore later
+    }
+}
+
+#[cfg(windows)]
+fn unmute_system_mic() {
+    use windows::Win32::Media::Audio::{
+        eCapture, eConsole, IAudioEndpointVolume, IMMDeviceEnumerator, MMDeviceEnumerator,
+    };
+    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let enumerator: Result<IMMDeviceEnumerator, _> =
+            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL);
+        if let Ok(enumerator) = enumerator {
+            if let Ok(device) = enumerator.GetDefaultAudioEndpoint(eCapture, eConsole) {
+                if let Ok(volume) = device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None) {
+                    let _ = volume.SetMute(false, std::ptr::null());
+                }
+            }
+        }
     }
 }
 
@@ -413,6 +440,13 @@ pub fn cancel_recording(app: &AppHandle) {
     // Resume media playback if we paused it
     #[cfg(windows)]
     resume_media_if_paused(&state);
+    #[cfg(windows)]
+    {
+        let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
+        if did_mute {
+            unmute_system_mic();
+        }
+    }
 
     // Hide overlay
     if let Some(overlay) = app.get_webview_window("overlay") {
@@ -442,7 +476,6 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     // Emit context-updated event for UI
     let user_vocabulary = state.vocabulary.lock().clone();
     let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
-    let available_languages = context_detection::get_available_languages();
     let has_real_context = detected_context.language.is_some() || !detected_context.symbols.is_empty();
 
     let _ = app.emit("context-updated", serde_json::json!({
@@ -454,7 +487,6 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
         "window_title": detected_context.window_title,
         "domain": detected_context.domain,
         "vocabulary_prompt": vocabulary_prompt,
-        "available_languages": available_languages,
     }));
 
     // Show overlay first (without taking focus to keep cursor in place)
@@ -509,9 +541,20 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
         let should_pause = *state.pause_media_on_record.lock();
-        if should_pause && is_media_playing() {
+        if should_pause {
             send_media_play_pause();
             *state.did_pause_media.lock() = true;
+        }
+    }
+
+    // Mute system microphone if enabled
+    #[cfg(windows)]
+    {
+        let should_mute = *state.mute_mic_on_record.lock();
+        if should_mute {
+            if mute_system_mic() {
+                *state.did_mute_mic.lock() = true;
+            }
         }
     }
 
@@ -559,6 +602,13 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         } else {
             #[cfg(windows)]
             resume_media_if_paused(&state);
+            #[cfg(windows)]
+            {
+                let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
+                if did_mute {
+                    unmute_system_mic();
+                }
+            }
             return Err("No audio buffer found".to_string());
         }
     };
@@ -642,12 +692,26 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                             emit_to_overlay(app, "idle");
                             #[cfg(windows)]
                             resume_media_if_paused(&state);
+                            #[cfg(windows)]
+                            {
+                                let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
+                                if did_mute {
+                                    unmute_system_mic();
+                                }
+                            }
                             return Err(format!("Server failed: {}. No local model loaded for fallback.", e));
                         }
                     } else {
                         emit_to_overlay(app, "idle");
                         #[cfg(windows)]
                         resume_media_if_paused(&state);
+                        #[cfg(windows)]
+                        {
+                            let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
+                            if did_mute {
+                                unmute_system_mic();
+                            }
+                        }
                         return Err(format!("Server transcription failed: {}", e));
                     }
                 }
@@ -671,6 +735,13 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                 emit_to_overlay(app, "idle");
                 #[cfg(windows)]
                 resume_media_if_paused(&state);
+                #[cfg(windows)]
+                {
+                    let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
+                    if did_mute {
+                        unmute_system_mic();
+                    }
+                }
                 return Err("No model loaded".to_string());
             }
         }
@@ -681,6 +752,13 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     // Resume media playback if we paused it
     #[cfg(windows)]
     resume_media_if_paused(&state);
+    #[cfg(windows)]
+    {
+        let did_mute = std::mem::replace(&mut *state.did_mute_mic.lock(), false);
+        if did_mute {
+            unmute_system_mic();
+        }
+    }
 
     // Hide overlay
     if let Some(overlay) = app.get_webview_window("overlay") {

@@ -125,6 +125,7 @@ pub fn detect_active_window() -> Option<(String, String, Option<String>)> {
 }
 
 /// Check if the app is Zed editor
+#[cfg(windows)]
 fn is_zed_app(app_name: &Option<String>) -> bool {
     if let Some(name) = app_name {
         let name_lower = name.to_lowercase();

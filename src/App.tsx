@@ -62,6 +62,7 @@ interface SavedSettings {
   server_fallback: boolean;
   server_timeout: number;
   pause_media_on_record: boolean;
+  mute_mic_on_record: boolean;
   preserve_clipboard: boolean;
 }
 
@@ -106,6 +107,7 @@ function App() {
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [startMinimized, setStartMinimized] = useState(false);
   const [pauseMediaOnRecord, setPauseMediaOnRecord] = useState(false);
+  const [muteMicOnRecord, setMuteMicOnRecord] = useState(false);
   const [preserveClipboard, setPreserveClipboard] = useState(false);
 
   // Refs to avoid re-registering listeners
@@ -236,6 +238,7 @@ function App() {
     setServerFallback(savedSettings.server_fallback !== false); // Default to true
     setServerTimeout(savedSettings.server_timeout || 30000);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
+    setMuteMicOnRecord(savedSettings.mute_mic_on_record ?? false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
 
     // Auto-load last used model if it's downloaded
@@ -463,6 +466,11 @@ function App() {
             onPauseMediaOnRecordChange={async (enabled) => {
               setPauseMediaOnRecord(enabled);
               await invoke("set_pause_media_on_record", { enabled });
+            }}
+            muteMicOnRecord={muteMicOnRecord}
+            onMuteMicOnRecordChange={async (enabled) => {
+              setMuteMicOnRecord(enabled);
+              await invoke("set_mute_mic_on_record", { enabled });
             }}
             preserveClipboard={preserveClipboard}
             onPreserveClipboardChange={async (enabled) => {

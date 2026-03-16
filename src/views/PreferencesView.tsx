@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { RecordingMode, OverlaySize } from "@/App";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Keyboard, Edit3, Check, X, Maximize2, Info, Layers, Hand, ToggleLeft, Monitor, Music, ClipboardCopy } from "lucide-react";
+import { Keyboard, Edit3, Check, X, Maximize2, Info, Layers, Hand, ToggleLeft, Monitor, Music, MicOff, ClipboardCopy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PreferencesViewProps {
@@ -21,6 +21,8 @@ interface PreferencesViewProps {
   onStartMinimizedChange: (enabled: boolean) => void;
   pauseMediaOnRecord: boolean;
   onPauseMediaOnRecordChange: (enabled: boolean) => void;
+  muteMicOnRecord: boolean;
+  onMuteMicOnRecordChange: (enabled: boolean) => void;
   preserveClipboard: boolean;
   onPreserveClipboardChange: (enabled: boolean) => void;
 }
@@ -46,6 +48,8 @@ export default function PreferencesView({
   onStartMinimizedChange,
   pauseMediaOnRecord,
   onPauseMediaOnRecordChange,
+  muteMicOnRecord,
+  onMuteMicOnRecordChange,
   preserveClipboard,
   onPreserveClipboardChange,
 }: PreferencesViewProps) {
@@ -421,6 +425,25 @@ export default function PreferencesView({
                 <Switch
                   checked={pauseMediaOnRecord}
                   onCheckedChange={onPauseMediaOnRecordChange}
+                />
+              </div>
+
+              {/* Mute Mic */}
+              <div className="flex items-center justify-between border-t border-[oklch(0.22_0.015_260)] pt-4">
+                <div className="flex gap-3">
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-red-500/15">
+                    <MicOff className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <label className="font-medium">Couper le micro</label>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Mute le microphone système pendant l'enregistrement
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={muteMicOnRecord}
+                  onCheckedChange={onMuteMicOnRecordChange}
                 />
               </div>
 

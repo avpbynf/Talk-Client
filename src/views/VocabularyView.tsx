@@ -50,7 +50,6 @@ interface DetectedContext {
   window_title: string | null;
   domain: string | null;
   vocabulary_prompt: string | null;
-  available_languages: string[];
 }
 
 function SortableVocabularyItem({
@@ -324,27 +323,6 @@ export default function VocabularyView({
                           </div>
                         </div>
                       )}
-
-                      {/* Available languages */}
-                      <div className="space-y-2 pt-2 border-t border-purple-500/10">
-                        <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">
-                          Langages supportés ({detectedContext.available_languages.length})
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {detectedContext.available_languages.map((lang) => (
-                            <span
-                              key={lang}
-                              className={`px-1.5 py-0.5 rounded text-[10px] ${
-                                lang === detectedContext.language
-                                  ? "bg-green-500/30 text-green-300"
-                                  : "bg-[oklch(0.18_0.01_260)] text-purple-300/50"
-                              }`}
-                            >
-                              {lang}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
                     </>
                   ) : (
                     <div className="space-y-4">
@@ -355,25 +333,6 @@ export default function VocabularyView({
                           Utilisez le raccourci pour faire une transcription et voir le contexte détecté
                         </p>
                       </div>
-
-                      {/* Still show available languages */}
-                      {detectedContext && detectedContext.available_languages.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-purple-500/10">
-                          <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">
-                            Langages supportés ({detectedContext.available_languages.length})
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {detectedContext.available_languages.map((lang) => (
-                              <span
-                                key={lang}
-                                className="px-1.5 py-0.5 rounded text-[10px] bg-[oklch(0.18_0.01_260)] text-purple-300/50"
-                              >
-                                {lang}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

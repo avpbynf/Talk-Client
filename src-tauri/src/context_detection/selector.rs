@@ -1,17 +1,15 @@
 //! Vocabulary selection and prompt generation
 //!
-//! Combines detected context with language vocabularies and user terms
+//! Combines detected context with user terms and symbols
 //! to generate an optimized prompt for Whisper (50-70 words max).
 //!
 //! Priority order (highest first):
 //! 1. User-defined terms (always included)
-//! 2. Document symbols (function names, etc.)
-//! 3. Framework vocabulary
-//! 4. Base language vocabulary
+//! 2. Context names (workspace, frameworks)
+//! 3. Document symbols (function names, etc.)
 
 use std::collections::HashSet;
 
-use super::vocabulary;
 use super::DetectedContext;
 
 /// Maximum number of words in the generated prompt
@@ -22,8 +20,6 @@ const MAX_VOCABULARY_WORDS: usize = 70;
 const MAX_USER_WORDS: usize = 15;
 const MAX_CONTEXT_NAMES: usize = 10; // workspace, language, framework names
 const MAX_SYMBOL_WORDS: usize = 20;
-const MAX_FRAMEWORK_WORDS: usize = 15;
-const MAX_BASE_WORDS: usize = 25; // Reduced to make room for context names
 
 /// Build a vocabulary prompt from detected context and user terms
 ///
@@ -77,22 +73,6 @@ pub fn build_prompt(context: &DetectedContext, user_terms: &[String]) -> Option<
         .cloned()
         .collect();
     add_words(&mut words, &mut seen, &valid_symbols, MAX_SYMBOL_WORDS);
-
-    // 4. Framework-specific vocabulary
-    if let Some(ref language) = context.language {
-        for framework in &context.frameworks {
-            if let Some(fw_vocab) = vocabulary::get_framework_vocabulary(language, framework) {
-                add_words(&mut words, &mut seen, fw_vocab, MAX_FRAMEWORK_WORDS);
-            }
-        }
-    }
-
-    // 5. Base language vocabulary (lowest priority - fills remaining space)
-    if let Some(ref language) = context.language {
-        if let Some(vocab) = vocabulary::get_vocabulary(language) {
-            add_words(&mut words, &mut seen, &vocab.base, MAX_BASE_WORDS);
-        }
-    }
 
     if words.is_empty() {
         return None;
@@ -212,18 +192,6 @@ mod tests {
     }
 
     #[test]
-    fn test_build_prompt_with_language() {
-        let context = DetectedContext {
-            language: Some("rust".to_string()),
-            ..Default::default()
-        };
-        let prompt = build_prompt(&context, &[]);
-        assert!(prompt.is_some());
-        let prompt = prompt.unwrap();
-        assert!(prompt.contains("async") || prompt.contains("Result"));
-    }
-
-    #[test]
     fn test_build_prompt_with_user_terms() {
         let context = DetectedContext::default();
         let user_terms = vec!["CustomTerm".to_string(), "MyFunction".to_string()];
@@ -253,7 +221,7 @@ mod tests {
     fn test_no_duplicates() {
         let context = DetectedContext {
             language: Some("rust".to_string()),
-            symbols: vec!["async".to_string(), "Result".to_string()], // These exist in base vocab
+            symbols: vec!["async".to_string(), "Result".to_string()],
             ..Default::default()
         };
         let prompt = build_prompt(&context, &[]).unwrap();
@@ -391,7 +359,6 @@ mod tests {
         // Should include Tauri (uncommon)
         assert!(prompt.contains("Tauri"));
         // Should NOT include React (Whisper already knows it)
-        // Note: React might still appear from vocabulary, but not from context names
     }
 
     #[test]
@@ -407,40 +374,4 @@ mod tests {
         assert_eq!(get_uncommon_framework_name("django"), None);
     }
 
-    #[test]
-    fn test_glossary_format_with_user_terms_and_tech() {
-        let context = DetectedContext {
-            language: Some("rust".to_string()),
-            ..Default::default()
-        };
-        let user_terms = vec!["Claude".to_string()];
-        let prompt = build_prompt(&context, &user_terms).unwrap();
-
-        // Should start with Glossary: prefix containing user terms
-        assert!(prompt.starts_with("Glossary: Claude."));
-        // Technical terms should follow after the glossary section
-        assert!(prompt.contains("async") || prompt.contains("Result"));
-    }
-
-    #[test]
-    fn test_glossary_boundary_with_dedup() {
-        // If user term overlaps with context name, boundary should be correct
-        let context = DetectedContext {
-            workspace: Some("t4lk".to_string()),
-            language: Some("rust".to_string()),
-            ..Default::default()
-        };
-        let user_terms = vec!["t4lk".to_string()];
-        let prompt = build_prompt(&context, &user_terms).unwrap();
-
-        // "t4lk" appears once (deduped), boundary = 1
-        // Technical Rust terms should NOT be inside "Glossary:" section
-        let parts: Vec<&str> = prompt.splitn(2, ". ").collect();
-        if parts.len() == 2 {
-            // Glossary part should only contain t4lk
-            assert!(parts[0].contains("t4lk"));
-            // Technical terms should be in the second part
-            assert!(parts[1].contains("async") || parts[1].contains("Result") || parts[1].contains("fn"));
-        }
-    }
 }

@@ -139,10 +139,10 @@ pub fn detect_available_accelerators() -> Vec<AcceleratorInfo> {
 /// Get the best available accelerator (auto-detection)
 pub fn get_best_accelerator() -> AcceleratorBackend {
     #[cfg(feature = "vulkan")]
-    return AcceleratorBackend::Vulkan;
+    { return AcceleratorBackend::Vulkan; }
 
-    #[allow(unreachable_code)]
-    AcceleratorBackend::Cpu
+    #[cfg(not(feature = "vulkan"))]
+    { AcceleratorBackend::Cpu }
 }
 
 

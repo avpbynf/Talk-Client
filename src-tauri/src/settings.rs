@@ -58,7 +58,7 @@ pub struct AppSettings {
     #[serde(default)]
     pub overlay_size: OverlaySize,
     /// Custom vocabulary words to help Whisper recognize specific terms
-    #[serde(default)]
+    #[serde(default = "default_vocabulary")]
     pub vocabulary: Vec<String>,
     /// Transcription mode: local Whisper or remote server
     #[serde(default)]
@@ -87,6 +87,9 @@ pub struct AppSettings {
     /// Preserve clipboard content after pasting transcription
     #[serde(default)]
     pub preserve_clipboard: bool,
+    /// Mute system microphone during recording (useful during calls)
+    #[serde(default)]
+    pub mute_mic_on_record: bool,
 }
 
 fn default_true() -> bool {
@@ -101,6 +104,20 @@ fn default_server_timeout() -> u64 {
     30000 // 30 seconds
 }
 
+fn default_vocabulary() -> Vec<String> {
+    vec![
+        "T4lk".to_string(),
+        "t4lking".to_string(),
+        "t4lking-online".to_string(),
+        "Claude".to_string(),
+        "CLAUDE.md".to_string(),
+        "Zed".to_string(),
+        "Sonnet".to_string(),
+        "Celery".to_string(),
+        "Rising".to_string(),
+    ]
+}
+
 pub fn default_accelerator() -> AcceleratorBackend {
     AcceleratorBackend::Cpu
 }
@@ -113,7 +130,7 @@ impl Default for AppSettings {
             gpu_vendor: GpuVendor::default(),
             overlay_position: None,
             overlay_size: OverlaySize::default(),
-            vocabulary: Vec::new(),
+            vocabulary: default_vocabulary(),
             transcription_mode: TranscriptionMode::default(),
             server_url: default_server_url(),
             server_fallback: true,
@@ -123,6 +140,7 @@ impl Default for AppSettings {
             start_minimized: false,
             pause_media_on_record: false,
             preserve_clipboard: false,
+            mute_mic_on_record: false,
         }
     }
 }

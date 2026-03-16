@@ -46,6 +46,10 @@ pub struct AppState {
     pub pause_media_on_record: Mutex<bool>,
     /// Track if we paused media (to resume on stop)
     pub did_pause_media: Mutex<bool>,
+    /// Mute mic during recording
+    pub mute_mic_on_record: Mutex<bool>,
+    /// Track if we muted mic (to restore on stop)
+    pub did_mute_mic: Mutex<bool>,
     /// Preserve clipboard content after pasting transcription
     pub preserve_clipboard: Mutex<bool>,
 }
@@ -70,6 +74,8 @@ impl Default for AppState {
             server_timeout: Mutex::new(30000),
             pause_media_on_record: Mutex::new(false),
             did_pause_media: Mutex::new(false),
+            mute_mic_on_record: Mutex::new(false),
+            did_mute_mic: Mutex::new(false),
             preserve_clipboard: Mutex::new(false),
         }
     }
@@ -518,7 +524,6 @@ struct DetectedContextResponse {
     window_title: Option<String>,
     domain: Option<String>,
     vocabulary_prompt: Option<String>,
-    available_languages: Vec<String>,
 }
 
 #[tauri::command]
@@ -529,7 +534,6 @@ fn get_detected_context(state: tauri::State<'_, AppState>) -> DetectedContextRes
 
     let user_vocabulary = state.vocabulary.lock().clone();
     let vocabulary_prompt = context_detection::build_prompt(&detected, &user_vocabulary);
-    let available_languages = context_detection::get_available_languages();
 
     DetectedContextResponse {
         has_real_context,
@@ -540,7 +544,6 @@ fn get_detected_context(state: tauri::State<'_, AppState>) -> DetectedContextRes
         window_title: detected.window_title,
         domain: detected.domain,
         vocabulary_prompt,
-        available_languages,
     }
 }
 
@@ -692,6 +695,21 @@ fn set_pause_media_on_record(enabled: bool, state: tauri::State<'_, AppState>) {
 }
 
 #[tauri::command]
+fn get_mute_mic_on_record(state: tauri::State<'_, AppState>) -> bool {
+    *state.mute_mic_on_record.lock()
+}
+
+#[tauri::command]
+fn set_mute_mic_on_record(enabled: bool, state: tauri::State<'_, AppState>) {
+    *state.mute_mic_on_record.lock() = enabled;
+    let mut app_settings = settings::load_settings();
+    app_settings.mute_mic_on_record = enabled;
+    if let Err(e) = settings::save_settings(&app_settings) {
+        eprintln!("Failed to save settings: {}", e);
+    }
+}
+
+#[tauri::command]
 fn get_preserve_clipboard(state: tauri::State<'_, AppState>) -> bool {
     *state.preserve_clipboard.lock()
 }
@@ -811,6 +829,8 @@ pub fn run() {
             set_start_minimized,
             get_pause_media_on_record,
             set_pause_media_on_record,
+            get_mute_mic_on_record,
+            set_mute_mic_on_record,
             get_preserve_clipboard,
             set_preserve_clipboard,
         ])
@@ -834,25 +854,8 @@ pub fn run() {
                 *state.server_fallback.lock() = app_settings.server_fallback;
                 *state.server_timeout.lock() = app_settings.server_timeout;
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
+                *state.mute_mic_on_record.lock() = app_settings.mute_mic_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
-            }
-
-            // Copy bundled model to user data dir if not already present
-            if let Some(resource_dir) = app.path().resource_dir().ok() {
-                let bundled_model = resource_dir.join("ggml-large-v3-turbo-q5_0.bin");
-                if bundled_model.exists() {
-                    let models_dir = directories::ProjectDirs::from("com", "t4lk", "t4lk")
-                        .map(|dirs| dirs.data_dir().join("models"));
-                    if let Some(models_dir) = models_dir {
-                        let target = models_dir.join("ggml-large-v3-turbo-q5_0.bin");
-                        if !target.exists() {
-                            let _ = std::fs::create_dir_all(&models_dir);
-                            if let Err(e) = std::fs::copy(&bundled_model, &target) {
-                                eprintln!("Failed to copy bundled model: {}", e);
-                            }
-                        }
-                    }
-                }
             }
 
             // Setup global shortcuts

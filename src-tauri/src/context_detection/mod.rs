@@ -5,16 +5,14 @@
 
 mod project;
 mod selector;
-mod vocabulary;
 mod window;
 
-use directories::{ProjectDirs, UserDirs};
+use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 pub use selector::build_prompt;
-pub use vocabulary::get_available_languages;
 
 /// Maximum age for VS Code context file to be considered valid (30 seconds)
 /// Extension updates every 1s, but file can be stale if VS Code loses focus
@@ -204,7 +202,7 @@ pub fn detect() -> DetectedContext {
 
                     // Try to detect additional project frameworks from project files
                     if let Some(ref ws) = workspace {
-                        let user_dirs = UserDirs::new();
+                        let user_dirs = directories::UserDirs::new();
                         let home_dir = user_dirs.as_ref().map(|u| u.home_dir().to_path_buf());
 
                         let mut potential_roots: Vec<Option<PathBuf>> = vec![
