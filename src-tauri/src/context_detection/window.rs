@@ -116,15 +116,9 @@ pub fn detect_active_window() -> Option<(String, String, Option<String>)> {
                 infer_domain_from_title(&title)
             };
 
-            eprintln!(
-                "[context_detection] Active window: '{}' (app: {:?}) -> domain: {}",
-                title, app_name, domain
-            );
-
             Some((title, domain.to_string(), app_name))
         }
         Err(_) => {
-            eprintln!("[context_detection] Failed to get active window");
             None
         }
     }
@@ -188,11 +182,6 @@ fn build_zed_context(filename: String, project: String) -> ZedContext {
         .to_lowercase();
 
     let language = extension_to_language(&extension);
-
-    eprintln!(
-        "[context_detection] Zed parsed: filename='{}', project='{}', language='{}'",
-        filename, project, language
-    );
 
     ZedContext {
         filename,
@@ -262,11 +251,6 @@ pub fn parse_vscode_title(title: &str) -> Option<VsCodeTitleContext> {
         .to_lowercase();
 
     let language = extension_to_language(&extension);
-
-    eprintln!(
-        "[context_detection] VS Code parsed: filename='{}', workspace={:?}, language='{}'",
-        filename, workspace, language
-    );
 
     Some(VsCodeTitleContext {
         filename,

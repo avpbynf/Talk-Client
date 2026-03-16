@@ -59,7 +59,7 @@ windows = { version = "0.62", features = ["Media_Control", "Foundation"] }
 tempfile = "3"
 
 [features]
-default = []
+default = ["vulkan"]
 vulkan = ["whisper-rs/vulkan"]
 
 [profile.release]

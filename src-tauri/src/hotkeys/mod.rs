@@ -583,10 +583,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let server_fallback = *state.server_fallback.lock();
     let server_timeout = *state.server_timeout.lock();
 
-    eprintln!("[DEBUG] Transcription mode: {:?}", transcription_mode);
-    eprintln!("[DEBUG] Server URL: {}", server_url);
-    eprintln!("[DEBUG] Server fallback: {}", server_fallback);
-
     // Use context detected at recording start (when user was still in their editor)
     let detected_context = state
         .last_detected_context
@@ -595,11 +591,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         .unwrap_or_default();
     let user_vocabulary = state.vocabulary.lock().clone();
     let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
-
-    eprintln!("[DEBUG] Using context from recording start: language={:?}, symbols={}",
-        detected_context.language,
-        detected_context.symbols.len()
-    );
 
     // Transcribe based on mode
     let transcription = match transcription_mode {

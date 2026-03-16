@@ -27,7 +27,7 @@
       "iconAsTemplate": true
     },
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* http://172.* http://192.168.* https://huggingface.co"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* http://172.* http://192.168.* https://stt.example.com https://huggingface.co"
     }
   },
   "bundle": {
@@ -40,8 +40,15 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "resources/*": "./"
+    "resources": [
+      "resources/ggml-large-v3-turbo-q5_0.bin"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["French", "English"],
+        "displayLanguageSelector": true
+      }
     }
   },
   "plugins": {}

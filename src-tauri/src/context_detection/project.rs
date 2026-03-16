@@ -81,11 +81,6 @@ pub fn detect_project_frameworks(worktree_root: &Path) -> ProjectContext {
     // Cache the result
     update_cache(&cache_key, worktree_root, &context);
 
-    eprintln!(
-        "[context_detection] Project frameworks: language={:?}, frameworks={:?}",
-        context.language, context.frameworks
-    );
-
     context
 }
 

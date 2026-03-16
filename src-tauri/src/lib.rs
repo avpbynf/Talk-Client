@@ -65,7 +65,7 @@ impl Default for AppState {
             vocabulary: Mutex::new(Vec::new()),
             last_detected_context: Mutex::new(None),
             transcription_mode: Mutex::new(TranscriptionMode::default()),
-            server_url: Mutex::new("http://localhost:8000".to_string()),
+            server_url: Mutex::new("https://stt.example.com".to_string()),
             server_fallback: Mutex::new(true),
             server_timeout: Mutex::new(30000),
             pause_media_on_record: Mutex::new(false),
@@ -815,7 +815,8 @@ pub fn run() {
             set_preserve_clipboard,
         ])
         .setup(|app| {
-            // Load .env file for API keys
+            // Load .env file in dev mode only
+            #[cfg(debug_assertions)]
             let _ = dotenvy::dotenv();
 
             // Load saved settings into state
@@ -834,6 +835,24 @@ pub fn run() {
                 *state.server_timeout.lock() = app_settings.server_timeout;
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
+            }
+
+            // Copy bundled model to user data dir if not already present
+            if let Some(resource_dir) = app.path().resource_dir().ok() {
+                let bundled_model = resource_dir.join("ggml-large-v3-turbo-q5_0.bin");
+                if bundled_model.exists() {
+                    let models_dir = directories::ProjectDirs::from("com", "t4lk", "t4lk")
+                        .map(|dirs| dirs.data_dir().join("models"));
+                    if let Some(models_dir) = models_dir {
+                        let target = models_dir.join("ggml-large-v3-turbo-q5_0.bin");
+                        if !target.exists() {
+                            let _ = std::fs::create_dir_all(&models_dir);
+                            if let Err(e) = std::fs::copy(&bundled_model, &target) {
+                                eprintln!("Failed to copy bundled model: {}", e);
+                            }
+                        }
+                    }
+                }
             }
 
             // Setup global shortcuts
@@ -863,7 +882,7 @@ pub fn run() {
             // Setup tray icon
             let app_handle = app.handle().clone();
             let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(app.default_window_icon().expect("window icon missing from bundle").clone())
                 .tooltip("T4lk")
                 .menu(&menu)
                 .on_menu_event(move |app, event| {

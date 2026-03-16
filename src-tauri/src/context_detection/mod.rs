@@ -87,21 +87,11 @@ fn read_vscode_context() -> Option<VsCodeContext> {
     let age = SystemTime::now().duration_since(modified).ok()?;
 
     if age > VSCODE_CONTEXT_MAX_AGE {
-        eprintln!(
-            "[context_detection] VS Code context too old ({:.1}s > {}s)",
-            age.as_secs_f32(),
-            VSCODE_CONTEXT_MAX_AGE.as_secs()
-        );
         return None;
     }
 
     let content = std::fs::read_to_string(&path).ok()?;
     let context: VsCodeContext = serde_json::from_str(&content).ok()?;
-
-    eprintln!(
-        "[context_detection] VS Code context loaded: language={:?}",
-        context.active_file.as_ref().map(|f| &f.language)
-    );
 
     Some(context)
 }
@@ -165,11 +155,6 @@ pub fn detect() -> DetectedContext {
                         context.frameworks = detect_frameworks_from_project(&ws.name);
                     }
 
-                    eprintln!(
-                        "[context_detection] VS Code focused, using context file: language={:?}, symbols={}",
-                        context.language,
-                        context.symbols.len()
-                    );
                     return context;
                 }
             }
@@ -243,10 +228,6 @@ pub fn detect() -> DetectedContext {
                                 if !project_ctx.frameworks.is_empty() {
                                     // Add project frameworks but DON'T override file language
                                     context.frameworks.extend(project_ctx.frameworks);
-                                    eprintln!(
-                                        "[context_detection] Project frameworks added: {:?}",
-                                        context.frameworks
-                                    );
                                     break;
                                 }
                             }
@@ -257,10 +238,6 @@ pub fn detect() -> DetectedContext {
                     context.frameworks.sort();
                     context.frameworks.dedup();
 
-                    eprintln!(
-                        "[context_detection] Editor context: language={:?}, workspace={:?}, frameworks={:?}",
-                        context.language, context.workspace, context.frameworks
-                    );
                     return context;
                 }
             }

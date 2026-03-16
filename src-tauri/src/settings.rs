@@ -94,7 +94,7 @@ fn default_true() -> bool {
 }
 
 fn default_server_url() -> String {
-    "http://localhost:8000".to_string()
+    "https://stt.example.com".to_string()
 }
 
 fn default_server_timeout() -> u64 {

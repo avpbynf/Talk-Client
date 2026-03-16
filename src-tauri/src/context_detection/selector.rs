@@ -113,16 +113,6 @@ pub fn build_prompt(context: &DetectedContext, user_terms: &[String]) -> Option<
         format!("{}.", words.join(", "))
     };
 
-    eprintln!(
-        "[context_detection] Generated prompt with {} words: {}",
-        words.len(),
-        if prompt.len() > 100 {
-            format!("{}...", &prompt[..100])
-        } else {
-            prompt.clone()
-        }
-    );
-
     Some(prompt)
 }
 

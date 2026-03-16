@@ -138,24 +138,13 @@ pub fn detect_available_accelerators() -> Vec<AcceleratorInfo> {
 
 /// Get the best available accelerator (auto-detection)
 pub fn get_best_accelerator() -> AcceleratorBackend {
-    // Priority: Vulkan > CPU
     #[cfg(feature = "vulkan")]
-    if check_vulkan_available() {
-        return AcceleratorBackend::Vulkan;
-    }
+    return AcceleratorBackend::Vulkan;
 
+    #[allow(unreachable_code)]
     AcceleratorBackend::Cpu
 }
 
-#[allow(dead_code)]
-#[cfg(feature = "vulkan")]
-fn check_vulkan_available() -> bool {
-    // Check for Vulkan availability
-    std::process::Command::new("vulkaninfo")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
 
 pub struct WhisperEngine {
     ctx: WhisperContext,
@@ -163,10 +152,6 @@ pub struct WhisperEngine {
 }
 
 impl WhisperEngine {
-    pub fn new(model_path: &Path) -> Result<Self, TranscriptionError> {
-        Self::new_with_backend(model_path, AcceleratorBackend::Cpu)
-    }
-
     pub fn new_with_backend(model_path: &Path, backend: AcceleratorBackend) -> Result<Self, TranscriptionError> {
         let mut params = WhisperContextParameters::default();
 
@@ -179,7 +164,7 @@ impl WhisperEngine {
                 }
                 #[cfg(not(feature = "vulkan"))]
                 {
-                    eprintln!("Vulkan feature not compiled, falling back to CPU");
+                    // Vulkan not compiled - CPU fallback will be used
                 }
             }
             AcceleratorBackend::Cpu => {

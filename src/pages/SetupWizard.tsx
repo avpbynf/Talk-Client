@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_SERVER_URL = "https://stt.t4lk.cloud";
+const DEFAULT_SERVER_URL = "https://stt.example.com";
 
 interface ModelInfo {
   id: string;
@@ -120,9 +120,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     setGpus(availableGpus);
     setDetectedGpu(bestGpu);
 
-    // Pre-select a reasonable model based on GPU
-    const recommendedModel = bestGpu === "cpu" ? "base-q5" : "small-q5";
-    if (!downloaded.includes(recommendedModel)) {
+    // Pre-select large-v3-turbo-q5_0 as the default model (pre-installed in the bundle)
+    const recommendedModel = "large-v3-turbo-q5_0";
+    if (downloaded.includes(recommendedModel)) {
       setSelectedModel(recommendedModel);
     } else {
       setSelectedModel(downloaded[0] || recommendedModel);

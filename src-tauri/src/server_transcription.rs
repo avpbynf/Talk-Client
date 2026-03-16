@@ -88,11 +88,6 @@ where
         base_url.trim_end_matches('/')
     );
 
-    eprintln!("[SSE] Connecting to {}", url);
-    if let Some(p) = prompt {
-        eprintln!("[SSE] Prompt: {}", p);
-    }
-
     // Create multipart form with the WAV file
     let part = reqwest::multipart::Part::bytes(wav_data.to_vec())
         .file_name("audio.wav")
@@ -122,7 +117,6 @@ where
         .send()
         .await
         .map_err(|e| {
-            eprintln!("[SSE] Request failed: {}", e);
             if e.is_timeout() {
                 ServerError::Timeout
             } else if e.is_connect() {
@@ -135,14 +129,11 @@ where
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        eprintln!("[SSE] Server returned {} - {}", status, body);
         return Err(ServerError::StreamError(format!(
             "Server returned status {}: {}",
             status, body
         )));
     }
-
-    eprintln!("[SSE] Connected, receiving stream...");
 
     // Read the SSE stream
     let mut stream = response.bytes_stream();
@@ -207,10 +198,6 @@ where
                         match serde_json::from_str::<SegmentData>(json_str) {
                             Ok(data) => {
                                 if !data.text.is_empty() {
-                                    eprintln!(
-                                        "[SSE] Segment {}: {}",
-                                        data.index, data.text
-                                    );
                                     full_text.push_str(&data.text);
                                     on_segment(TranscriptionSegment {
                                         text: data.text,
@@ -219,21 +206,12 @@ where
                                     });
                                 }
                             }
-                            Err(e) => {
-                                eprintln!(
-                                    "[SSE] Failed to parse segment JSON '{}': {}",
-                                    json_str, e
-                                );
-                            }
+                            Err(_) => {}
                         }
                     }
                     "done" => {
                         match serde_json::from_str::<DoneData>(json_str) {
                             Ok(data) => {
-                                eprintln!(
-                                    "[SSE] Done, duration: {}s, language: {:?}",
-                                    data.duration, data.language
-                                );
                                 let final_text = if !data.text.is_empty() {
                                     data.text
                                 } else {
@@ -241,20 +219,12 @@ where
                                 };
                                 return Ok(final_text);
                             }
-                            Err(e) => {
-                                eprintln!(
-                                    "[SSE] Failed to parse done JSON '{}': {}",
-                                    json_str, e
-                                );
+                            Err(_) => {
                                 return Ok(full_text.trim().to_string());
                             }
                         }
                     }
                     other => {
-                        // Unknown or missing event type — ignore but log
-                        if !other.is_empty() {
-                            eprintln!("[SSE] Unknown event '{}', data: {}", other, json_str);
-                        }
                         // Notify step change for unknown named events
                         on_step(other.to_string());
                     }
@@ -263,6 +233,5 @@ where
         }
     }
 
-    eprintln!("[SSE] Stream ended, total text: {}", full_text);
     Ok(full_text.trim().to_string())
 }
