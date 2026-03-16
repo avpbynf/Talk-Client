@@ -225,9 +225,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const getGpuDescription = (vendor: GpuVendor) => {
     switch (vendor) {
       case "vulkan":
-        return "Acceleration Vulkan disponible";
+        return "Accélération Vulkan disponible";
       default:
-        return "Aucune acceleration GPU detectee";
+        return "Aucune accélération GPU détectée";
     }
   };
 
@@ -343,9 +343,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         {stepContent === "hardware" && (
           <div className="max-w-lg mx-auto space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-semibold mb-2">Detection du materiel</h2>
+              <h2 className="text-2xl font-semibold mb-2">Détection du matériel</h2>
               <p className="text-muted-foreground">
-                Nous avons detecte votre configuration
+                Nous avons détecté votre configuration
               </p>
             </div>
 
@@ -431,10 +431,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 )}
 
                 <span className="flex-1 text-sm">
-                  {serverStatus === "checking" && "Verification en cours..."}
-                  {serverStatus === "online" && "Serveur connecte"}
+                  {serverStatus === "checking" && "Vérification en cours..."}
+                  {serverStatus === "online" && "Serveur connecté"}
                   {serverStatus === "offline" && "Serveur indisponible"}
-                  {serverStatus === "unknown" && "Non verifie"}
+                  {serverStatus === "unknown" && "Non vérifié"}
                 </span>
 
                 <Button
@@ -454,9 +454,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         {stepContent === "model" && (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-semibold mb-2">Selection du modele</h2>
+              <h2 className="text-2xl font-semibold mb-2">Sélection du modèle</h2>
               <p className="text-muted-foreground">
-                Choisissez le modele Whisper a utiliser
+                Choisissez le modèle Whisper à utiliser
               </p>
             </div>
 
@@ -471,7 +471,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Quantifies (recommande)
+                Quantifiés (recommandé)
               </button>
               <button
                 onClick={() => setModelFamily("standard")}
@@ -543,12 +543,12 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   {isDownloading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Telechargement...
+                      Téléchargement...
                     </>
                   ) : (
                     <>
                       <Download className="h-4 w-4" />
-                      Telecharger le modele
+                      Télécharger le modèle
                     </>
                   )}
                 </Button>
@@ -561,9 +561,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         {stepContent === "options" && (
           <div className="max-w-lg mx-auto space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-semibold mb-2">Options de demarrage</h2>
+              <h2 className="text-2xl font-semibold mb-2">Options de démarrage</h2>
               <p className="text-muted-foreground">
-                Configurez le comportement au demarrage
+                Configurez le comportement au démarrage
               </p>
             </div>
 
@@ -572,9 +572,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 <div className="flex items-center gap-3">
                   <Settings2 className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">Lancer au demarrage</p>
+                    <p className="font-medium">Lancer au démarrage</p>
                     <p className="text-sm text-muted-foreground">
-                      Demarrer automatiquement avec Windows
+                      Démarrer automatiquement avec Windows
                     </p>
                   </div>
                 </div>
@@ -588,9 +588,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 <div className="flex items-center gap-3">
                   <Settings2 className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">Demarrer minimise</p>
+                    <p className="font-medium">Démarrer minimisé</p>
                     <p className="text-sm text-muted-foreground">
-                      Reduire dans la barre des taches au lancement
+                      Réduire dans la barre des tâches au lancement
                     </p>
                   </div>
                 </div>
@@ -613,14 +613,14 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
 
             <div>
-              <h2 className="text-2xl font-semibold mb-2">Configuration terminee !</h2>
+              <h2 className="text-2xl font-semibold mb-2">Configuration terminée !</h2>
               <p className="text-muted-foreground">
-                T4lk est pret a etre utilise
+                T4lk est prêt à être utilisé
               </p>
             </div>
 
             <div className="p-4 rounded-xl border border-border bg-card text-left space-y-2">
-              <h3 className="font-medium mb-3">Resume de la configuration:</h3>
+              <h3 className="font-medium mb-3">Résumé de la configuration :</h3>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Mode:</span>
                 <span>{mode === "local" ? "Local" : "Serveur"}</span>
@@ -628,11 +628,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               {mode === "local" ? (
                 <>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Acceleration:</span>
+                    <span className="text-muted-foreground">Accélération :</span>
                     <span>{getGpuLabel(detectedGpu)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Modele:</span>
+                    <span className="text-muted-foreground">Modèle :</span>
                     <span>{models.find((m) => m.id === selectedModel)?.name || selectedModel}</span>
                   </div>
                 </>
@@ -643,7 +643,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Demarrage auto:</span>
+                <span className="text-muted-foreground">Démarrage auto :</span>
                 <span>{autostartEnabled ? "Oui" : "Non"}</span>
               </div>
             </div>
@@ -669,11 +669,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             className="gap-2"
           >
             <ChevronLeft className="h-4 w-4" />
-            Precedent
+            Précédent
           </Button>
 
           <span className="text-sm text-muted-foreground">
-            Etape {currentStep} sur {totalSteps}
+            Étape {currentStep} sur {totalSteps}
           </span>
 
           {stepContent === "complete" ? (

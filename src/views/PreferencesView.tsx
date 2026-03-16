@@ -27,7 +27,7 @@ interface PreferencesViewProps {
 
 const overlaySizes: { id: OverlaySize; name: string; description: string; preview: string }[] = [
   { id: "small", name: "Petit", description: "Compact et discret", preview: "120 x 40" },
-  { id: "medium", name: "Moyen", description: "Taille par defaut", preview: "220 x 60" },
+  { id: "medium", name: "Moyen", description: "Taille par défaut", preview: "220 x 60" },
   { id: "large", name: "Grand", description: "Plus visible", preview: "280 x 80" },
 ];
 
@@ -139,7 +139,7 @@ export default function PreferencesView({
       setPendingShortcut([]);
       await invoke("enable_shortcuts");
     } catch {
-      setShortcutError("Raccourci invalide ou deja utilise");
+      setShortcutError("Raccourci invalide ou déjà utilisé");
       await invoke("enable_shortcuts");
     }
   };
@@ -244,7 +244,7 @@ export default function PreferencesView({
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-6 py-5 border-b border-[oklch(0.22_0.015_260)] shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">Preferences</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Préférences</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Raccourcis clavier et apparence de l'overlay
         </p>
@@ -307,7 +307,7 @@ export default function PreferencesView({
                 "main",
                 shortcut,
                 "Raccourci principal",
-                recordingMode === "toggle" ? "Demarre ou arrete" : "Maintenez pour enregistrer"
+                recordingMode === "toggle" ? "Démarre ou arrête" : "Maintenez pour enregistrer"
               )}
               {renderShortcutCard(
                 "cancel",
@@ -365,7 +365,7 @@ export default function PreferencesView({
                   <label className="font-medium">Position</label>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Glissez l'overlay pendant l'enregistrement pour changer sa position. Elle sera sauvegardee automatiquement.
+                  Glissez l'overlay pendant l'enregistrement pour changer sa position. Elle sera sauvegardée automatiquement.
                 </p>
               </div>
             </div>
@@ -374,15 +374,15 @@ export default function PreferencesView({
             <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Monitor className="h-4 w-4" />
-                Systeme
+                Système
               </div>
 
               {/* Autostart */}
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="font-medium">Lancer au demarrage</label>
+                  <label className="font-medium">Lancer au démarrage</label>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Demarrer automatiquement avec Windows
+                    Démarrer automatiquement avec Windows
                   </p>
                 </div>
                 <Switch
@@ -394,9 +394,9 @@ export default function PreferencesView({
               {/* Start Minimized */}
               <div className="flex items-center justify-between border-t border-[oklch(0.22_0.015_260)] pt-4">
                 <div>
-                  <label className="font-medium">Demarrer minimise</label>
+                  <label className="font-medium">Démarrer minimisé</label>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Ouvrir directement dans la barre systeme
+                    Ouvrir directement dans la barre système
                   </p>
                 </div>
                 <Switch
@@ -431,9 +431,9 @@ export default function PreferencesView({
                     <ClipboardCopy className="h-5 w-5 text-amber-400" />
                   </div>
                   <div>
-                    <label className="font-medium">Preserver le presse-papier</label>
+                    <label className="font-medium">Préserver le presse-papier</label>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Restaure le contenu du presse-papier apres le collage
+                      Restaure le contenu du presse-papier après le collage
                     </p>
                   </div>
                 </div>
@@ -444,15 +444,6 @@ export default function PreferencesView({
               </div>
             </div>
 
-            {/* Info */}
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-              <div className="flex items-start gap-3">
-                <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-blue-300/80">
-                  Les changements de taille prennent effet au prochain enregistrement.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </ScrollArea>

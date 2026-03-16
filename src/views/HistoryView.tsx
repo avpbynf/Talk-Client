@@ -86,7 +86,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                   )}
                 </span>
               ))}
-              {" "}pour commencer a enregistrer
+              {" "}pour commencer à enregistrer
             </p>
           </div>
         ) : (

@@ -187,7 +187,7 @@ export default function VocabularyView({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Vocabulaire</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Ajoutez vos termes personnalises pour ameliorer la transcription
+            Ajoutez vos termes personnalisés pour améliorer la transcription
           </p>
         </div>
       </div>
@@ -204,15 +204,15 @@ export default function VocabularyView({
                     <Sparkles className="h-5 w-5 text-purple-400" />
                   </div>
                   <div className="space-y-2 flex-1">
-                    <h3 className="font-medium text-purple-200">Detection automatique du contexte</h3>
+                    <h3 className="font-medium text-purple-200">Détection automatique du contexte</h3>
                     <p className="text-sm text-purple-300/70">
-                      T4lk detecte automatiquement votre contexte de travail (VS Code, Zed, fenetre active)
+                      T4lk détecte automatiquement votre contexte de travail (VS Code, Zed, fenêtre active)
                       et adapte le vocabulaire technique pour une meilleure reconnaissance.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/20 text-xs text-purple-300">
                         <Code className="h-3.5 w-3.5" />
-                        Langage detecte
+                        Langage détecté
                       </div>
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/20 text-xs text-purple-300">
                         <Layers className="h-3.5 w-3.5" />
@@ -252,25 +252,25 @@ export default function VocabularyView({
                         <div className="space-y-1">
                           <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">Langage</span>
                           <div className="text-purple-200">
-                            {detectedContext.language || <span className="text-purple-300/30 italic">Non detecte</span>}
+                            {detectedContext.language || <span className="text-purple-300/30 italic">Non détecté</span>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">Workspace</span>
                           <div className="text-purple-200">
-                            {detectedContext.workspace || <span className="text-purple-300/30 italic">Non detecte</span>}
+                            {detectedContext.workspace || <span className="text-purple-300/30 italic">Non détecté</span>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">Domaine</span>
                           <div className="text-purple-200">
-                            {detectedContext.domain || <span className="text-purple-300/30 italic">Non detecte</span>}
+                            {detectedContext.domain || <span className="text-purple-300/30 italic">Non détecté</span>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">Fenetre</span>
                           <div className="text-purple-200 truncate" title={detectedContext.window_title || undefined}>
-                            {detectedContext.window_title || <span className="text-purple-300/30 italic">Non detecte</span>}
+                            {detectedContext.window_title || <span className="text-purple-300/30 italic">Non détecté</span>}
                           </div>
                         </div>
                       </div>
@@ -278,7 +278,7 @@ export default function VocabularyView({
                       {/* Frameworks */}
                       {detectedContext.frameworks.length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">Frameworks detectes</span>
+                          <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">Frameworks détectés</span>
                           <div className="flex flex-wrap gap-1.5">
                             {detectedContext.frameworks.map((fw) => (
                               <span key={fw} className="px-2 py-0.5 rounded bg-purple-500/20 text-xs text-purple-300">
@@ -315,7 +315,7 @@ export default function VocabularyView({
                         <div className="space-y-2">
                           <span className="text-purple-300/50 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                             <FileText className="h-3 w-3" />
-                            Prompt genere pour Whisper
+                            Prompt généré pour Whisper
                           </span>
                           <div className="p-3 rounded-lg bg-[oklch(0.10_0.01_260)] border border-purple-500/10">
                             <p className="text-xs text-purple-200/80 font-mono leading-relaxed break-words">
@@ -328,7 +328,7 @@ export default function VocabularyView({
                       {/* Available languages */}
                       <div className="space-y-2 pt-2 border-t border-purple-500/10">
                         <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">
-                          Langages supportes ({detectedContext.available_languages.length})
+                          Langages supportés ({detectedContext.available_languages.length})
                         </span>
                         <div className="flex flex-wrap gap-1">
                           {detectedContext.available_languages.map((lang) => (
@@ -352,7 +352,7 @@ export default function VocabularyView({
                         <Info className="h-5 w-5 mx-auto mb-2 opacity-50" />
                         <p>Aucune transcription effectuee</p>
                         <p className="text-xs mt-1 text-purple-300/30">
-                          Utilisez le raccourci pour faire une transcription et voir le contexte detecte
+                          Utilisez le raccourci pour faire une transcription et voir le contexte détecté
                         </p>
                       </div>
 
@@ -360,7 +360,7 @@ export default function VocabularyView({
                       {detectedContext && detectedContext.available_languages.length > 0 && (
                         <div className="space-y-2 pt-2 border-t border-purple-500/10">
                           <span className="text-purple-300/50 uppercase tracking-wider text-[10px]">
-                            Langages supportes ({detectedContext.available_languages.length})
+                            Langages supportés ({detectedContext.available_languages.length})
                           </span>
                           <div className="flex flex-wrap gap-1">
                             {detectedContext.available_languages.map((lang) => (
@@ -384,13 +384,13 @@ export default function VocabularyView({
             <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Plus className="h-4 w-4" />
-                Mots personnalises
+                Mots personnalisés
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-medium">Ajouter des termes specifiques</label>
+                <label className="text-sm font-medium">Ajouter des termes spécifiques</label>
                 <p className="text-xs text-muted-foreground">
-                  Ajoutez des noms propres, acronymes ou termes metier que la detection automatique ne couvre pas.
+                  Ajoutez des noms propres, acronymes ou termes métier que la détection automatique ne couvre pas.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -433,7 +433,7 @@ export default function VocabularyView({
               {vocabulary.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground border border-dashed border-[oklch(0.25_0.015_260)] rounded-lg">
                   <BookText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Aucun terme personnalise</p>
+                  <p className="text-sm">Aucun terme personnalisé</p>
                   <p className="text-xs mt-1">La detection automatique s'occupe du reste</p>
                 </div>
               ) : (
@@ -462,10 +462,10 @@ export default function VocabularyView({
               <div className="flex items-start gap-3">
                 <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                 <div className="text-xs text-blue-300/80">
-                  <p className="font-medium mb-1 text-blue-300">Comment ca fonctionne ?</p>
+                  <p className="font-medium mb-1 text-blue-300">Comment ça fonctionne ?</p>
                   <p>
-                    Le vocabulaire est automatiquement enrichi selon le contexte detecte (langage de programmation,
-                    fichier ouvert, fenetre active). Vos termes personnalises sont combines avec ce vocabulaire
+                    Le vocabulaire est automatiquement enrichi selon le contexte détecté (langage de programmation,
+                    fichier ouvert, fenêtre active). Vos termes personnalisés sont combinés avec ce vocabulaire
                     automatique pour optimiser la transcription.
                   </p>
                 </div>

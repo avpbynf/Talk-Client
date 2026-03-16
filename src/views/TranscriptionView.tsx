@@ -170,10 +170,10 @@ export default function TranscriptionView({
 
   const statusText = () => {
     switch (serverStatus) {
-      case "checking": return "Verification...";
-      case "online": return "Connecte";
+      case "checking": return "Vérification...";
+      case "online": return "Connecté";
       case "offline": return "Indisponible";
-      default: return "Non teste";
+      default: return "Non testé";
     }
   };
 
@@ -202,8 +202,8 @@ export default function TranscriptionView({
 
   // GPU options
   const allGpuOptions: GpuInfo[] = [
-    { vendor: "vulkan", name: "Vulkan", available: true, description: "GPU generique" },
-    { vendor: "cpu", name: "CPU", available: true, description: "Sans acceleration" },
+    { vendor: "cpu", name: "CPU", available: true, description: "Sans accélération" },
+    { vendor: "vulkan", name: "Vulkan", available: true, description: "GPU générique" },
   ];
 
   const gpuTooltips: Record<GpuVendor, string> = {
@@ -219,7 +219,7 @@ export default function TranscriptionView({
   // Tabs configuration
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "engine", label: "Moteur", icon: <Settings2 className="h-4 w-4" /> },
-    { id: "local", label: "Modele local", icon: <HardDrive className="h-4 w-4" /> },
+    { id: "local", label: "Modèle local", icon: <HardDrive className="h-4 w-4" /> },
     { id: "server", label: "Serveur", icon: <Globe className="h-4 w-4" /> },
   ];
 
@@ -247,7 +247,7 @@ export default function TranscriptionView({
                 className="border-[oklch(0.28_0.015_260)] hover:bg-[oklch(0.20_0.015_260)] h-8"
               >
                 <X className="h-3.5 w-3.5 mr-1.5" />
-                Decharger
+                Décharger
               </Button>
             </div>
           )}
@@ -282,7 +282,7 @@ export default function TranscriptionView({
             {activeTab === "engine" && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground mb-6">
-                  Choisissez comment la transcription sera effectuee.
+                  Choisissez comment la transcription sera effectuée.
                 </p>
 
                 {/* Mode Cards */}
@@ -314,17 +314,17 @@ export default function TranscriptionView({
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Whisper tourne sur votre machine. Aucune donnee envoyee.
+                          Whisper tourne sur votre machine. Aucune donnée envoyée.
                         </p>
                         {currentModel ? (
                           <div className="flex items-center gap-1.5 mt-3 text-xs text-[var(--color-active)]">
                             <Activity className="h-3 w-3" />
-                            <span>Modele actif : {currentModel}</span>
+                            <span>Modèle actif : {currentModel}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 mt-3 text-xs text-[var(--color-warning)]">
                             <AlertCircle className="h-3 w-3" />
-                            <span>Aucun modele charge</span>
+                            <span>Aucun modèle chargé</span>
                           </div>
                         )}
                       </div>
@@ -358,7 +358,7 @@ export default function TranscriptionView({
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Transcription via serveur distant avec streaming temps reel.
+                          Transcription via serveur distant avec streaming temps réel.
                         </p>
                         <div className="flex items-center gap-1.5 mt-3">
                           {statusIcon("sm")}
@@ -402,7 +402,7 @@ export default function TranscriptionView({
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Serveur en priorite, bascule en local si indisponible.
+                          Serveur en priorité, bascule en local si indisponible.
                         </p>
                         <div className="flex items-center gap-4 mt-3">
                           <div className="flex items-center gap-1.5">
@@ -425,7 +425,7 @@ export default function TranscriptionView({
                             ) : (
                               <>
                                 <AlertCircle className="h-3.5 w-3.5 text-[var(--color-warning)]" />
-                                <span className="text-xs text-[var(--color-warning)]">Local: non pret</span>
+                                <span className="text-xs text-[var(--color-warning)]">Local: non prêt</span>
                               </>
                             )}
                           </div>
@@ -447,7 +447,7 @@ export default function TranscriptionView({
                       <Zap className="h-4 w-4 text-[var(--color-warning)]" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-sm">Acceleration</h3>
+                      <h3 className="font-medium text-sm">Accélération</h3>
                       <p className="text-xs text-muted-foreground">Backend de calcul</p>
                     </div>
                   </div>
@@ -507,8 +507,8 @@ export default function TranscriptionView({
                         <HardDrive className="h-4 w-4 text-[var(--color-active)]" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-sm">Modeles Whisper</h3>
-                        <p className="text-xs text-muted-foreground">{downloadedModels.length} telecharge(s)</p>
+                        <h3 className="font-medium text-sm">Modèles Whisper</h3>
+                        <p className="text-xs text-muted-foreground">{downloadedModels.length} téléchargé(s)</p>
                       </div>
                     </div>
 
@@ -523,7 +523,7 @@ export default function TranscriptionView({
                             : "text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        Quantifies
+                        Quantifiés
                       </button>
                       <button
                         onClick={() => setModelFamily("standard")}
@@ -641,7 +641,7 @@ export default function TranscriptionView({
                             <div className="mt-3 pt-3 border-t border-[oklch(0.22_0.015_260)] space-y-1.5">
                               <Progress value={downloadProgress.progress} className="h-1.5" />
                               <div className="flex justify-between text-[10px] text-muted-foreground">
-                                <span>Telechargement...</span>
+                                <span>Téléchargement...</span>
                                 <span>{downloadProgress.downloaded_mb} / {downloadProgress.total_mb} MB</span>
                               </div>
                             </div>
@@ -724,7 +724,7 @@ export default function TranscriptionView({
                     </div>
                     <div>
                       <h3 className="font-medium text-sm">Timeout</h3>
-                      <p className="text-xs text-muted-foreground">Delai maximum pour la transcription</p>
+                      <p className="text-xs text-muted-foreground">Délai maximum pour la transcription</p>
                     </div>
                   </div>
 
@@ -753,7 +753,7 @@ export default function TranscriptionView({
                     <div>
                       <p className="text-sm font-medium text-blue-400">Streaming SSE</p>
                       <p className="text-xs text-blue-300/70 mt-1">
-                        Le serveur envoie les segments en temps reel. Le texte apparait progressivement dans l'overlay pendant la transcription.
+                        Le serveur envoie les segments en temps réel. Le texte apparaît progressivement dans l'overlay pendant la transcription.
                       </p>
                     </div>
                   </div>
