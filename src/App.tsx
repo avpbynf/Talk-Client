@@ -155,7 +155,7 @@ function App() {
         enhanced: false,
       };
       setTranscriptions((prev) => {
-        const updated = [newTranscription, ...prev];
+        const updated = [newTranscription, ...prev].slice(0, 100);
         // Save to disk
         invoke("save_transcription_history", {
           history: updated.map((t) => ({
