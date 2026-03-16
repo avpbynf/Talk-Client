@@ -365,7 +365,7 @@ mod tests {
     #[test]
     fn test_infer_domain_vscode() {
         assert_eq!(
-            infer_domain_from_title("mod.rs - whisper-flow - Visual Studio Code"),
+            infer_domain_from_title("mod.rs - t4lk - Visual Studio Code"),
             "vscode"
         );
         assert_eq!(infer_domain_from_title("Code - Insiders"), "vscode");
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn test_infer_domain_zed() {
         assert_eq!(
-            infer_domain_from_title("mod.rs - whisper-flow - Zed"),
+            infer_domain_from_title("mod.rs - t4lk - Zed"),
             "ide"
         );
     }
@@ -422,11 +422,11 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn test_parse_zed_title_valid() {
-        let ctx = parse_zed_title("mod.rs - whisper-flow - Zed", true);
+        let ctx = parse_zed_title("mod.rs - t4lk - Zed", true);
         assert!(ctx.is_some());
         let ctx = ctx.unwrap();
         assert_eq!(ctx.filename, "mod.rs");
-        assert_eq!(ctx.project, "whisper-flow");
+        assert_eq!(ctx.project, "t4lk");
         assert_eq!(ctx.language, "rust");
     }
 
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn test_parse_zed_title_not_zed() {
         // When is_zed_app is false, should not match even with Zed in title
-        assert!(parse_zed_title("mod.rs - whisper-flow - Visual Studio Code", false).is_none());
+        assert!(parse_zed_title("mod.rs - t4lk - Visual Studio Code", false).is_none());
         assert!(parse_zed_title("Some Random Window", false).is_none());
     }
 

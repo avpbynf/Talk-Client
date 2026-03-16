@@ -71,7 +71,7 @@ impl Default for HotkeyConfig {
 }
 
 fn get_config_path() -> PathBuf {
-    ProjectDirs::from("com", "nicolasavpbynf", "whisper-flow")
+    ProjectDirs::from("com", "t4lk", "t4lk")
         .map(|dirs| dirs.config_dir().join("hotkeys.json"))
         .unwrap_or_else(|| PathBuf::from("hotkeys.json"))
 }
@@ -612,13 +612,8 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let server_url = state.server_url.lock().clone();
     let server_fallback = *state.server_fallback.lock();
     let server_timeout = *state.server_timeout.lock();
-    let server_token = state.server_token.lock().clone();
-
-    // Get server formatting settings
-    let server_formatting_enabled = *state.server_formatting_enabled.lock();
-    let server_format_backend = state.server_format_backend.lock().clone();
-    let server_format_style_prompt = state.server_format_style_prompt.lock().clone();
-    let server_format_intensity = *state.server_format_intensity.lock();
+    // Get server formatting settings (kept for future use — not sent to new API)
+    let _server_formatting_enabled = *state.server_formatting_enabled.lock();
 
     eprintln!("[DEBUG] Transcription mode: {:?}", transcription_mode);
     eprintln!("[DEBUG] Server URL: {}", server_url);
@@ -632,7 +627,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         .unwrap_or_default();
     let user_vocabulary = state.vocabulary.lock().clone();
     let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
-    let raw_vocabulary = context_detection::build_vocabulary(&user_vocabulary);
+    let _raw_vocabulary = context_detection::build_vocabulary(&user_vocabulary);
 
     eprintln!("[DEBUG] Using context from recording start: language={:?}, symbols={}",
         detected_context.language,
@@ -675,25 +670,8 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                 );
             };
 
-            // Determine format params to send
-            let format_backend = if server_formatting_enabled {
-                Some(server_format_backend.as_str())
-            } else {
-                None
-            };
-            let format_prompt = if server_formatting_enabled {
-                Some(server_format_style_prompt.as_str())
-            } else {
-                None
-            };
-            let format_intensity = if server_formatting_enabled {
-                Some(server_format_intensity)
-            } else {
-                None
-            };
-
             // Try server transcription
-            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, vocabulary_prompt.as_deref(), raw_vocabulary.as_deref(), server_token.as_deref(), format_backend, format_prompt, format_intensity, on_segment, on_step).await {
+            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, detected_context.language.as_deref(), vocabulary_prompt.as_deref(), on_segment, on_step).await {
                 Ok(text) => text,
                 Err(e) => {
                     eprintln!("Server transcription failed: {}", e);

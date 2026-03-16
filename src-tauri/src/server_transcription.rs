@@ -55,107 +55,6 @@ pub async fn check_server_health(base_url: &str, timeout_ms: u64) -> Result<bool
     }
 }
 
-/// Result of token verification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenVerifyResult {
-    /// Whether the server is reachable
-    pub server_online: bool,
-    /// Whether the token is valid (None if no token provided or server unreachable)
-    pub token_valid: Option<bool>,
-    /// Error message if any
-    pub error: Option<String>,
-}
-
-/// Verify server connectivity and optionally token validity
-///
-/// # Arguments
-/// * `base_url` - Base URL of the server (e.g., "http://localhost:8000")
-/// * `timeout_ms` - Timeout in milliseconds
-/// * `token` - Optional Bearer token to verify
-pub async fn verify_server_token(
-    base_url: &str,
-    timeout_ms: u64,
-    token: Option<&str>,
-) -> TokenVerifyResult {
-    let client = match reqwest::Client::builder()
-        .timeout(Duration::from_millis(timeout_ms))
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            return TokenVerifyResult {
-                server_online: false,
-                token_valid: None,
-                error: Some(e.to_string()),
-            }
-        }
-    };
-
-    // First check if server is online
-    let health_url = format!("{}/health", base_url.trim_end_matches('/'));
-    let server_online = match client.get(&health_url).send().await {
-        Ok(response) => response.status().is_success(),
-        Err(_) => false,
-    };
-
-    if !server_online {
-        return TokenVerifyResult {
-            server_online: false,
-            token_valid: None,
-            error: Some("Server unreachable".to_string()),
-        };
-    }
-
-    // If no token provided, just return server status
-    let token = match token {
-        Some(t) if !t.is_empty() => t,
-        _ => {
-            return TokenVerifyResult {
-                server_online: true,
-                token_valid: None,
-                error: None,
-            }
-        }
-    };
-
-    // Verify token with /auth/verify endpoint
-    let verify_url = format!("{}/auth/verify", base_url.trim_end_matches('/'));
-    match client
-        .get(&verify_url)
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
-    {
-        Ok(response) => {
-            let status = response.status();
-            if status.is_success() {
-                TokenVerifyResult {
-                    server_online: true,
-                    token_valid: Some(true),
-                    error: None,
-                }
-            } else if status.as_u16() == 401 || status.as_u16() == 403 {
-                TokenVerifyResult {
-                    server_online: true,
-                    token_valid: Some(false),
-                    error: Some("Invalid or expired token".to_string()),
-                }
-            } else {
-                TokenVerifyResult {
-                    server_online: true,
-                    token_valid: None,
-                    error: Some(format!("Unexpected status: {}", status)),
-                }
-            }
-        }
-        Err(e) => TokenVerifyResult {
-            server_online: true,
-            token_valid: None,
-            error: Some(e.to_string()),
-        },
-    }
-}
-
 /// Transcribe audio using the server with SSE streaming
 ///
 /// Uses reqwest directly with manual SSE parsing to support multipart uploads.
@@ -164,27 +63,19 @@ pub async fn verify_server_token(
 /// * `base_url` - Base URL of the server
 /// * `wav_data` - WAV audio data
 /// * `timeout_ms` - Timeout in milliseconds for the initial connection
-/// * `initial_prompt` - Optional initial prompt for Whisper (glossary format)
-/// * `vocabulary` - Optional raw vocabulary words (comma-separated) for LLM correction
-/// * `token` - Optional Bearer token for authentication
-/// * `format_backend` - Optional formatting backend ("goblin" or "llm")
-/// * `format_style_prompt` - Optional style prompt for server-side formatting
-/// * `format_intensity` - Optional formatting intensity (1-5)
+/// * `language` - Optional language code (e.g., "fr", "en")
+/// * `prompt` - Optional initial prompt for context/vocabulary
 /// * `on_segment` - Callback for each transcription segment
-/// * `on_step` - Callback for processing step changes (e.g. "transcribing", "formatting", "correcting")
+/// * `on_step` - Callback for processing step changes
 ///
 /// # Returns
-/// Full transcription text (formatted if requested and available)
+/// Full transcription text
 pub async fn transcribe_stream<F, S>(
     base_url: &str,
     wav_data: &[u8],
     timeout_ms: u64,
-    initial_prompt: Option<&str>,
-    vocabulary: Option<&str>,
-    token: Option<&str>,
-    format_backend: Option<&str>,
-    format_style_prompt: Option<&str>,
-    format_intensity: Option<u8>,
+    language: Option<&str>,
+    prompt: Option<&str>,
     mut on_segment: F,
     mut on_step: S,
 ) -> Result<String, ServerError>
@@ -192,14 +83,14 @@ where
     F: FnMut(TranscriptionSegment),
     S: FnMut(String),
 {
-    let url = format!("{}/transcribe/stream", base_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/v1/audio/transcriptions/stream",
+        base_url.trim_end_matches('/')
+    );
 
     eprintln!("[SSE] Connecting to {}", url);
-    if let Some(prompt) = initial_prompt {
-        eprintln!("[SSE] Initial prompt: {}", prompt);
-    }
-    if let Some(vocab) = vocabulary {
-        eprintln!("[SSE] Vocabulary for LLM correction: {}", vocab);
+    if let Some(p) = prompt {
+        eprintln!("[SSE] Prompt: {}", p);
     }
 
     // Create multipart form with the WAV file
@@ -210,25 +101,12 @@ where
 
     let mut form = reqwest::multipart::Form::new().part("file", part);
 
-    // Add initial_prompt for Whisper if provided
-    if let Some(prompt) = initial_prompt {
-        form = form.text("initial_prompt", prompt.to_string());
+    if let Some(lang) = language {
+        form = form.text("language", lang.to_string());
     }
 
-    // Add vocabulary for LLM correction if provided
-    if let Some(vocab) = vocabulary {
-        form = form.text("vocabulary", vocab.to_string());
-    }
-
-    // Add format parameters if provided
-    if let Some(backend) = format_backend {
-        form = form.text("format_backend", backend.to_string());
-    }
-    if let Some(prompt) = format_style_prompt {
-        form = form.text("format_style_prompt", prompt.to_string());
-    }
-    if let Some(intensity) = format_intensity {
-        form = form.text("format_intensity", intensity.to_string());
+    if let Some(p) = prompt {
+        form = form.text("prompt", p.to_string());
     }
 
     // Create client - no global timeout for streaming (we handle it per-chunk)
@@ -237,18 +115,10 @@ where
         .build()
         .map_err(|e| ServerError::ConnectionFailed(e.to_string()))?;
 
-    // Send request
-    let mut request = client
+    let response = client
         .post(&url)
         .multipart(form)
-        .header("Accept", "text/event-stream");
-
-    // Add authorization header if token is provided
-    if let Some(t) = token {
-        request = request.header("Authorization", format!("Bearer {}", t));
-    }
-
-    let response = request
+        .header("Accept", "text/event-stream")
         .send()
         .await
         .map_err(|e| {
@@ -279,22 +149,31 @@ where
     let mut buffer = String::new();
     let mut full_text = String::new();
 
-    // JSON structure for server response
+    // JSON structures for server SSE events
     #[derive(Deserialize)]
-    struct SseData {
+    struct SegmentData {
         #[serde(default)]
-        text: Option<String>,
+        text: String,
         #[serde(default)]
-        done: bool,
+        start: f64,
         #[serde(default)]
-        process_time: f64,
+        end: f64,
         #[serde(default)]
-        step: Option<String>,
-        #[serde(default)]
-        corrected: Option<bool>,
-        #[serde(default)]
-        formatted: Option<bool>,
+        index: u32,
     }
+
+    #[derive(Deserialize)]
+    struct DoneData {
+        #[serde(default)]
+        text: String,
+        #[serde(default)]
+        language: Option<String>,
+        #[serde(default)]
+        duration: f64,
+    }
+
+    // SSE state: track which event type we are expecting
+    let mut current_event: Option<String> = None;
 
     while let Some(chunk_result) = stream.next().await {
         let chunk = chunk_result.map_err(|e| ServerError::StreamError(e.to_string()))?;
@@ -302,54 +181,82 @@ where
         buffer.push_str(&chunk_str);
 
         // Process complete lines from buffer
-        // Server format: "data: {json}\n" for each segment
         while let Some(newline_pos) = buffer.find('\n') {
             let line = buffer[..newline_pos].trim().to_string();
             buffer = buffer[newline_pos + 1..].to_string();
 
-            // Skip empty lines
             if line.is_empty() {
+                // Blank line resets the current event name per SSE spec
+                current_event = None;
                 continue;
             }
 
-            // Parse "data: {json}" format
+            // Parse "event: <name>" field
+            if let Some(event_name) = line.strip_prefix("event:") {
+                current_event = Some(event_name.trim().to_string());
+                continue;
+            }
+
+            // Parse "data: {json}" field
             if let Some(json_str) = line.strip_prefix("data:") {
                 let json_str = json_str.trim();
+                let event_type = current_event.as_deref().unwrap_or("");
 
-                match serde_json::from_str::<SseData>(json_str) {
-                    Ok(data) => {
-                        // Handle step events
-                        if let Some(step) = data.step {
-                            eprintln!("[SSE] Step: {}", step);
-                            on_step(step);
-                            continue;
-                        }
-
-                        if data.done {
-                            eprintln!("[SSE] Done, process_time: {}s, corrected: {:?}, formatted: {:?}", data.process_time, data.corrected, data.formatted);
-                            // If done event has text, use it as the final result
-                            // (it may be formatted text from the server LLM)
-                            if let Some(final_text) = data.text {
-                                return Ok(final_text);
+                match event_type {
+                    "segment" => {
+                        match serde_json::from_str::<SegmentData>(json_str) {
+                            Ok(data) => {
+                                if !data.text.is_empty() {
+                                    eprintln!(
+                                        "[SSE] Segment {}: {}",
+                                        data.index, data.text
+                                    );
+                                    full_text.push_str(&data.text);
+                                    on_segment(TranscriptionSegment {
+                                        text: data.text,
+                                        start: data.start,
+                                        end: data.end,
+                                    });
+                                }
                             }
-                            return Ok(full_text.trim().to_string());
-                        }
-
-                        if let Some(text) = data.text {
-                            if !text.is_empty() {
-                                eprintln!("[SSE] Segment: {}", text);
-                                full_text.push_str(&text);
-                                let segment = TranscriptionSegment {
-                                    text,
-                                    start: 0.0,
-                                    end: 0.0,
-                                };
-                                on_segment(segment);
+                            Err(e) => {
+                                eprintln!(
+                                    "[SSE] Failed to parse segment JSON '{}': {}",
+                                    json_str, e
+                                );
                             }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("[SSE] Failed to parse JSON '{}': {}", json_str, e);
+                    "done" => {
+                        match serde_json::from_str::<DoneData>(json_str) {
+                            Ok(data) => {
+                                eprintln!(
+                                    "[SSE] Done, duration: {}s, language: {:?}",
+                                    data.duration, data.language
+                                );
+                                let final_text = if !data.text.is_empty() {
+                                    data.text
+                                } else {
+                                    full_text.trim().to_string()
+                                };
+                                return Ok(final_text);
+                            }
+                            Err(e) => {
+                                eprintln!(
+                                    "[SSE] Failed to parse done JSON '{}': {}",
+                                    json_str, e
+                                );
+                                return Ok(full_text.trim().to_string());
+                            }
+                        }
+                    }
+                    other => {
+                        // Unknown or missing event type — ignore but log
+                        if !other.is_empty() {
+                            eprintln!("[SSE] Unknown event '{}', data: {}", other, json_str);
+                        }
+                        // Notify step change for unknown named events
+                        on_step(other.to_string());
                     }
                 }
             }

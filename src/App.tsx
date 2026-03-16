@@ -1,13 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { History, Mic, Sparkles, Settings, BookText } from "lucide-react";
+import { History, Mic, Settings, BookText } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
 import HistoryView from "@/views/HistoryView";
 import TranscriptionView from "@/views/TranscriptionView";
 import VocabularyView from "@/views/VocabularyView";
-import ClaudeView from "@/views/ClaudeView";
 import PreferencesView from "@/views/PreferencesView";
 import SetupWizard from "@/pages/SetupWizard";
 
@@ -34,11 +33,9 @@ export interface Transcription {
 }
 
 export type RecordingMode = "push_to_talk" | "toggle";
-export type ClaudeModel = "haiku" | "sonnet" | "opus";
 export type AcceleratorBackend = "cpu" | "cuda" | "vulkan" | "intel_sycl" | "metal";
 export type GpuVendor = "cuda" | "vulkan" | "metal" | "cpu";
 export type OverlaySize = "small" | "medium" | "large";
-export type ScreenshotMode = "all_screens" | "primary_only";
 export type TranscriptionMode = "local" | "server";
 
 export interface AcceleratorInfo {
@@ -57,25 +54,15 @@ export interface GpuInfo {
 
 interface SavedSettings {
   last_model: string | null;
-  use_llm_enhancement: boolean;
-  claude_model: ClaudeModel;
   accelerator_backend: AcceleratorBackend;
   overlay_size: OverlaySize;
-  use_screenshot_for_correction: boolean;
-  paste_screenshot_path: boolean;
-  screenshot_mode: ScreenshotMode;
   vocabulary: string[];
   transcription_mode: TranscriptionMode;
   server_url: string;
   server_fallback: boolean;
   server_timeout: number;
-  server_token: string | null;
   pause_media_on_record: boolean;
   preserve_clipboard: boolean;
-  server_formatting_enabled: boolean;
-  server_format_backend: string;
-  server_format_style_prompt: string;
-  server_format_intensity: number;
 }
 
 interface HotkeyConfig {
@@ -92,7 +79,7 @@ interface SavedTranscription {
   enhanced: boolean;
 }
 
-type View = "history" | "transcription" | "vocabulary" | "claude" | "preferences";
+type View = "history" | "transcription" | "vocabulary" | "preferences";
 
 function App() {
   const [setupCompleted, setSetupCompleted] = useState<boolean | null>(null);
@@ -105,46 +92,30 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [recordingMode, setRecordingMode] = useState<RecordingMode>("push_to_talk");
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
-  const [useLlmEnhancement, setUseLlmEnhancement] = useState(false);
-  const [claudeModel, setClaudeModel] = useState<ClaudeModel>("haiku");
-  const [claudeAvailable, setClaudeAvailable] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [shortcut, setShortcut] = useState("Ctrl+Space");
   const [cancelShortcut, setCancelShortcut] = useState("Ctrl+F1");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
   const [currentGpuVendor, setCurrentGpuVendor] = useState<GpuVendor>("cpu");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
-  const [useScreenshotForCorrection, setUseScreenshotForCorrection] = useState(false);
-  const [pasteScreenshotPath, setPasteScreenshotPath] = useState(false);
-  const [screenshotMode, setScreenshotMode] = useState<ScreenshotMode>("primary_only");
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("local");
   const [serverUrl, setServerUrl] = useState("http://localhost:8000");
   const [serverFallback, setServerFallback] = useState(true);
   const [serverTimeout, setServerTimeout] = useState(30000);
-  const [serverToken, setServerToken] = useState<string | null>(null);
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [startMinimized, setStartMinimized] = useState(false);
   const [pauseMediaOnRecord, setPauseMediaOnRecord] = useState(false);
   const [preserveClipboard, setPreserveClipboard] = useState(false);
-  const [serverFormattingEnabled, setServerFormattingEnabled] = useState(false);
-  const [serverFormatBackend, setServerFormatBackend] = useState("goblin");
-  const [serverFormatStylePrompt, setServerFormatStylePrompt] = useState("grammatical");
-  const [serverFormatIntensity, setServerFormatIntensity] = useState(3);
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
-  const useLlmEnhancementRef = useRef(false);
   const hasInitialized = useRef(false);
 
   // Keep refs in sync with state
   useEffect(() => {
     currentModelRef.current = currentModel;
   }, [currentModel]);
-
-  useEffect(() => {
-    useLlmEnhancementRef.current = useLlmEnhancement;
-  }, [useLlmEnhancement]);
 
   // Check setup status first
   useEffect(() => {
@@ -157,7 +128,6 @@ function App() {
     if (setupCompleted !== true) return; // Don't initialize until setup is complete
     hasInitialized.current = true;
     initializeApp();
-    checkClaudeAvailable();
   }, [setupCompleted]);
 
   // Event listeners - register only once (with StrictMode guard)
@@ -182,7 +152,7 @@ function App() {
         text: event.payload,
         timestamp: new Date(),
         model: currentModelRef.current,
-        enhanced: useLlmEnhancementRef.current,
+        enhanced: false,
       };
       setTranscriptions((prev) => {
         const updated = [newTranscription, ...prev];
@@ -259,24 +229,14 @@ function App() {
 
     // Load saved settings and apply them
     const savedSettings = await invoke<SavedSettings>("get_saved_settings");
-    setUseLlmEnhancement(savedSettings.use_llm_enhancement);
-    setClaudeModel(savedSettings.claude_model || "haiku");
     setOverlaySize(savedSettings.overlay_size || "medium");
-    setUseScreenshotForCorrection(savedSettings.use_screenshot_for_correction || false);
-    setPasteScreenshotPath(savedSettings.paste_screenshot_path || false);
-    setScreenshotMode(savedSettings.screenshot_mode || "primary_only");
     setVocabulary(savedSettings.vocabulary || []);
     setTranscriptionMode(savedSettings.transcription_mode || "local");
     setServerUrl(savedSettings.server_url || "http://localhost:8000");
     setServerFallback(savedSettings.server_fallback !== false); // Default to true
     setServerTimeout(savedSettings.server_timeout || 30000);
-    setServerToken(savedSettings.server_token || null);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
-    setServerFormattingEnabled(savedSettings.server_formatting_enabled || false);
-    setServerFormatBackend(savedSettings.server_format_backend || "goblin");
-    setServerFormatStylePrompt(savedSettings.server_format_style_prompt || "grammatical");
-    setServerFormatIntensity(savedSettings.server_format_intensity || 3);
 
     // Auto-load last used model if it's downloaded
     // Only load if: mode is "local" OR (mode is "server" AND fallback is enabled)
@@ -297,16 +257,10 @@ function App() {
     }
   }
 
-  async function checkClaudeAvailable() {
-    const cliAvailable = await invoke<boolean>("check_claude_available");
-    setClaudeAvailable(cliAvailable);
-  }
-
   const navItems = [
     { id: "history" as View, icon: History, label: "Historique" },
     { id: "transcription" as View, icon: Mic, label: "Transcription" },
     { id: "vocabulary" as View, icon: BookText, label: "Vocabulaire" },
-    { id: "claude" as View, icon: Sparkles, label: "Enhancement" },
     { id: "preferences" as View, icon: Settings, label: "Preferences" },
   ];
 
@@ -465,67 +419,12 @@ function App() {
               setServerTimeout(timeout);
               await invoke("set_server_timeout", { timeout });
             }}
-            serverToken={serverToken}
-            onServerTokenChange={async (token) => {
-              setServerToken(token);
-              await invoke("set_server_token", { token });
-            }}
-            serverFormattingEnabled={serverFormattingEnabled}
-            onServerFormattingEnabledChange={async (enabled) => {
-              setServerFormattingEnabled(enabled);
-              await invoke("set_server_formatting_enabled", { enabled });
-            }}
-            serverFormatBackend={serverFormatBackend}
-            onServerFormatBackendChange={async (backend) => {
-              setServerFormatBackend(backend);
-              await invoke("set_server_format_backend", { backend });
-            }}
-            serverFormatStylePrompt={serverFormatStylePrompt}
-            onServerFormatStylePromptChange={async (prompt) => {
-              setServerFormatStylePrompt(prompt);
-              await invoke("set_server_format_style_prompt", { prompt });
-            }}
-            serverFormatIntensity={serverFormatIntensity}
-            onServerFormatIntensityChange={async (intensity) => {
-              setServerFormatIntensity(intensity);
-              await invoke("set_server_format_intensity", { intensity });
-            }}
           />
         )}
         {currentView === "vocabulary" && (
           <VocabularyView
             vocabulary={vocabulary}
             onVocabularyChange={setVocabulary}
-          />
-        )}
-        {currentView === "claude" && (
-          <ClaudeView
-            useLlmEnhancement={useLlmEnhancement}
-            claudeAvailable={claudeAvailable}
-            onLlmEnhancementChange={async (enabled) => {
-              setUseLlmEnhancement(enabled);
-              await invoke("set_llm_enhancement", { enabled });
-            }}
-            claudeModel={claudeModel}
-            onClaudeModelChange={async (model) => {
-              setClaudeModel(model);
-              await invoke("set_claude_model", { model });
-            }}
-            useScreenshotForCorrection={useScreenshotForCorrection}
-            onScreenshotForCorrectionChange={async (enabled) => {
-              setUseScreenshotForCorrection(enabled);
-              await invoke("set_screenshot_for_correction", { enabled });
-            }}
-            pasteScreenshotPath={pasteScreenshotPath}
-            onPasteScreenshotPathChange={async (enabled) => {
-              setPasteScreenshotPath(enabled);
-              await invoke("set_paste_screenshot_path", { enabled });
-            }}
-            screenshotMode={screenshotMode}
-            onScreenshotModeChange={async (mode) => {
-              setScreenshotMode(mode);
-              await invoke("set_screenshot_mode", { mode });
-            }}
           />
         )}
         {currentView === "preferences" && (

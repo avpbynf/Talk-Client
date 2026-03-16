@@ -1,20 +1,16 @@
 mod audio;
 mod audio_encoder;
-mod claude_api;
 mod clipboard;
 mod context_detection;
 mod hotkeys;
 mod models;
-mod screenshot;
 mod server_transcription;
 mod settings;
 mod transcription;
 
 use audio::{AudioBuffer, AudioCaptureHandle};
 use parking_lot::Mutex;
-use screenshot::ScreenshotMode;
 use settings::TranscriptionMode;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -32,15 +28,8 @@ pub struct AppState {
     pub audio_buffer: Mutex<Option<AudioBuffer>>,
     pub audio_capture_handle: Mutex<Option<AudioCaptureHandle>>,
     pub whisper_engine: Mutex<Option<WhisperEngine>>,
-    pub use_llm_enhancement: Mutex<bool>,
-    pub claude_model: Mutex<String>,
     pub accelerator_backend: Mutex<AcceleratorBackend>,
     pub gpu_vendor: Mutex<GpuVendor>,
-    pub use_screenshot_for_correction: Mutex<bool>,
-    pub paste_screenshot_path: Mutex<bool>,
-    pub screenshot_mode: Mutex<ScreenshotMode>,
-    pub screenshot_paths: Mutex<Vec<PathBuf>>,
-    pub screenshot_capture_in_progress: Mutex<bool>,
     /// Custom vocabulary words to help Whisper recognize specific terms
     pub vocabulary: Mutex<Vec<String>>,
     /// Last detected context from a real transcription (for debug display)
@@ -53,22 +42,12 @@ pub struct AppState {
     pub server_fallback: Mutex<bool>,
     /// Server request timeout in milliseconds
     pub server_timeout: Mutex<u64>,
-    /// Server API token for authentication
-    pub server_token: Mutex<Option<String>>,
     /// Pause media playback during recording
     pub pause_media_on_record: Mutex<bool>,
     /// Track if we paused media (to resume on stop)
     pub did_pause_media: Mutex<bool>,
     /// Preserve clipboard content after pasting transcription
     pub preserve_clipboard: Mutex<bool>,
-    /// Enable server-side LLM formatting after transcription
-    pub server_formatting_enabled: Mutex<bool>,
-    /// Formatting backend: "goblin" or "llm"
-    pub server_format_backend: Mutex<String>,
-    /// Style prompt for server formatting
-    pub server_format_style_prompt: Mutex<String>,
-    /// Formatting intensity (1-5)
-    pub server_format_intensity: Mutex<u8>,
 }
 
 impl Default for AppState {
@@ -81,29 +60,17 @@ impl Default for AppState {
             audio_buffer: Mutex::new(None),
             audio_capture_handle: Mutex::new(None),
             whisper_engine: Mutex::new(None),
-            use_llm_enhancement: Mutex::new(false),
-            claude_model: Mutex::new("haiku".to_string()),
             accelerator_backend: Mutex::new(AcceleratorBackend::Cpu),
             gpu_vendor: Mutex::new(GpuVendor::Cpu),
-            use_screenshot_for_correction: Mutex::new(false),
-            paste_screenshot_path: Mutex::new(false),
-            screenshot_mode: Mutex::new(ScreenshotMode::default()),
-            screenshot_paths: Mutex::new(Vec::new()),
-            screenshot_capture_in_progress: Mutex::new(false),
             vocabulary: Mutex::new(Vec::new()),
             last_detected_context: Mutex::new(None),
             transcription_mode: Mutex::new(TranscriptionMode::default()),
             server_url: Mutex::new("http://localhost:8000".to_string()),
             server_fallback: Mutex::new(true),
             server_timeout: Mutex::new(30000),
-            server_token: Mutex::new(None),
             pause_media_on_record: Mutex::new(false),
             did_pause_media: Mutex::new(false),
             preserve_clipboard: Mutex::new(false),
-            server_formatting_enabled: Mutex::new(false),
-            server_format_backend: Mutex::new("goblin".to_string()),
-            server_format_style_prompt: Mutex::new("grammatical".to_string()),
-            server_format_intensity: Mutex::new(3),
         }
     }
 }
@@ -209,11 +176,6 @@ fn delete_model(
 }
 
 #[tauri::command]
-fn get_llm_enhancement(state: tauri::State<'_, AppState>) -> bool {
-    *state.use_llm_enhancement.lock()
-}
-
-#[tauri::command]
 fn get_saved_settings() -> settings::AppSettings {
     settings::load_settings()
 }
@@ -226,48 +188,6 @@ fn get_transcription_history() -> Vec<settings::TranscriptionEntry> {
 #[tauri::command]
 fn save_transcription_history(history: Vec<settings::TranscriptionEntry>) -> Result<(), String> {
     settings::save_history(&history)
-}
-
-#[tauri::command]
-fn set_llm_enhancement(enabled: bool, state: tauri::State<'_, AppState>) {
-    *state.use_llm_enhancement.lock() = enabled;
-    // Save to settings
-    let mut app_settings = settings::load_settings();
-    app_settings.use_llm_enhancement = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_claude_model(state: tauri::State<'_, AppState>) -> String {
-    state.claude_model.lock().clone()
-}
-
-#[tauri::command]
-fn set_claude_model(model: String, state: tauri::State<'_, AppState>) {
-    *state.claude_model.lock() = model.clone();
-    // Save to settings
-    let mut app_settings = settings::load_settings();
-    app_settings.claude_model = model;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-async fn check_claude_available() -> bool {
-    // Check if claude CLI is available
-    std::process::Command::new("claude")
-        .arg("--version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-#[tauri::command]
-fn check_api_key_available() -> bool {
-    claude_api::get_api_key().is_some()
 }
 
 #[tauri::command]
@@ -352,28 +272,6 @@ fn set_accelerator_backend(backend: AcceleratorBackend, state: tauri::State<'_, 
     }
 
     Ok(())
-}
-
-fn enhance_with_claude(text: &str, model: &str) -> Result<String, String> {
-    let prompt = format!(
-        r#"Corrige et améliore cette transcription vocale. Garde le sens original, corrige les erreurs de reconnaissance vocale, ajoute la ponctuation appropriée. Réponds UNIQUEMENT avec le texte corrigé, sans explication ni commentaire:
-
-{}"#,
-        text
-    );
-
-    let output = std::process::Command::new("claude")
-        .args(["-p", &prompt, "--model", model])
-        .output()
-        .map_err(|e| format!("Failed to run claude: {}", e))?;
-
-    if output.status.success() {
-        let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        Ok(result)
-    } else {
-        // If claude fails, return original text
-        Ok(text.to_string())
-    }
 }
 
 #[tauri::command]
@@ -477,7 +375,7 @@ async fn stop_recording(
     let _ = app.emit("recording-stopped", ());
 
     // Transcribe the audio
-    let mut transcription = {
+    let transcription = {
         let engine_lock = state.whisper_engine.lock();
         if let Some(ref engine) = *engine_lock {
             engine.transcribe(&audio_data).map_err(|e| e.to_string())?
@@ -485,15 +383,6 @@ async fn stop_recording(
             return Err("No model loaded".to_string());
         }
     };
-
-    // Optionally enhance with Claude
-    let use_llm = *state.use_llm_enhancement.lock();
-    if use_llm && !transcription.is_empty() {
-        let claude_model = state.claude_model.lock().clone();
-        if let Ok(enhanced) = enhance_with_claude(&transcription, &claude_model) {
-            transcription = enhanced;
-        }
-    }
 
     // Copy to clipboard and simulate paste
     #[cfg(windows)]
@@ -573,52 +462,6 @@ fn set_overlay_size(app: tauri::AppHandle, size: settings::OverlaySize) -> Resul
     }
 
     Ok(())
-}
-
-#[tauri::command]
-fn get_screenshot_for_correction(state: tauri::State<'_, AppState>) -> bool {
-    *state.use_screenshot_for_correction.lock()
-}
-
-#[tauri::command]
-fn set_screenshot_for_correction(enabled: bool, state: tauri::State<'_, AppState>) {
-    *state.use_screenshot_for_correction.lock() = enabled;
-    let mut app_settings = settings::load_settings();
-    app_settings.use_screenshot_for_correction = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_paste_screenshot_path(state: tauri::State<'_, AppState>) -> bool {
-    *state.paste_screenshot_path.lock()
-}
-
-#[tauri::command]
-fn set_paste_screenshot_path(enabled: bool, state: tauri::State<'_, AppState>) {
-    *state.paste_screenshot_path.lock() = enabled;
-    let mut app_settings = settings::load_settings();
-    app_settings.paste_screenshot_path = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_screenshot_mode(state: tauri::State<'_, AppState>) -> ScreenshotMode {
-    *state.screenshot_mode.lock()
-}
-
-#[tauri::command]
-fn set_screenshot_mode(mode: ScreenshotMode, state: tauri::State<'_, AppState>) {
-    *state.screenshot_mode.lock() = mode;
-    // Save to settings
-    let mut app_settings = settings::load_settings();
-    app_settings.screenshot_mode = mode;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
 }
 
 #[tauri::command]
@@ -808,21 +651,6 @@ fn set_server_timeout(timeout: u64, state: tauri::State<'_, AppState>) {
 }
 
 #[tauri::command]
-fn get_server_token(state: tauri::State<'_, AppState>) -> Option<String> {
-    state.server_token.lock().clone()
-}
-
-#[tauri::command]
-fn set_server_token(token: Option<String>, state: tauri::State<'_, AppState>) {
-    *state.server_token.lock() = token.clone();
-    let mut app_settings = settings::load_settings();
-    app_settings.server_token = token;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
 async fn check_server_health(state: tauri::State<'_, AppState>) -> Result<bool, String> {
     let url = state.server_url.lock().clone();
     let timeout = *state.server_timeout.lock();
@@ -831,15 +659,6 @@ async fn check_server_health(state: tauri::State<'_, AppState>) -> Result<bool, 
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-async fn verify_server_token(
-    state: tauri::State<'_, AppState>,
-) -> Result<server_transcription::TokenVerifyResult, String> {
-    let url = state.server_url.lock().clone();
-    let timeout = *state.server_timeout.lock();
-    let token = state.server_token.lock().clone();
-    Ok(server_transcription::verify_server_token(&url, timeout, token.as_deref()).await)
-}
 
 // ============================================================================
 // Setup Wizard Commands
@@ -882,67 +701,6 @@ fn set_preserve_clipboard(enabled: bool, state: tauri::State<'_, AppState>) {
     *state.preserve_clipboard.lock() = enabled;
     let mut app_settings = settings::load_settings();
     app_settings.preserve_clipboard = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_server_formatting_enabled(state: tauri::State<'_, AppState>) -> bool {
-    *state.server_formatting_enabled.lock()
-}
-
-#[tauri::command]
-fn set_server_formatting_enabled(enabled: bool, state: tauri::State<'_, AppState>) {
-    *state.server_formatting_enabled.lock() = enabled;
-    let mut app_settings = settings::load_settings();
-    app_settings.server_formatting_enabled = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_server_format_backend(state: tauri::State<'_, AppState>) -> String {
-    state.server_format_backend.lock().clone()
-}
-
-#[tauri::command]
-fn set_server_format_backend(backend: String, state: tauri::State<'_, AppState>) {
-    *state.server_format_backend.lock() = backend.clone();
-    let mut app_settings = settings::load_settings();
-    app_settings.server_format_backend = backend;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_server_format_style_prompt(state: tauri::State<'_, AppState>) -> String {
-    state.server_format_style_prompt.lock().clone()
-}
-
-#[tauri::command]
-fn set_server_format_style_prompt(prompt: String, state: tauri::State<'_, AppState>) {
-    *state.server_format_style_prompt.lock() = prompt.clone();
-    let mut app_settings = settings::load_settings();
-    app_settings.server_format_style_prompt = prompt;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
-}
-
-#[tauri::command]
-fn get_server_format_intensity(state: tauri::State<'_, AppState>) -> u8 {
-    *state.server_format_intensity.lock()
-}
-
-#[tauri::command]
-fn set_server_format_intensity(intensity: u8, state: tauri::State<'_, AppState>) {
-    let clamped = intensity.clamp(1, 5);
-    *state.server_format_intensity.lock() = clamped;
-    let mut app_settings = settings::load_settings();
-    app_settings.server_format_intensity = clamped;
     if let Err(e) = settings::save_settings(&app_settings) {
         eprintln!("Failed to save settings: {}", e);
     }
@@ -1017,12 +775,6 @@ pub fn run() {
             cancel_recording,
             show_overlay,
             hide_overlay,
-            get_llm_enhancement,
-            set_llm_enhancement,
-            get_claude_model,
-            set_claude_model,
-            check_claude_available,
-            check_api_key_available,
             get_saved_settings,
             get_transcription_history,
             save_transcription_history,
@@ -1037,12 +789,6 @@ pub fn run() {
             get_overlay_position,
             get_overlay_size,
             set_overlay_size,
-            get_screenshot_for_correction,
-            set_screenshot_for_correction,
-            get_paste_screenshot_path,
-            set_paste_screenshot_path,
-            get_screenshot_mode,
-            set_screenshot_mode,
             get_vocabulary,
             set_vocabulary,
             add_vocabulary_word,
@@ -1056,10 +802,7 @@ pub fn run() {
             set_server_fallback,
             get_server_timeout,
             set_server_timeout,
-            get_server_token,
-            set_server_token,
             check_server_health,
-            verify_server_token,
             is_setup_completed,
             complete_setup,
             get_autostart_enabled,
@@ -1070,14 +813,6 @@ pub fn run() {
             set_pause_media_on_record,
             get_preserve_clipboard,
             set_preserve_clipboard,
-            get_server_formatting_enabled,
-            set_server_formatting_enabled,
-            get_server_format_backend,
-            set_server_format_backend,
-            get_server_format_style_prompt,
-            set_server_format_style_prompt,
-            get_server_format_intensity,
-            set_server_format_intensity,
         ])
         .setup(|app| {
             // Load .env file for API keys
@@ -1090,25 +825,15 @@ pub fn run() {
             {
                 let state = app.state::<AppState>();
                 *state.recording_mode.lock() = hotkey_config.mode;
-                *state.use_llm_enhancement.lock() = app_settings.use_llm_enhancement;
-                *state.claude_model.lock() = app_settings.claude_model.clone();
                 *state.accelerator_backend.lock() = app_settings.accelerator_backend;
                 *state.gpu_vendor.lock() = app_settings.gpu_vendor;
-                *state.use_screenshot_for_correction.lock() = app_settings.use_screenshot_for_correction;
-                *state.paste_screenshot_path.lock() = app_settings.paste_screenshot_path;
-                *state.screenshot_mode.lock() = app_settings.screenshot_mode;
                 *state.vocabulary.lock() = app_settings.vocabulary.clone();
                 *state.transcription_mode.lock() = app_settings.transcription_mode;
                 *state.server_url.lock() = app_settings.server_url.clone();
                 *state.server_fallback.lock() = app_settings.server_fallback;
                 *state.server_timeout.lock() = app_settings.server_timeout;
-                *state.server_token.lock() = app_settings.server_token.clone();
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
-                *state.server_formatting_enabled.lock() = app_settings.server_formatting_enabled;
-                *state.server_format_backend.lock() = app_settings.server_format_backend.clone();
-                *state.server_format_style_prompt.lock() = app_settings.server_format_style_prompt.clone();
-                *state.server_format_intensity.lock() = app_settings.server_format_intensity;
             }
 
             // Setup global shortcuts
@@ -1139,7 +864,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("Whisper Flow")
+                .tooltip("T4lk")
                 .menu(&menu)
                 .on_menu_event(move |app, event| {
                     match event.id().as_ref() {

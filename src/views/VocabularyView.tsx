@@ -206,7 +206,7 @@ export default function VocabularyView({
                   <div className="space-y-2 flex-1">
                     <h3 className="font-medium text-purple-200">Detection automatique du contexte</h3>
                     <p className="text-sm text-purple-300/70">
-                      Whisper Flow detecte automatiquement votre contexte de travail (VS Code, Zed, fenetre active)
+                      T4lk detecte automatiquement votre contexte de travail (VS Code, Zed, fenetre active)
                       et adapte le vocabulaire technique pour une meilleure reconnaissance.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">

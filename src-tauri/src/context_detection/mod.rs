@@ -68,7 +68,7 @@ pub struct Workspace {
 }
 
 fn get_vscode_context_path() -> PathBuf {
-    ProjectDirs::from("com", "nicolasavpbynf", "whisper-flow")
+    ProjectDirs::from("com", "t4lk", "t4lk")
         .map(|dirs| dirs.config_dir().join("vscode-context.json"))
         .unwrap_or_else(|| PathBuf::from("vscode-context.json"))
 }

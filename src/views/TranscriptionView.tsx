@@ -24,20 +24,16 @@ import {
   RefreshCw,
   Clock,
   ArrowDownToLine,
-  Key,
-  Eye,
-  EyeOff,
   Trash2,
   Activity,
   Globe,
   Settings2,
   Shield,
-  Sparkles,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
-type ServerStatus = "unknown" | "checking" | "online" | "authenticated" | "auth_failed" | "offline";
+type ServerStatus = "unknown" | "checking" | "online" | "offline";
 type ModelFamily = "standard" | "quantized";
 type TabId = "engine" | "local" | "server";
 
@@ -68,17 +64,6 @@ interface TranscriptionViewProps {
   onServerFallbackChange: (enabled: boolean) => void;
   serverTimeout: number;
   onServerTimeoutChange: (timeout: number) => void;
-  serverToken: string | null;
-  onServerTokenChange: (token: string | null) => void;
-  // Server formatting
-  serverFormattingEnabled: boolean;
-  onServerFormattingEnabledChange: (enabled: boolean) => void;
-  serverFormatBackend: string;
-  onServerFormatBackendChange: (backend: string) => void;
-  serverFormatStylePrompt: string;
-  onServerFormatStylePromptChange: (prompt: string) => void;
-  serverFormatIntensity: number;
-  onServerFormatIntensityChange: (intensity: number) => void;
 }
 
 export default function TranscriptionView({
@@ -103,23 +88,11 @@ export default function TranscriptionView({
   onServerFallbackChange,
   serverTimeout,
   onServerTimeoutChange,
-  serverToken,
-  onServerTokenChange,
-  serverFormattingEnabled,
-  onServerFormattingEnabledChange,
-  serverFormatBackend,
-  onServerFormatBackendChange,
-  serverFormatStylePrompt,
-  onServerFormatStylePromptChange,
-  serverFormatIntensity,
-  onServerFormatIntensityChange,
 }: TranscriptionViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("engine");
   const [serverStatus, setServerStatus] = useState<ServerStatus>("unknown");
   const [urlInput, setUrlInput] = useState(serverUrl);
   const [urlError, setUrlError] = useState<string | null>(null);
-  const [tokenInput, setTokenInput] = useState(serverToken || "");
-  const [showToken, setShowToken] = useState(false);
   const [modelFamily, setModelFamily] = useState<ModelFamily>("quantized");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const isCheckingRef = useRef(false);
@@ -155,12 +128,6 @@ export default function TranscriptionView({
   });
 
   // Server functions
-  interface TokenVerifyResult {
-    server_online: boolean;
-    token_valid: boolean | null;
-    error: string | null;
-  }
-
   const checkServerHealth = async (silent = false) => {
     if (isCheckingRef.current) return;
     isCheckingRef.current = true;
@@ -168,16 +135,8 @@ export default function TranscriptionView({
       setServerStatus("checking");
     }
     try {
-      const result = await invoke<TokenVerifyResult>("verify_server_token");
-      if (!result.server_online) {
-        setServerStatus("offline");
-      } else if (result.token_valid === true) {
-        setServerStatus("authenticated");
-      } else if (result.token_valid === false) {
-        setServerStatus("auth_failed");
-      } else {
-        setServerStatus("online");
-      }
+      const isHealthy = await invoke<boolean>("check_server_health");
+      setServerStatus(isHealthy ? "online" : "offline");
     } catch {
       setServerStatus("offline");
     } finally {
@@ -201,12 +160,8 @@ export default function TranscriptionView({
     switch (serverStatus) {
       case "checking":
         return <Loader2 className={cn(sizeClass, "text-blue-400 animate-spin")} />;
-      case "authenticated":
-        return <Check className={cn(sizeClass, "text-[var(--color-success)]")} />;
       case "online":
-        return <AlertCircle className={cn(sizeClass, "text-[var(--color-warning)]")} />;
-      case "auth_failed":
-        return <Key className={cn(sizeClass, "text-[var(--color-destructive)]")} />;
+        return <Check className={cn(sizeClass, "text-[var(--color-success)]")} />;
       case "offline":
         return <WifiOff className={cn(sizeClass, "text-[var(--color-destructive)]")} />;
       default:
@@ -217,9 +172,7 @@ export default function TranscriptionView({
   const statusText = () => {
     switch (serverStatus) {
       case "checking": return "Verification...";
-      case "authenticated": return "Connecte";
-      case "online": return "Non authentifie";
-      case "auth_failed": return "Token invalide";
+      case "online": return "Connecte";
       case "offline": return "Indisponible";
       default: return "Non teste";
     }
@@ -416,9 +369,8 @@ export default function TranscriptionView({
                           {statusIcon("sm")}
                           <span className={cn(
                             "text-xs",
-                            serverStatus === "authenticated" ? "text-[var(--color-success)]" :
-                            serverStatus === "online" ? "text-[var(--color-warning)]" :
-                            (serverStatus === "offline" || serverStatus === "auth_failed") ? "text-[var(--color-destructive)]" :
+                            serverStatus === "online" ? "text-[var(--color-success)]" :
+                            serverStatus === "offline" ? "text-[var(--color-destructive)]" :
                             "text-muted-foreground"
                           )}>
                             {statusText()}
@@ -462,9 +414,8 @@ export default function TranscriptionView({
                             {statusIcon("sm")}
                             <span className={cn(
                               "text-xs",
-                              serverStatus === "authenticated" ? "text-[var(--color-success)]" :
-                              serverStatus === "online" ? "text-[var(--color-warning)]" :
-                              (serverStatus === "offline" || serverStatus === "auth_failed") ? "text-[var(--color-destructive)]" :
+                              serverStatus === "online" ? "text-[var(--color-success)]" :
+                              serverStatus === "offline" ? "text-[var(--color-destructive)]" :
                               "text-muted-foreground"
                             )}>
                               Serveur: {statusText()}
@@ -742,11 +693,9 @@ export default function TranscriptionView({
                           disabled={serverStatus === "checking"}
                           className={cn(
                             "px-3 py-2 rounded-lg border transition-all duration-200",
-                            serverStatus === "authenticated"
+                            serverStatus === "online"
                               ? "border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success)]"
-                              : serverStatus === "online"
-                              ? "border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 text-[var(--color-warning)]"
-                              : (serverStatus === "offline" || serverStatus === "auth_failed")
+                              : serverStatus === "offline"
                               ? "border-[var(--color-destructive)]/30 bg-[var(--color-destructive)]/10 text-[var(--color-destructive)]"
                               : "border-[oklch(0.28_0.015_260)] hover:bg-[oklch(0.20_0.015_260)]"
                           )}
@@ -757,50 +706,12 @@ export default function TranscriptionView({
                       {urlError && <p className="text-xs text-[var(--color-destructive)]">{urlError}</p>}
                     </div>
 
-                    {/* Token */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                        <Key className="h-3 w-3" />
-                        Token d'authentification
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showToken ? "text" : "password"}
-                          value={tokenInput}
-                          onChange={(e) => setTokenInput(e.target.value)}
-                          onBlur={() => {
-                            const newToken = tokenInput.trim() || null;
-                            if (newToken !== serverToken) {
-                              onServerTokenChange(newToken);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const newToken = tokenInput.trim() || null;
-                              onServerTokenChange(newToken);
-                            }
-                          }}
-                          placeholder="Bearer token"
-                          className="w-full px-3 py-2 pr-9 text-sm rounded-lg border border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowToken(!showToken)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Status */}
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg",
-                      serverStatus === "authenticated"
+                      serverStatus === "online"
                         ? "bg-[var(--color-success)]/10 border border-[var(--color-success)]/20"
-                        : serverStatus === "online"
-                        ? "bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20"
-                        : (serverStatus === "offline" || serverStatus === "auth_failed")
+                        : serverStatus === "offline"
                         ? "bg-[var(--color-destructive)]/10 border border-[var(--color-destructive)]/20"
                         : "bg-[oklch(0.12_0.01_260)] border border-[oklch(0.22_0.015_260)]"
                     )}>
@@ -838,132 +749,6 @@ export default function TranscriptionView({
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Server Formatting */}
-                <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)]">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 text-amber-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-sm">Formatage automatique</h3>
-                        <p className="text-xs text-muted-foreground">Reformuler le texte apres transcription</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={serverFormattingEnabled}
-                      onCheckedChange={onServerFormattingEnabledChange}
-                    />
-                  </div>
-
-                  {serverFormattingEnabled && (
-                    <div className="space-y-4 pt-4 border-t border-[oklch(0.22_0.015_260)]">
-                      {/* Backend selector */}
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">Backend</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => {
-                              onServerFormatBackendChange("goblin");
-                              onServerFormatStylePromptChange("grammatical");
-                            }}
-                            className={cn(
-                              "px-3 py-2.5 text-sm font-medium rounded-lg border transition-all duration-200 text-left",
-                              serverFormatBackend === "goblin"
-                                ? "border-amber-500 bg-amber-500/15 text-amber-400"
-                                : "border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] hover:bg-[oklch(0.18_0.015_260)] text-muted-foreground"
-                            )}
-                          >
-                            <div className="font-medium">Goblin Tools</div>
-                            <div className="text-[10px] mt-0.5 opacity-70">API externe</div>
-                          </button>
-                          <button
-                            onClick={() => {
-                              onServerFormatBackendChange("llm");
-                              onServerFormatStylePromptChange("Corrige la grammaire et ameliore la clarte du texte.");
-                            }}
-                            className={cn(
-                              "px-3 py-2.5 text-sm font-medium rounded-lg border transition-all duration-200 text-left",
-                              serverFormatBackend === "llm"
-                                ? "border-amber-500 bg-amber-500/15 text-amber-400"
-                                : "border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] hover:bg-[oklch(0.18_0.015_260)] text-muted-foreground"
-                            )}
-                          >
-                            <div className="font-medium">LLM local</div>
-                            <div className="text-[10px] mt-0.5 opacity-70">Modele sur le serveur</div>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Style prompt - adapts based on backend */}
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">
-                          {serverFormatBackend === "goblin" ? "Type de conversion" : "Instruction de style"}
-                        </label>
-                        {serverFormatBackend === "goblin" ? (
-                          <select
-                            value={serverFormatStylePrompt}
-                            onChange={(e) => onServerFormatStylePromptChange(e.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-lg border border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-                          >
-                            <option value="professional">More professional</option>
-                            <option value="technical">More technical</option>
-                            <option value="accessible">More accessible</option>
-                            <option value="polite">More polite</option>
-                            <option value="snarky">Less snarky</option>
-                            <option value="angry">Angrier</option>
-                            <option value="readable">Easier to read</option>
-                            <option value="formal">More formal</option>
-                            <option value="informal">More informal</option>
-                            <option value="sociable">More sociable (waffle)</option>
-                            <option value="concise">More to the point (unwaffle)</option>
-                            <option value="calm">Less emotional</option>
-                            <option value="passionate">More passionate</option>
-                            <option value="sarcastic">More sarcastic</option>
-                            <option value="grammatical">Grammatically correct</option>
-                            <option value="bullets">Bullet points</option>
-                            <option value="thesaurus">A single word (thesaurus mode)</option>
-                          </select>
-                        ) : (
-                          <textarea
-                            value={serverFormatStylePrompt}
-                            onChange={(e) => onServerFormatStylePromptChange(e.target.value)}
-                            rows={2}
-                            className="w-full px-3 py-2 text-sm rounded-lg border border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 resize-none"
-                            placeholder="Corrige la grammaire et ameliore la clarte du texte."
-                          />
-                        )}
-                      </div>
-
-                      {/* Intensity */}
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">
-                          Intensite : {serverFormatIntensity}/5
-                        </label>
-                        <div className="grid grid-cols-5 gap-1.5">
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <button
-                              key={level}
-                              onClick={() => onServerFormatIntensityChange(level)}
-                              className={cn(
-                                "py-1.5 text-sm font-medium rounded-lg border transition-all duration-200",
-                                serverFormatIntensity === level
-                                  ? "border-amber-500 bg-amber-500/15 text-amber-400"
-                                  : "border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] hover:bg-[oklch(0.18_0.015_260)] text-muted-foreground"
-                              )}
-                            >
-                              {level}
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          1 = corrections minimales, 5 = reformulation complete
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* SSE Info */}

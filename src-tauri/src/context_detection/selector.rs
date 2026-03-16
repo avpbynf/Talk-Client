@@ -156,7 +156,7 @@ fn build_context_names(context: &DetectedContext) -> Vec<String> {
         if let Some(stripped) = workspace.strip_prefix('@') {
             names.push(stripped.to_string());
         }
-        // Add parts if it contains dashes (e.g., "whisper-flow" -> "whisper", "flow")
+        // Add parts if it contains dashes (e.g., "t4lk" -> "yz", "stt")
         for part in workspace.split('-') {
             if part.len() >= 3 && !is_common_word(part) {
                 names.push(part.to_string());
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn test_build_context_names_with_workspace() {
         let context = DetectedContext {
-            workspace: Some("whisper".to_string()),
+            workspace: Some("t4lk".to_string()),
             language: Some("rust".to_string()),
             frameworks: vec!["tauri".to_string()],
             ..Default::default()
@@ -357,7 +357,7 @@ mod tests {
         let names = build_context_names(&context);
 
         // Workspace name is most important
-        assert!(names.contains(&"whisper".to_string()));
+        assert!(names.contains(&"t4lk".to_string()));
         // Tauri is uncommon, should be included
         assert!(names.contains(&"Tauri".to_string()));
         // Language names are NOT included (Whisper knows "Rust")
@@ -378,14 +378,15 @@ mod tests {
     #[test]
     fn test_build_context_names_splits_dashed_names() {
         let context = DetectedContext {
-            workspace: Some("whisper-flow".to_string()),
+            workspace: Some("t4lk".to_string()),
             ..Default::default()
         };
         let names = build_context_names(&context);
 
-        assert!(names.contains(&"whisper-flow".to_string()));
-        assert!(names.contains(&"whisper".to_string()));
-        assert!(names.contains(&"flow".to_string()));
+        assert!(names.contains(&"t4lk".to_string()));
+        // "yz" and "stt" are 2-3 chars — filtered by len >= 3 and not common words
+        // "stt" (3 chars, not common) should be included; "yz" (2 chars) filtered out
+        assert!(names.contains(&"stt".to_string()));
     }
 
     #[test]
@@ -406,7 +407,7 @@ mod tests {
     #[test]
     fn test_prompt_includes_workspace_but_not_common_frameworks() {
         let context = DetectedContext {
-            workspace: Some("whisper-flow".to_string()),
+            workspace: Some("t4lk".to_string()),
             language: Some("typescript".to_string()),
             frameworks: vec!["react".to_string(), "tauri".to_string()],
             ..Default::default()
@@ -414,7 +415,7 @@ mod tests {
         let prompt = build_prompt(&context, &[]).unwrap();
 
         // Should include workspace name (unique)
-        assert!(prompt.contains("whisper-flow"));
+        assert!(prompt.contains("t4lk"));
         // Should include Tauri (uncommon)
         assert!(prompt.contains("Tauri"));
         // Should NOT include React (Whisper already knows it)
@@ -476,19 +477,19 @@ mod tests {
     fn test_glossary_boundary_with_dedup() {
         // If user term overlaps with context name, boundary should be correct
         let context = DetectedContext {
-            workspace: Some("whisper".to_string()),
+            workspace: Some("t4lk".to_string()),
             language: Some("rust".to_string()),
             ..Default::default()
         };
-        let user_terms = vec!["whisper".to_string()];
+        let user_terms = vec!["t4lk".to_string()];
         let prompt = build_prompt(&context, &user_terms).unwrap();
 
-        // "whisper" appears once (deduped), boundary = 1
+        // "t4lk" appears once (deduped), boundary = 1
         // Technical Rust terms should NOT be inside "Glossary:" section
         let parts: Vec<&str> = prompt.splitn(2, ". ").collect();
         if parts.len() == 2 {
-            // Glossary part should only contain whisper
-            assert!(parts[0].contains("whisper"));
+            // Glossary part should only contain t4lk
+            assert!(parts[0].contains("t4lk"));
             // Technical terms should be in the second part
             assert!(parts[1].contains("async") || parts[1].contains("Result") || parts[1].contains("fn"));
         }

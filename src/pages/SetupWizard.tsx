@@ -17,15 +17,13 @@ import {
   Wifi,
   WifiOff,
   AlertCircle,
-  Eye,
-  EyeOff,
   Rocket,
   Settings2,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_SERVER_URL = "https://stt.example.com";
+const DEFAULT_SERVER_URL = "https://stt.t4lk.cloud";
 
 interface ModelInfo {
   id: string;
@@ -68,8 +66,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   // Server config
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
-  const [serverToken, setServerToken] = useState("");
-  const [showToken, setShowToken] = useState(false);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("unknown");
 
   // Model config
@@ -171,10 +167,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         }
       } else {
         await invoke("set_server_url", { url: serverUrl });
-        const trimmedToken = serverToken.trim();
-        if (trimmedToken) {
-          await invoke("set_server_token", { token: trimmedToken });
-        }
       }
 
       // Save startup options (autostart plugin is handled in set_autostart_enabled)
@@ -284,7 +276,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Whisper Flow</h1>
+            <h1 className="text-xl font-semibold text-foreground">T4lk</h1>
             <p className="text-sm text-muted-foreground">Configuration initiale</p>
           </div>
         </div>
@@ -430,26 +422,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                   placeholder="https://whisper.example.com"
                   className="w-full h-10 px-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]"
                 />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">Token d'authentification (optionnel)</label>
-                <div className="relative">
-                  <input
-                    type={showToken ? "text" : "password"}
-                    value={serverToken}
-                    onChange={(e) => setServerToken(e.target.value)}
-                    placeholder="Votre token API"
-                    className="w-full h-10 px-3 pr-10 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
               </div>
 
               <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card">
@@ -651,7 +623,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <div>
               <h2 className="text-2xl font-semibold mb-2">Configuration terminee !</h2>
               <p className="text-muted-foreground">
-                Whisper Flow est pret a etre utilise
+                T4lk est pret a etre utilise
               </p>
             </div>
 

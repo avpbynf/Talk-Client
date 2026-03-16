@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Whisper Flow",
+  "productName": "T4lk",
   "version": "0.3.0",
-  "identifier": "com.nicolasavpbynf.whisper-flow",
+  "identifier": "com.avpbynf.t4lk",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Whisper Flow",
+        "title": "T4lk",
         "width": 1200,
         "height": 700,
         "minWidth": 800,
@@ -27,7 +27,7 @@
       "iconAsTemplate": true
     },
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://huggingface.co https://api.anthropic.com"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://huggingface.co"
     }
   },
   "bundle": {

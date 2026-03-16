@@ -8,7 +8,7 @@ interface TitlebarProps {
   isRecording?: boolean;
 }
 
-export function Titlebar({ title = "Whisper Flow", isRecording = false }: TitlebarProps) {
+export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps) {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
 
