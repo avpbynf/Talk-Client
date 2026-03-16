@@ -100,7 +100,7 @@ function App() {
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("local");
-  const [serverUrl, setServerUrl] = useState("http://localhost:8000");
+  const [serverUrl, setServerUrl] = useState("https://stt.example.com");
   const [serverFallback, setServerFallback] = useState(true);
   const [serverTimeout, setServerTimeout] = useState(30000);
   const [autostartEnabled, setAutostartEnabled] = useState(false);
@@ -232,7 +232,7 @@ function App() {
     setOverlaySize(savedSettings.overlay_size || "medium");
     setVocabulary(savedSettings.vocabulary || []);
     setTranscriptionMode(savedSettings.transcription_mode || "local");
-    setServerUrl(savedSettings.server_url || "http://localhost:8000");
+    setServerUrl(savedSettings.server_url || "https://stt.example.com");
     setServerFallback(savedSettings.server_fallback !== false); // Default to true
     setServerTimeout(savedSettings.server_timeout || 30000);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
