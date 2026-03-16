@@ -1,4 +1,4 @@
-use crate::{audio, audio_encoder, context_detection, screenshot, server_transcription, settings, AppState, RecordingMode};
+use crate::{audio, audio_encoder, context_detection, server_transcription, settings, AppState, RecordingMode};
 use crate::settings::TranscriptionMode;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -457,11 +457,6 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
         "available_languages": available_languages,
     }));
 
-    // Capture screenshot if correction or paste path is enabled
-    let use_screenshot_for_correction = *state.use_screenshot_for_correction.lock();
-    let paste_screenshot_path = *state.paste_screenshot_path.lock();
-    let use_screenshot = use_screenshot_for_correction || paste_screenshot_path;
-
     // Show overlay first (without taking focus to keep cursor in place)
     if app.get_webview_window("overlay").is_none() {
         let app_settings = settings::load_settings();
@@ -502,28 +497,7 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     // Small delay to ensure overlay is visible before we emit state
     std::thread::sleep(std::time::Duration::from_millis(50));
 
-    // Start screenshot capture in parallel if enabled
-    if use_screenshot {
-        let screenshot_mode = *state.screenshot_mode.lock();
-        *state.screenshot_capture_in_progress.lock() = true;
-        *state.screenshot_paths.lock() = Vec::new(); // Clear previous paths
-
-        let app_for_screenshot = app.clone();
-        std::thread::spawn(move || {
-            let state = app_for_screenshot.state::<AppState>();
-            match screenshot::capture_screens(screenshot_mode) {
-                Ok(paths) => {
-                    *state.screenshot_paths.lock() = paths;
-                }
-                Err(e) => {
-                    eprintln!("Failed to capture screenshots: {}", e);
-                }
-            }
-            *state.screenshot_capture_in_progress.lock() = false;
-        });
-    }
-
-    // Start audio capture immediately (parallel with screenshots)
+    // Start audio capture
     let (buffer, handle) = audio::start_capture().map_err(|e| e.to_string())?;
     let buffer_for_spectrum = buffer.clone();
 
@@ -571,10 +545,6 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-async fn enhance_with_claude(text: &str, model: &str, screenshot_paths: &[PathBuf]) -> Result<String, String> {
-    crate::claude_api::enhance_transcription(text, model, screenshot_paths).await
-}
-
 async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let state = app.state::<AppState>();
 
@@ -612,8 +582,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let server_url = state.server_url.lock().clone();
     let server_fallback = *state.server_fallback.lock();
     let server_timeout = *state.server_timeout.lock();
-    // Get server formatting settings (kept for future use — not sent to new API)
-    let _server_formatting_enabled = *state.server_formatting_enabled.lock();
 
     eprintln!("[DEBUG] Transcription mode: {:?}", transcription_mode);
     eprintln!("[DEBUG] Server URL: {}", server_url);
@@ -627,7 +595,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         .unwrap_or_default();
     let user_vocabulary = state.vocabulary.lock().clone();
     let vocabulary_prompt = context_detection::build_prompt(&detected_context, &user_vocabulary);
-    let _raw_vocabulary = context_detection::build_vocabulary(&user_vocabulary);
 
     eprintln!("[DEBUG] Using context from recording start: language={:?}, symbols={}",
         detected_context.language,
@@ -635,7 +602,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     );
 
     // Transcribe based on mode
-    let mut transcription = match transcription_mode {
+    let transcription = match transcription_mode {
         TranscriptionMode::Server => {
             // Try server transcription
             emit_to_overlay(app, "streaming");
@@ -654,24 +621,8 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                 );
             };
 
-            // Create callback for step changes
-            let app_for_step = app.clone();
-            let on_step = move |step: String| {
-                let overlay_state = match step.as_str() {
-                    "transcribing" => "server_transcribing",
-                    "correcting" => "server_correcting",
-                    "formatting" => "server_formatting",
-                    _ => return,
-                };
-                let _ = app_for_step.emit_to(
-                    EventTarget::webview_window("overlay"),
-                    "processing-state",
-                    overlay_state,
-                );
-            };
-
             // Try server transcription
-            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, detected_context.language.as_deref(), vocabulary_prompt.as_deref(), on_segment, on_step).await {
+            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, detected_context.language.as_deref(), vocabulary_prompt.as_deref(), on_segment, |_| {}).await {
                 Ok(text) => text,
                 Err(e) => {
                     eprintln!("Server transcription failed: {}", e);
@@ -731,42 +682,6 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         }
     };
 
-    // Wait for screenshot capture to complete if still in progress (max 10 seconds)
-    let screenshot_wait_start = std::time::Instant::now();
-    while *state.screenshot_capture_in_progress.lock() {
-        if screenshot_wait_start.elapsed() > std::time::Duration::from_secs(10) {
-            eprintln!("Warning: screenshot capture timed out after 10 seconds, continuing without screenshots");
-            *state.screenshot_capture_in_progress.lock() = false;
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-
-    // Get screenshot paths for Claude (if any)
-    let screenshot_paths: Vec<PathBuf> = std::mem::take(&mut *state.screenshot_paths.lock());
-
-    let use_screenshot_for_correction = *state.use_screenshot_for_correction.lock();
-    let paste_screenshot_path = *state.paste_screenshot_path.lock();
-
-    // Optionally enhance transcription with Claude
-    // Skip Claude enhancement if server formatting is enabled in server mode
-    // (the server already handled formatting)
-    let skip_claude = server_formatting_enabled && transcription_mode == TranscriptionMode::Server;
-    let use_llm = *state.use_llm_enhancement.lock();
-    if use_llm && !transcription.is_empty() && !skip_claude {
-        emit_to_overlay(app, "enhancing");
-        let claude_model = state.claude_model.lock().clone();
-        // Pass screenshots to Claude for contextual correction if enabled
-        let screenshots_for_correction = if use_screenshot_for_correction {
-            &screenshot_paths[..]
-        } else {
-            &[]
-        };
-        if let Ok(enhanced) = enhance_with_claude(&transcription, &claude_model, screenshots_for_correction).await {
-            transcription = enhanced;
-        }
-    }
-
     emit_to_overlay(app, "idle");
 
     // Resume media playback if we paused it
@@ -782,23 +697,8 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     #[cfg(windows)]
     {
         let preserve = *state.preserve_clipboard.lock();
-
-        // Include screenshot paths if paste_screenshot_path is enabled
-        if paste_screenshot_path && !screenshot_paths.is_empty() {
-            // Copy text + all image paths to clipboard
-            if let Err(e) = crate::clipboard::type_text_with_images(&transcription, &screenshot_paths, preserve) {
-                eprintln!("Failed to copy with images, falling back to text only: {}", e);
-                let _ = crate::clipboard::type_text(&transcription, preserve);
-            }
-        } else {
-            // Just copy text
-            let _ = crate::clipboard::type_text(&transcription, preserve);
-        }
+        let _ = crate::clipboard::type_text(&transcription, preserve);
     }
-
-    // Note: We don't cleanup screenshots immediately because Claude CLI
-    // needs to read them from the path. They're stored in the system temp
-    // folder and will be cleaned up by the OS eventually.
 
     let _ = app.emit("transcription-complete", &transcription);
 

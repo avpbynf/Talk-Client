@@ -27,7 +27,7 @@ interface PreferencesViewProps {
 
 const overlaySizes: { id: OverlaySize; name: string; description: string; preview: string }[] = [
   { id: "small", name: "Petit", description: "Compact et discret", preview: "120 x 40" },
-  { id: "medium", name: "Moyen", description: "Taille par defaut", preview: "200 x 60" },
+  { id: "medium", name: "Moyen", description: "Taille par defaut", preview: "220 x 60" },
   { id: "large", name: "Grand", description: "Plus visible", preview: "280 x 80" },
 ];
 
