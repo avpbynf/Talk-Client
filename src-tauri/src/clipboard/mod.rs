@@ -77,30 +77,6 @@ pub fn copy_and_paste(text: &str) -> Result<(), ClipboardError> {
     Ok(())
 }
 
-/// Copy text with image paths to clipboard, then paste
-/// The image paths are included in the text so Claude CLI can read them
-#[cfg(windows)]
-pub fn copy_text_and_images_then_paste(text: &str, image_paths: &[std::path::PathBuf]) -> Result<(), ClipboardError> {
-    // Format text with all image paths for Claude CLI compatibility
-    let paths_str: String = image_paths
-        .iter()
-        .map(|p| p.to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    let combined_text = format!("{}\n\n{}", text, paths_str);
-
-    // Copy to clipboard
-    set_clipboard(formats::Unicode, &combined_text)
-        .map_err(|e| ClipboardError::SetClipboard(e.to_string()))?;
-
-    std::thread::sleep(std::time::Duration::from_millis(50));
-
-    simulate_paste()?;
-
-    Ok(())
-}
-
 #[cfg(windows)]
 fn simulate_paste() -> Result<(), ClipboardError> {
     let mut enigo = Enigo::new(&Settings::default())
@@ -148,35 +124,6 @@ pub fn type_text(text: &str, preserve_clipboard: bool) -> Result<(), ClipboardEr
     Ok(())
 }
 
-/// Copy text with image paths and paste, optionally preserving the original clipboard content.
-/// If `preserve_clipboard` is true, saves all clipboard formats, pastes, then restores them.
-#[cfg(windows)]
-pub fn type_text_with_images(text: &str, image_paths: &[std::path::PathBuf], preserve_clipboard: bool) -> Result<(), ClipboardError> {
-    if !preserve_clipboard {
-        return copy_text_and_images_then_paste(text, image_paths);
-    }
-
-    let saved = save_clipboard();
-
-    copy_text_and_images_then_paste(text, image_paths)?;
-
-    // Wait for paste to be processed by the target application
-    std::thread::sleep(std::time::Duration::from_millis(100));
-
-    match saved {
-        Some(snapshot) => restore_clipboard(snapshot),
-        None => {
-            // Clipboard was empty, clear it again
-            if raw::open().is_ok() {
-                let _ = raw::empty();
-                let _ = raw::close();
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(not(windows))]
 pub fn copy_and_paste(_text: &str) -> Result<(), ClipboardError> {
     // Not implemented for non-Windows platforms yet
@@ -184,17 +131,6 @@ pub fn copy_and_paste(_text: &str) -> Result<(), ClipboardError> {
 }
 
 #[cfg(not(windows))]
-pub fn copy_text_and_images_then_paste(_text: &str, _image_paths: &[std::path::PathBuf]) -> Result<(), ClipboardError> {
-    // Not implemented for non-Windows platforms yet
-    Ok(())
-}
-
-#[cfg(not(windows))]
 pub fn type_text(_text: &str, _preserve_clipboard: bool) -> Result<(), ClipboardError> {
-    Ok(())
-}
-
-#[cfg(not(windows))]
-pub fn type_text_with_images(_text: &str, _image_paths: &[std::path::PathBuf], _preserve_clipboard: bool) -> Result<(), ClipboardError> {
     Ok(())
 }

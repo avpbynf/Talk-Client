@@ -126,24 +126,6 @@ pub fn build_prompt(context: &DetectedContext, user_terms: &[String]) -> Option<
     Some(prompt)
 }
 
-/// Build a raw comma-separated vocabulary string from user terms only.
-///
-/// This is sent to the server for LLM-based vocabulary correction,
-/// separate from the glossary prompt used for Whisper's initial_prompt.
-pub fn build_vocabulary(user_terms: &[String]) -> Option<String> {
-    let valid: Vec<&str> = user_terms
-        .iter()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .collect();
-
-    if valid.is_empty() {
-        return None;
-    }
-
-    Some(valid.join(", "))
-}
-
 /// Build a list of context names that Whisper might not recognize
 /// Focus on project-specific terms, not common tech words
 fn build_context_names(context: &DetectedContext) -> Vec<String> {
@@ -433,29 +415,6 @@ mod tests {
         assert_eq!(get_uncommon_framework_name("react"), None);
         assert_eq!(get_uncommon_framework_name("vue"), None);
         assert_eq!(get_uncommon_framework_name("django"), None);
-    }
-
-    #[test]
-    fn test_build_vocabulary_empty() {
-        assert_eq!(build_vocabulary(&[]), None);
-    }
-
-    #[test]
-    fn test_build_vocabulary_filters_whitespace() {
-        let terms = vec!["".to_string(), "  ".to_string(), "\t".to_string()];
-        assert_eq!(build_vocabulary(&terms), None);
-    }
-
-    #[test]
-    fn test_build_vocabulary_joins_terms() {
-        let terms = vec!["Claude".to_string(), "Whisper".to_string(), "Tauri".to_string()];
-        assert_eq!(build_vocabulary(&terms), Some("Claude, Whisper, Tauri".to_string()));
-    }
-
-    #[test]
-    fn test_build_vocabulary_mixed_valid_and_empty() {
-        let terms = vec!["Claude".to_string(), "".to_string(), "Whisper".to_string()];
-        assert_eq!(build_vocabulary(&terms), Some("Claude, Whisper".to_string()));
     }
 
     #[test]

@@ -2,13 +2,13 @@ import { useEffect, useState, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Mic, Loader2, Sparkles, Brain, Monitor, Server } from "lucide-react";
+import { Mic, Loader2, Brain, Server } from "lucide-react";
 
-type ProcessingState = "idle" | "capturing" | "recording" | "transcribing" | "enhancing" | "streaming" | "server_transcribing" | "server_formatting";
+type ProcessingState = "idle" | "recording" | "transcribing" | "streaming" | "server_transcribing";
 type OverlaySize = "small" | "medium" | "large";
 
 function OverlayPage() {
-  const [state, setState] = useState<ProcessingState>("capturing");
+  const [state, setState] = useState<ProcessingState>("idle");
   const [progress, setProgress] = useState(0);
   const [size, setSize] = useState<OverlaySize>("medium");
   const [spectrum, setSpectrum] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
@@ -87,15 +87,6 @@ function OverlayPage() {
 
   const renderContent = () => {
     switch (state) {
-      case "capturing":
-        return (
-          <>
-            <Monitor className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-cyan-500`} />
-            <Loader2 className="h-4 w-4 text-cyan-500 animate-spin" />
-            {!isSmall && <span className="text-sm font-medium text-foreground">Capture...</span>}
-          </>
-        );
-
       case "recording": {
         const numBars = isSmall ? 5 : 8;
         const displaySpectrum = spectrum.slice(0, numBars);
@@ -148,15 +139,6 @@ function OverlayPage() {
           </>
         );
 
-      case "enhancing":
-        return (
-          <>
-            <Sparkles className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-purple-500`} />
-            <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
-            {!isSmall && <span className="text-sm font-medium text-foreground">Claude corrige...</span>}
-          </>
-        );
-
       case "streaming":
       case "server_transcribing":
         return (
@@ -167,14 +149,6 @@ function OverlayPage() {
           </>
         );
 
-      case "server_formatting":
-        return (
-          <>
-            <Sparkles className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-amber-500`} />
-            <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
-            {!isSmall && <span className="text-sm font-medium text-foreground">Formatage...</span>}
-          </>
-        );
     }
   };
 

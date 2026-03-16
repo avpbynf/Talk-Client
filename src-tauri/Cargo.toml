@@ -60,10 +60,7 @@ tempfile = "3"
 
 [features]
 default = []
-cuda = ["whisper-rs/cuda"]
 vulkan = ["whisper-rs/vulkan"]
-metal = ["whisper-rs/metal"]
-intel-sycl = ["whisper-rs/intel-sycl"]
 
 [profile.release]
 opt-level = 3

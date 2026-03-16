@@ -622,7 +622,10 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
             };
 
             // Try server transcription
-            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, detected_context.language.as_deref(), vocabulary_prompt.as_deref(), on_segment, |_| {}).await {
+            // Note: detected_context.language is a programming language name (e.g. "rust",
+            // "generic_dev"), NOT a Whisper language code. Pass None to let the server use
+            // its configured DEFAULT_LANGUAGE.
+            match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, None, vocabulary_prompt.as_deref(), on_segment, |_| {}).await {
                 Ok(text) => text,
                 Err(e) => {
                     eprintln!("Server transcription failed: {}", e);

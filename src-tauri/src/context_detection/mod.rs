@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-pub use selector::{build_prompt, build_vocabulary};
+pub use selector::build_prompt;
 pub use vocabulary::get_available_languages;
 
 /// Maximum age for VS Code context file to be considered valid (30 seconds)

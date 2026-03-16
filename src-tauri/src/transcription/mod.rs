@@ -16,9 +16,8 @@ pub enum TranscriptionError {
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GpuVendor {
-    Cuda,   // NVIDIA only
     Vulkan, // AMD, Intel, or NVIDIA
-    Metal,  // Apple only
+    #[serde(other)]
     Cpu,    // Fallback
 }
 
@@ -31,9 +30,7 @@ impl Default for GpuVendor {
 impl std::fmt::Display for GpuVendor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GpuVendor::Cuda => write!(f, "NVIDIA (CUDA)"),
             GpuVendor::Vulkan => write!(f, "Vulkan (AMD/Intel)"),
-            GpuVendor::Metal => write!(f, "Apple (Metal)"),
             GpuVendor::Cpu => write!(f, "CPU"),
         }
     }
@@ -43,11 +40,9 @@ impl std::fmt::Display for GpuVendor {
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AcceleratorBackend {
-    Cpu,
-    Cuda,
     Vulkan,
-    IntelSycl,
-    Metal,
+    #[serde(other)]
+    Cpu,
 }
 
 impl Default for AcceleratorBackend {
@@ -60,9 +55,7 @@ impl AcceleratorBackend {
     /// Convert from GpuVendor to the appropriate backend
     pub fn from_vendor(vendor: GpuVendor) -> Self {
         match vendor {
-            GpuVendor::Cuda => AcceleratorBackend::Cuda,
             GpuVendor::Vulkan => AcceleratorBackend::Vulkan,
-            GpuVendor::Metal => AcceleratorBackend::Metal,
             GpuVendor::Cpu => AcceleratorBackend::Cpu,
         }
     }
@@ -72,10 +65,7 @@ impl std::fmt::Display for AcceleratorBackend {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AcceleratorBackend::Cpu => write!(f, "CPU"),
-            AcceleratorBackend::Cuda => write!(f, "NVIDIA (CUDA)"),
             AcceleratorBackend::Vulkan => write!(f, "GPU (Vulkan)"),
-            AcceleratorBackend::IntelSycl => write!(f, "Intel (SYCL)"),
-            AcceleratorBackend::Metal => write!(f, "Apple (Metal)"),
         }
     }
 }
@@ -101,32 +91,6 @@ pub struct AcceleratorInfo {
 pub fn detect_available_gpus() -> Vec<GpuInfo> {
     let mut gpus = vec![];
 
-    // NVIDIA CUDA
-    #[cfg(feature = "cuda")]
-    {
-        let available = check_cuda_available();
-        gpus.push(GpuInfo {
-            vendor: GpuVendor::Cuda,
-            name: "NVIDIA".to_string(),
-            available,
-            description: if available {
-                "CUDA disponible".to_string()
-            } else {
-                "Aucun GPU NVIDIA détecté".to_string()
-            },
-        });
-    }
-
-    #[cfg(not(feature = "cuda"))]
-    {
-        gpus.push(GpuInfo {
-            vendor: GpuVendor::Cuda,
-            name: "NVIDIA".to_string(),
-            available: false,
-            description: "CUDA non compilé".to_string(),
-        });
-    }
-
     // Vulkan (AMD, Intel, or NVIDIA)
     #[cfg(feature = "vulkan")]
     {
@@ -145,17 +109,6 @@ pub fn detect_available_gpus() -> Vec<GpuInfo> {
             name: "Vulkan".to_string(),
             available: false,
             description: "Vulkan non compilé".to_string(),
-        });
-    }
-
-    // Apple Metal (macOS only)
-    #[cfg(all(feature = "metal", target_os = "macos"))]
-    {
-        gpus.push(GpuInfo {
-            vendor: GpuVendor::Metal,
-            name: "Metal".to_string(),
-            available: true,
-            description: "Apple Silicon".to_string(),
         });
     }
 
@@ -185,37 +138,13 @@ pub fn detect_available_accelerators() -> Vec<AcceleratorInfo> {
 
 /// Get the best available accelerator (auto-detection)
 pub fn get_best_accelerator() -> AcceleratorBackend {
-    // Priority: CUDA > Intel SYCL > Vulkan > Metal > CPU
-    #[cfg(feature = "cuda")]
-    if check_cuda_available() {
-        return AcceleratorBackend::Cuda;
-    }
-
-    #[cfg(feature = "intel-sycl")]
-    if check_intel_sycl_available() {
-        return AcceleratorBackend::IntelSycl;
-    }
-
+    // Priority: Vulkan > CPU
     #[cfg(feature = "vulkan")]
     if check_vulkan_available() {
         return AcceleratorBackend::Vulkan;
     }
 
-    #[cfg(all(feature = "metal", target_os = "macos"))]
-    {
-        return AcceleratorBackend::Metal;
-    }
-
     AcceleratorBackend::Cpu
-}
-
-#[cfg(feature = "cuda")]
-fn check_cuda_available() -> bool {
-    // Check if NVIDIA GPU is available by looking for nvidia-smi
-    std::process::Command::new("nvidia-smi")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
 }
 
 #[allow(dead_code)]
@@ -226,16 +155,6 @@ fn check_vulkan_available() -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
-}
-
-#[allow(dead_code)]
-#[cfg(feature = "intel-sycl")]
-fn check_intel_sycl_available() -> bool {
-    // Check if Intel oneAPI environment is set up
-    std::env::var("ONEAPI_ROOT").is_ok()
-        || std::env::var("CMPLR_ROOT").is_ok()
-        || Path::new("C:\\Program Files (x86)\\Intel\\oneAPI").exists()
-        || Path::new("/opt/intel/oneapi").exists()
 }
 
 pub struct WhisperEngine {
@@ -253,16 +172,6 @@ impl WhisperEngine {
 
         // Configure backend-specific settings
         match backend {
-            AcceleratorBackend::Cuda => {
-                #[cfg(feature = "cuda")]
-                {
-                    params.use_gpu(true);
-                }
-                #[cfg(not(feature = "cuda"))]
-                {
-                    eprintln!("CUDA feature not compiled, falling back to CPU");
-                }
-            }
             AcceleratorBackend::Vulkan => {
                 #[cfg(feature = "vulkan")]
                 {
@@ -271,27 +180,6 @@ impl WhisperEngine {
                 #[cfg(not(feature = "vulkan"))]
                 {
                     eprintln!("Vulkan feature not compiled, falling back to CPU");
-                }
-            }
-            AcceleratorBackend::IntelSycl => {
-                #[cfg(feature = "intel-sycl")]
-                {
-                    // Intel SYCL uses its own backend
-                    params.use_gpu(true);
-                }
-                #[cfg(not(feature = "intel-sycl"))]
-                {
-                    eprintln!("Intel SYCL feature not compiled, falling back to CPU");
-                }
-            }
-            AcceleratorBackend::Metal => {
-                #[cfg(all(feature = "metal", target_os = "macos"))]
-                {
-                    params.use_gpu(true);
-                }
-                #[cfg(not(all(feature = "metal", target_os = "macos")))]
-                {
-                    eprintln!("Metal feature not available, falling back to CPU");
                 }
             }
             AcceleratorBackend::Cpu => {

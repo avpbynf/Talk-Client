@@ -30,7 +30,6 @@ import {
   Settings2,
   Shield,
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 type ServerStatus = "unknown" | "checking" | "online" | "offline";
@@ -203,16 +202,12 @@ export default function TranscriptionView({
 
   // GPU options
   const allGpuOptions: GpuInfo[] = [
-    { vendor: "cuda", name: "NVIDIA CUDA", available: false, description: "Acceleration NVIDIA" },
-    { vendor: "vulkan", name: "Vulkan", available: false, description: "GPU generique" },
-    { vendor: "metal", name: "Apple Metal", available: false, description: "Acceleration macOS" },
+    { vendor: "vulkan", name: "Vulkan", available: true, description: "GPU generique" },
     { vendor: "cpu", name: "CPU", available: true, description: "Sans acceleration" },
   ];
 
   const gpuTooltips: Record<GpuVendor, string> = {
-    cuda: "Uniquement pour les cartes graphiques NVIDIA. Meilleure performance sur GPU NVIDIA.",
     vulkan: "Compatible AMD, NVIDIA et Intel. API graphique universelle multi-plateforme.",
-    metal: "Exclusif aux Mac (Apple Silicon et Intel). Optimise pour macOS.",
     cpu: "Fonctionne partout, sans carte graphique. Plus lent mais universel.",
   };
 

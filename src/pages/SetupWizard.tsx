@@ -47,7 +47,7 @@ interface DownloadProgress {
 }
 
 type TranscriptionMode = "local" | "server";
-type GpuVendor = "cuda" | "vulkan" | "metal" | "cpu";
+type GpuVendor = "vulkan" | "cpu";
 type ModelFamily = "standard" | "quantized";
 type ServerStatus = "unknown" | "checking" | "online" | "offline";
 
@@ -61,7 +61,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   // Configuration state
   const [mode, setMode] = useState<TranscriptionMode>("local");
-  const [detectedGpu, setDetectedGpu] = useState<GpuVendor>("cpu");
+  const [detectedGpu, setDetectedGpu] = useState<GpuVendor>("vulkan");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
 
   // Server config
@@ -215,12 +215,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   // Get GPU info for display
   const getGpuLabel = (vendor: GpuVendor) => {
     switch (vendor) {
-      case "cuda":
-        return "NVIDIA CUDA";
       case "vulkan":
         return "AMD/Intel Vulkan";
-      case "metal":
-        return "Apple Metal";
       default:
         return "CPU";
     }
@@ -228,12 +224,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const getGpuDescription = (vendor: GpuVendor) => {
     switch (vendor) {
-      case "cuda":
-        return "Acceleration GPU NVIDIA detectee";
       case "vulkan":
         return "Acceleration Vulkan disponible";
-      case "metal":
-        return "Acceleration Metal Apple";
       default:
         return "Aucune acceleration GPU detectee";
     }

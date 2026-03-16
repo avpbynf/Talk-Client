@@ -33,8 +33,8 @@ export interface Transcription {
 }
 
 export type RecordingMode = "push_to_talk" | "toggle";
-export type AcceleratorBackend = "cpu" | "cuda" | "vulkan" | "intel_sycl" | "metal";
-export type GpuVendor = "cuda" | "vulkan" | "metal" | "cpu";
+export type AcceleratorBackend = "cpu" | "vulkan";
+export type GpuVendor = "vulkan" | "cpu";
 export type OverlaySize = "small" | "medium" | "large";
 export type TranscriptionMode = "local" | "server";
 
