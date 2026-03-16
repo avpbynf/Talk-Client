@@ -28,8 +28,9 @@ fn resume_media_if_paused(state: &AppState) {
 #[cfg(windows)]
 fn is_audio_playing() -> bool {
     use windows::Win32::Media::Audio::{
-        eRender, eConsole, IAudioMeterInformation, IMMDeviceEnumerator, MMDeviceEnumerator,
+        eRender, eConsole, IMMDeviceEnumerator, MMDeviceEnumerator,
     };
+    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
 
     unsafe {
