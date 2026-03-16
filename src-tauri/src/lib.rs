@@ -874,11 +874,8 @@ pub fn run() {
             }
 
             // Setup tray menu
-            let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
             let menu = MenuBuilder::new(app)
-                .item(&show_item)
-                .separator()
                 .item(&quit_item)
                 .build()?;
 
@@ -888,14 +885,8 @@ pub fn run() {
                 .icon(app.default_window_icon().expect("window icon missing from bundle").clone())
                 .tooltip("T4lk")
                 .menu(&menu)
-                .on_menu_event(move |app, event| {
+                .on_menu_event(move |_app, event| {
                     match event.id().as_ref() {
-                        "show" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
                         "quit" => {
                             std::process::exit(0);
                         }
