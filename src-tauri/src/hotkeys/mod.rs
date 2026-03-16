@@ -765,11 +765,16 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         let _ = overlay.hide();
     }
 
-    // Copy and paste
+    // Copy and paste — use direct typing for terminals (SendInput doesn't work with WinUI)
     #[cfg(windows)]
     {
-        let preserve = *state.preserve_clipboard.lock();
-        let _ = crate::clipboard::type_text(&transcription, preserve);
+        let is_terminal = detected_context.domain.as_deref() == Some("terminal");
+        if is_terminal {
+            let _ = crate::clipboard::type_text_direct(&transcription);
+        } else {
+            let preserve = *state.preserve_clipboard.lock();
+            let _ = crate::clipboard::type_text(&transcription, preserve);
+        }
     }
 
     let _ = app.emit("transcription-complete", &transcription);
