@@ -26,8 +26,9 @@ fn resume_media_if_paused(state: &AppState) {
 #[cfg(windows)]
 fn mute_system_mic() -> bool {
     use windows::Win32::Media::Audio::{
-        eCapture, eConsole, IAudioEndpointVolume, IMMDeviceEnumerator, MMDeviceEnumerator,
+        eCapture, eConsole, IMMDeviceEnumerator, MMDeviceEnumerator,
     };
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
 
     unsafe {
@@ -49,8 +50,9 @@ fn mute_system_mic() -> bool {
 #[cfg(windows)]
 fn unmute_system_mic() {
     use windows::Win32::Media::Audio::{
-        eCapture, eConsole, IAudioEndpointVolume, IMMDeviceEnumerator, MMDeviceEnumerator,
+        eCapture, eConsole, IMMDeviceEnumerator, MMDeviceEnumerator,
     };
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
 
     unsafe {
