@@ -2,7 +2,7 @@
 name = "t4lk"
 version = "0.3.0"
 description = "T4lk — T4lk internal Speech-to-Text client"
-authors = ["avpbynf"]
+authors = ["T4lk"]
 edition = "2021"
 
 [lib]
