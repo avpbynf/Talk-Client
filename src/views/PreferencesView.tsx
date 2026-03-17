@@ -213,7 +213,7 @@ export default function PreferencesView({
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors",
                   type === "main"
-                    ? "bg-[var(--color-active)] text-[oklch(0.13_0.01_260)] hover:bg-[var(--color-active)]/90"
+                    ? "bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90"
                     : "bg-[var(--color-destructive)] text-white hover:bg-[var(--color-destructive)]/90"
                 )}
               >

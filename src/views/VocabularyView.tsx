@@ -169,7 +169,7 @@ export default function VocabularyView({
                   <Button
                     onClick={addWord}
                     disabled={!newWord.trim()}
-                    className="bg-[var(--color-active)] text-[oklch(0.13_0.01_260)] hover:bg-[var(--color-active)]/90"
+                    className="bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Ajouter

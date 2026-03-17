@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { listen } from "@tauri-apps/api/event";
 import { History, Mic, Settings, BookText } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
 import HistoryView from "@/views/HistoryView";
-import TranscriptionView from "@/views/TranscriptionView";
+import TranscriptionView from "@/views/transcription/TranscriptionView";
 import VocabularyView from "@/views/VocabularyView";
 import PreferencesView from "@/views/PreferencesView";
 import SetupWizard from "@/pages/SetupWizard";
@@ -107,6 +108,8 @@ function App() {
   const [startMinimized, setStartMinimized] = useState(false);
   const [pauseMediaOnRecord, setPauseMediaOnRecord] = useState(false);
   const [preserveClipboard, setPreserveClipboard] = useState(false);
+  const [serverStatus, setServerStatus] = useState<ServerStatus>("unknown");
+  const isCheckingServerRef = useRef(false);
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
@@ -257,6 +260,28 @@ function App() {
     }
   }
 
+  const checkServerHealth = async (silent = false) => {
+    if (isCheckingServerRef.current) return;
+    isCheckingServerRef.current = true;
+    if (!silent) setServerStatus("checking");
+    try {
+      const isHealthy = await invoke<boolean>("check_server_health");
+      setServerStatus(isHealthy ? "online" : "offline");
+    } catch {
+      setServerStatus("offline");
+    } finally {
+      isCheckingServerRef.current = false;
+    }
+  };
+
+  // Server health polling when in server mode
+  useEffect(() => {
+    if (transcriptionMode !== "server") return;
+    checkServerHealth(false);
+    const interval = setInterval(() => checkServerHealth(true), 5000);
+    return () => clearInterval(interval);
+  }, [transcriptionMode, serverUrl]);
+
   const navItems = [
     { id: "history" as View, icon: History, label: "Historique" },
     { id: "transcription" as View, icon: Mic, label: "Transcription" },
@@ -294,7 +319,7 @@ function App() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-[72px] border-r border-[oklch(0.22_0.015_260)] bg-[oklch(0.12_0.01_260)] flex flex-col items-center py-5 gap-2 shrink-0">
+        <div className="w-[72px] border-r border-border-subtle bg-surface-inset flex flex-col items-center py-5 gap-2 shrink-0">
           {/* Nav items */}
           {navItems.map((item, index) => (
             <button
@@ -303,15 +328,15 @@ function App() {
               className={cn(
                 "nav-indicator w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 relative group press-effect",
                 currentView === item.id
-                  ? "active bg-[oklch(0.22_0.02_260)] text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
-                  : "hover:bg-[oklch(0.18_0.015_260)] text-muted-foreground hover:text-foreground"
+                  ? "active bg-secondary text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
+                  : "hover:bg-surface-elevated text-muted-foreground hover:text-foreground"
               )}
               style={{ animationDelay: `${index * 0.05}s` }}
               title={item.label}
             >
               <item.icon className="h-5 w-5" strokeWidth={currentView === item.id ? 2 : 1.5} />
               {/* Tooltip */}
-              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-[oklch(0.30_0.015_260)] shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
+              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-border-hover shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
                 {item.label}
               </span>
             </button>
@@ -319,15 +344,40 @@ function App() {
 
           {/* Status indicator at bottom */}
           <div className="mt-auto flex flex-col items-center gap-2">
-            <div
-              className={cn(
-                "h-2.5 w-2.5 rounded-full transition-all duration-300",
-                currentModel
-                  ? "bg-[var(--color-success)] shadow-[0_0_8px_oklch(0.70_0.17_145/0.5)]"
-                  : "bg-[var(--color-warning)] shadow-[0_0_6px_oklch(0.75_0.15_85/0.4)]"
-              )}
-              title={currentModel ? `Modele: ${currentModel}` : "Aucun modele charge"}
-            />
+            {(() => {
+              const isServerMode = transcriptionMode === "server" && !serverFallback;
+              const isHybridMode = transcriptionMode === "server" && serverFallback;
+
+              let dotState: "success" | "warning" | "destructive";
+              let dotTitle: string;
+
+              if (isServerMode) {
+                dotState = serverStatus === "online" ? "success" : serverStatus === "offline" ? "destructive" : "warning";
+                const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
+                dotTitle = `Serveur: ${statusLabel}`;
+              } else if (isHybridMode) {
+                const serverOk = serverStatus === "online";
+                const localOk = currentModel !== null;
+                dotState = serverOk || localOk ? "success" : serverStatus === "offline" && !localOk ? "destructive" : "warning";
+                const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
+                dotTitle = `Serveur: ${statusLabel} | Local: ${currentModel || "non pret"}`;
+              } else {
+                dotState = currentModel ? "success" : "warning";
+                dotTitle = currentModel ? `Modele: ${currentModel}` : "Aucun modele charge";
+              }
+
+              return (
+                <div
+                  className={cn(
+                    "h-2.5 w-2.5 rounded-full transition-all duration-300",
+                    dotState === "success" && "bg-success shadow-[0_0_8px_oklch(from_var(--color-success)_l_c_h/0.5)]",
+                    dotState === "warning" && "bg-warning shadow-[0_0_6px_oklch(from_var(--color-warning)_l_c_h/0.4)]",
+                    dotState === "destructive" && "bg-destructive shadow-[0_0_6px_oklch(from_var(--color-destructive)_l_c_h/0.4)]"
+                  )}
+                  title={dotTitle}
+                />
+              );
+            })()}
           </div>
         </div>
 
@@ -419,6 +469,8 @@ function App() {
               setServerTimeout(timeout);
               await invoke("set_server_timeout", { timeout });
             }}
+            serverStatus={serverStatus}
+            checkServerHealth={checkServerHealth}
           />
         )}
         {currentView === "vocabulary" && (
