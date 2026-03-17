@@ -60,7 +60,7 @@ function SortableVocabularyItem({
     <span
       ref={setNodeRef}
       style={style}
-      className={`inline-flex items-center gap-1 px-3 py-1.5 bg-[oklch(0.20_0.015_260)] rounded-full text-sm group transition-colors hover:bg-[oklch(0.22_0.02_260)] ${
+      className={`inline-flex items-center gap-1 px-3 py-1.5 bg-surface-active rounded-full text-sm group transition-colors hover:bg-secondary ${
         isDragging ? "shadow-lg ring-1 ring-[var(--color-active)]/40" : ""
       }`}
     >
@@ -74,7 +74,7 @@ function SortableVocabularyItem({
       {word}
       <button
         onClick={onRemove}
-        className="p-0.5 rounded-full hover:bg-[oklch(0.15_0.01_260)] opacity-50 group-hover:opacity-100 transition-opacity"
+        className="p-0.5 rounded-full hover:bg-surface-raised opacity-50 group-hover:opacity-100 transition-opacity"
       >
         <X className="h-3 w-3" />
       </button>
@@ -132,7 +132,7 @@ export default function VocabularyView({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-[oklch(0.22_0.015_260)] shrink-0">
+      <div className="px-6 py-5 border-b border-border-subtle shrink-0">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Vocabulaire</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -146,7 +146,7 @@ export default function VocabularyView({
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Add words input */}
-            <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-4">
+            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Plus className="h-4 w-4" />
                 Mots personnalisés
@@ -164,7 +164,7 @@ export default function VocabularyView({
                     onChange={(e) => setNewWord(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addWord())}
                     placeholder="Ex: MonProjet, ACME Corp..."
-                    className="flex-1 px-3 py-2.5 text-sm rounded-lg border border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30 focus:border-[var(--color-active)]"
+                    className="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border-card bg-surface-inset focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30 focus:border-[var(--color-active)]"
                   />
                   <Button
                     onClick={addWord}
@@ -179,7 +179,7 @@ export default function VocabularyView({
             </div>
 
             {/* Word list */}
-            <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-3">
+            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">
                   Vos termes ({vocabulary.length})
@@ -196,7 +196,7 @@ export default function VocabularyView({
               </div>
 
               {vocabulary.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground border border-dashed border-[oklch(0.25_0.015_260)] rounded-lg">
+                <div className="py-8 text-center text-muted-foreground border border-dashed border-border-card rounded-lg">
                   <BookText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Aucun terme personnalisé</p>
                   <p className="text-xs mt-1">Les termes par défaut T4lk sont déjà pré-chargés</p>
@@ -223,11 +223,11 @@ export default function VocabularyView({
             </div>
 
             {/* Info box */}
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <div className="p-4 rounded-xl bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
               <div className="flex items-start gap-3">
-                <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                <div className="text-xs text-blue-300/80">
-                  <p className="font-medium mb-1 text-blue-300">Comment ça fonctionne ?</p>
+                <Info className="h-4 w-4 text-server mt-0.5 shrink-0" />
+                <div className="text-xs text-[var(--color-server)]/80">
+                  <p className="font-medium mb-1 text-server">Comment ça fonctionne ?</p>
                   <p>
                     Les mots de vocabulaire sont transmis directement à Whisper comme indices pour améliorer
                     la reconnaissance. Ajoutez vos noms propres, acronymes et termes métier pour de meilleurs résultats.

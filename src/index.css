@@ -53,6 +53,24 @@
   --color-input: oklch(0.20 0.01 260);
   --color-ring: oklch(0.72 0.15 195);
 
+  /* Surface hierarchy */
+  --color-surface-deep: oklch(0.11 0.01 260);
+  --color-surface-inset: oklch(0.12 0.01 260);
+  --color-surface-raised: oklch(0.15 0.01 260);
+  --color-surface-elevated: oklch(0.18 0.015 260);
+  --color-surface-active: oklch(0.20 0.015 260);
+
+  /* Border hierarchy */
+  --color-border-subtle: oklch(0.22 0.015 260);
+  --color-border-card: oklch(0.25 0.015 260);
+  --color-border-hover: oklch(0.30 0.015 260);
+
+  /* Mode accent colors */
+  --color-server: oklch(0.65 0.18 250);
+  --color-server-glow: oklch(0.65 0.20 250 / 0.3);
+  --color-hybrid: oklch(0.65 0.18 300);
+  --color-hybrid-glow: oklch(0.65 0.20 300 / 0.3);
+
   /* Radii */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -90,7 +108,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: oklch(0.30 0.01 260);
+    background: var(--color-border-hover);
     border-radius: 4px;
   }
 
@@ -117,9 +135,9 @@
 
 /* Glass card effect */
 .glass-card {
-  background: oklch(0.18 0.01 260 / 0.6);
+  background: oklch(from var(--color-surface-elevated) l c h / 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid oklch(0.32 0.015 260 / 0.5);
+  border: 1px solid oklch(from var(--color-border-hover) l c h / 0.5);
 }
 
 /* ===== RECORDING ANIMATIONS ===== */
@@ -139,12 +157,12 @@
   0%, 100% {
     box-shadow: 0 0 8px var(--color-recording-glow),
                 0 0 16px var(--color-recording-glow),
-                0 0 24px oklch(0.70 0.18 45 / 0.2);
+                0 0 24px var(--color-recording-glow);
   }
   50% {
     box-shadow: 0 0 12px var(--color-recording-glow),
                 0 0 24px var(--color-recording-glow),
-                0 0 36px oklch(0.70 0.18 45 / 0.3);
+                0 0 36px var(--color-recording-glow);
   }
 }
 
@@ -298,7 +316,7 @@
 }
 
 .card-interactive:hover {
-  background-color: oklch(0.20 0.015 260);
+  background-color: var(--color-surface-active);
   border-color: oklch(0.35 0.02 260);
 }
 
@@ -335,21 +353,21 @@
 /* ===== STATUS BADGES ===== */
 
 .badge-active {
-  background: oklch(0.72 0.15 195 / 0.15);
+  background: oklch(from var(--color-active) l c h / 0.15);
   color: var(--color-active);
-  border: 1px solid oklch(0.72 0.15 195 / 0.3);
+  border: 1px solid oklch(from var(--color-active) l c h / 0.3);
 }
 
 .badge-recording {
-  background: oklch(0.70 0.18 45 / 0.15);
+  background: oklch(from var(--color-recording) l c h / 0.15);
   color: var(--color-recording);
-  border: 1px solid oklch(0.70 0.18 45 / 0.3);
+  border: 1px solid oklch(from var(--color-recording) l c h / 0.3);
 }
 
 .badge-success {
-  background: oklch(0.70 0.17 145 / 0.15);
+  background: oklch(from var(--color-success) l c h / 0.15);
   color: var(--color-success);
-  border: 1px solid oklch(0.70 0.17 145 / 0.3);
+  border: 1px solid oklch(from var(--color-success) l c h / 0.3);
 }
 
 /* ===== INPUT STYLES ===== */
@@ -371,8 +389,8 @@ kbd {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
-  background: oklch(0.20 0.01 260);
-  border: 1px solid oklch(0.30 0.015 260);
+  background: var(--color-surface-active);
+  border: 1px solid var(--color-border-hover);
   border-radius: 0.375rem;
   box-shadow: 0 1px 2px oklch(0 0 0 / 0.2),
               inset 0 -1px 0 oklch(0 0 0 / 0.2),
@@ -410,9 +428,9 @@ kbd {
 .shimmer {
   background: linear-gradient(
     90deg,
-    oklch(0.20 0.01 260) 0%,
-    oklch(0.28 0.015 260) 50%,
-    oklch(0.20 0.01 260) 100%
+    var(--color-surface-active) 0%,
+    var(--color-border) 50%,
+    var(--color-surface-active) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;

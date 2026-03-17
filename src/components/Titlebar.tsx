@@ -35,7 +35,7 @@ export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps)
     <div
       data-tauri-drag-region
       onDoubleClick={handleMaximize}
-      className="h-9 flex items-center justify-between bg-[oklch(0.11_0.01_260)] border-b border-[oklch(0.22_0.01_260)] select-none shrink-0"
+      className="h-9 flex items-center justify-between bg-surface-deep border-b border-border-subtle select-none shrink-0"
     >
       {/* Left section - Logo and title */}
       <div data-tauri-drag-region className="flex items-center gap-3 pl-3">
@@ -46,7 +46,7 @@ export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps)
               "h-2.5 w-2.5 rounded-full transition-all duration-300",
               isRecording
                 ? "bg-[var(--color-recording)] recording-glow"
-                : "bg-[oklch(0.35_0.01_260)]"
+                : "bg-border-hover"
             )}
           />
           {isRecording && (
@@ -72,14 +72,14 @@ export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps)
       <div className="flex items-center h-full">
         <button
           onClick={handleMinimize}
-          className="h-full w-11 flex items-center justify-center text-muted-foreground hover:bg-[oklch(0.20_0.01_260)] hover:text-foreground transition-colors duration-150"
+          className="h-full w-11 flex items-center justify-center text-muted-foreground hover:bg-surface-active hover:text-foreground transition-colors duration-150"
           aria-label="Minimize"
         >
           <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
         </button>
         <button
           onClick={handleMaximize}
-          className="h-full w-11 flex items-center justify-center text-muted-foreground hover:bg-[oklch(0.20_0.01_260)] hover:text-foreground transition-colors duration-150"
+          className="h-full w-11 flex items-center justify-center text-muted-foreground hover:bg-surface-active hover:text-foreground transition-colors duration-150"
           aria-label={isMaximized ? "Restore" : "Maximize"}
         >
           {isMaximized ? (
@@ -90,7 +90,7 @@ export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps)
         </button>
         <button
           onClick={handleClose}
-          className="h-full w-11 flex items-center justify-center text-muted-foreground hover:bg-[oklch(0.55_0.20_25)] hover:text-white transition-colors duration-150"
+          className="h-full w-11 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-white transition-colors duration-150"
           aria-label="Close"
         >
           <X className="h-4 w-4" strokeWidth={1.5} />

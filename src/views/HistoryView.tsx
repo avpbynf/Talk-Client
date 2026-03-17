@@ -43,7 +43,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-[oklch(0.22_0.015_260)] flex items-center justify-between shrink-0">
+      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Historique</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -68,10 +68,10 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
         {transcriptions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground px-4">
             <div className="relative mb-6">
-              <div className="h-24 w-24 rounded-2xl bg-[oklch(0.18_0.015_260)] flex items-center justify-center">
+              <div className="h-24 w-24 rounded-2xl bg-surface-elevated flex items-center justify-center">
                 <Mic className="h-12 w-12 text-muted-foreground/50" strokeWidth={1.5} />
               </div>
-              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg bg-[oklch(0.22_0.02_260)] flex items-center justify-center border border-[oklch(0.28_0.015_260)]">
+              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg bg-secondary flex items-center justify-center border border-border">
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                 <div
                   key={t.id}
                   className={cn(
-                    "stagger-item group p-4 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] card-interactive overflow-hidden"
+                    "stagger-item group p-4 rounded-xl border border-border-card bg-surface-raised card-interactive overflow-hidden"
                   )}
                 >
                   {/* Text content */}
@@ -105,7 +105,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                   </p>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[oklch(0.22_0.015_260)]">
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-border-subtle">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
@@ -117,7 +117,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
 
                     <div className="flex items-center gap-2">
                       {t.model && (
-                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[oklch(0.20_0.01_260)]">
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-active">
                           {t.model}
                         </span>
                       )}
@@ -133,7 +133,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                           "h-7 w-7 shrink-0 rounded-lg transition-all duration-200",
                           copiedId === t.id
                             ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
-                            : "opacity-0 group-hover:opacity-100 hover:bg-[oklch(0.25_0.02_260)]"
+                            : "opacity-0 group-hover:opacity-100 hover:bg-accent"
                         )}
                         onClick={() => copyToClipboard(t.text, t.id)}
                       >

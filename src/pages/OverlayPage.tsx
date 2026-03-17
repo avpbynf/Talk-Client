@@ -93,14 +93,14 @@ function OverlayPage() {
         return (
           <>
             <div className="relative">
-              <Mic className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-red-500`} />
-              <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+              <Mic className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-recording`} />
+              <span className="absolute -top-1 -right-1 h-2 w-2 bg-recording rounded-full animate-pulse" />
             </div>
             <div className="flex items-center gap-0.5 h-6">
               {displaySpectrum.map((level, i) => (
                 <div
                   key={i}
-                  className="w-1 bg-red-500 rounded-full transition-all duration-50"
+                  className="w-1 bg-recording rounded-full transition-all duration-50"
                   style={{
                     height: `${Math.max(3, 3 + level * 21)}px`,
                   }}
@@ -115,17 +115,17 @@ function OverlayPage() {
       case "transcribing":
         return (
           <>
-            <Brain className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-blue-500`} />
+            <Brain className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-server`} />
             {progress === 0 ? (
               <>
-                <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                <Loader2 className="h-4 w-4 text-server animate-spin" />
                 {!isSmall && <span className="text-sm font-medium text-foreground">Analyse...</span>}
               </>
             ) : (
               <>
                 <div className={`${isSmall ? "w-12" : "w-20"} h-1.5 bg-muted rounded-full overflow-hidden`}>
                   <div
-                    className="h-full bg-blue-500 transition-all duration-150"
+                    className="h-full bg-server transition-all duration-150"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -143,8 +143,8 @@ function OverlayPage() {
       case "server_transcribing":
         return (
           <>
-            <Server className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-cyan-500`} />
-            <Loader2 className="h-4 w-4 text-cyan-500 animate-spin" />
+            <Server className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-server`} />
+            <Loader2 className="h-4 w-4 text-server animate-spin" />
             {!isSmall && <span className="text-sm font-medium text-foreground">Transcription...</span>}
           </>
         );

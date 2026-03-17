@@ -154,7 +154,7 @@ export default function PreferencesView({
     const shortcutParts = currentShortcut.split("+");
 
     return (
-      <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)]">
+      <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex gap-3">
             <div className={cn(
@@ -175,7 +175,7 @@ export default function PreferencesView({
           {!isEditing && (
             <button
               onClick={() => startEdit(type)}
-              className="p-2 rounded-lg hover:bg-[oklch(0.22_0.015_260)] transition-colors"
+              className="p-2 rounded-lg hover:bg-secondary transition-colors"
             >
               <Edit3 className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -189,7 +189,7 @@ export default function PreferencesView({
               tabIndex={0}
               onKeyDown={handleKeyDown}
               className={cn(
-                "flex gap-2 items-center min-h-[48px] p-3 rounded-lg border-2 bg-[oklch(0.12_0.01_260)] focus:outline-none focus:ring-2",
+                "flex gap-2 items-center min-h-[48px] p-3 rounded-lg border-2 bg-surface-inset focus:outline-none focus:ring-2",
                 type === "main"
                   ? "border-[var(--color-active)] focus:ring-[var(--color-active)]/30"
                   : "border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30"
@@ -222,7 +222,7 @@ export default function PreferencesView({
               </button>
               <button
                 onClick={cancelEdit}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-[oklch(0.28_0.015_260)] rounded-lg hover:bg-[oklch(0.20_0.015_260)] transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-surface-active transition-colors"
               >
                 <X className="h-4 w-4" />
                 Annuler
@@ -243,7 +243,7 @@ export default function PreferencesView({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-[oklch(0.22_0.015_260)] shrink-0">
+      <div className="px-6 py-5 border-b border-border-subtle shrink-0">
         <h1 className="text-xl font-semibold tracking-tight">Préférences</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Raccourcis clavier et apparence de l'overlay
@@ -254,7 +254,7 @@ export default function PreferencesView({
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Recording Mode */}
-            <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-4">
+            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Keyboard className="h-4 w-4" />
                 Mode d'enregistrement
@@ -267,7 +267,7 @@ export default function PreferencesView({
                     "p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
                     recordingMode === "push_to_talk"
                       ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
-                      : "border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] card-interactive"
+                      : "border-border-card bg-surface-inset card-interactive"
                   )}
                 >
                   <Hand className={cn(
@@ -286,7 +286,7 @@ export default function PreferencesView({
                     "p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
                     recordingMode === "toggle"
                       ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
-                      : "border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] card-interactive"
+                      : "border-border-card bg-surface-inset card-interactive"
                   )}
                 >
                   <ToggleLeft className={cn(
@@ -318,7 +318,7 @@ export default function PreferencesView({
             </div>
 
             {/* Overlay Section */}
-            <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-4">
+            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Layers className="h-4 w-4" />
                 Overlay
@@ -335,14 +335,14 @@ export default function PreferencesView({
                       className={cn(
                         "w-full p-4 rounded-xl border text-left transition-all duration-200 flex items-center justify-between",
                         overlaySize === size.id
-                          ? "border-blue-500 bg-blue-500/10"
-                          : "border-[oklch(0.25_0.015_260)] bg-[oklch(0.12_0.01_260)] card-interactive"
+                          ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
+                          : "border-border-card bg-surface-inset card-interactive"
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <Maximize2 className={cn(
                           "h-5 w-5",
-                          overlaySize === size.id ? "text-blue-500" : "text-muted-foreground"
+                          overlaySize === size.id ? "text-[var(--color-active)]" : "text-muted-foreground"
                         )} />
                         <div>
                           <div className="font-medium">{size.name}</div>
@@ -351,7 +351,7 @@ export default function PreferencesView({
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-xs text-muted-foreground">{size.preview}</span>
-                        {overlaySize === size.id && <Check className="h-5 w-5 text-blue-500" />}
+                        {overlaySize === size.id && <Check className="h-5 w-5 text-[var(--color-active)]" />}
                       </div>
                     </button>
                   ))}
@@ -359,7 +359,7 @@ export default function PreferencesView({
               </div>
 
               {/* Position Info */}
-              <div className="pt-4 border-t border-[oklch(0.22_0.015_260)]">
+              <div className="pt-4 border-t border-border-subtle">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4 text-muted-foreground" />
                   <label className="font-medium">Position</label>
@@ -371,7 +371,7 @@ export default function PreferencesView({
             </div>
 
             {/* System Section */}
-            <div className="p-5 rounded-xl border border-[oklch(0.25_0.015_260)] bg-[oklch(0.15_0.01_260)] space-y-4">
+            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Monitor className="h-4 w-4" />
                 Système
@@ -392,7 +392,7 @@ export default function PreferencesView({
               </div>
 
               {/* Start Minimized */}
-              <div className="flex items-center justify-between border-t border-[oklch(0.22_0.015_260)] pt-4">
+              <div className="flex items-center justify-between border-t border-border-subtle pt-4">
                 <div>
                   <label className="font-medium">Démarrer minimisé</label>
                   <p className="text-sm text-muted-foreground mt-0.5">
@@ -406,10 +406,10 @@ export default function PreferencesView({
               </div>
 
               {/* Pause Media */}
-              <div className="flex items-center justify-between border-t border-[oklch(0.22_0.015_260)] pt-4">
+              <div className="flex items-center justify-between border-t border-border-subtle pt-4">
                 <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500/15">
-                    <Music className="h-5 w-5 text-purple-400" />
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-hybrid)]/15">
+                    <Music className="h-5 w-5 text-hybrid" />
                   </div>
                   <div>
                     <label className="font-medium">Pause media</label>
@@ -425,10 +425,10 @@ export default function PreferencesView({
               </div>
 
               {/* Preserve Clipboard */}
-              <div className="flex items-center justify-between border-t border-[oklch(0.22_0.015_260)] pt-4">
+              <div className="flex items-center justify-between border-t border-border-subtle pt-4">
                 <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/15">
-                    <ClipboardCopy className="h-5 w-5 text-amber-400" />
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-warning)]/15">
+                    <ClipboardCopy className="h-5 w-5 text-warning" />
                   </div>
                   <div>
                     <label className="font-medium">Préserver le presse-papier</label>
