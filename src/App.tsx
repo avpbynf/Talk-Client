@@ -31,6 +31,7 @@ export interface Transcription {
   timestamp: Date;
   model: string | null;
   enhanced: boolean;
+  source: "local" | "server";
 }
 
 export type RecordingMode = "push_to_talk" | "toggle";
@@ -78,6 +79,7 @@ interface SavedTranscription {
   timestamp: string;
   model: string | null;
   enhanced: boolean;
+  source?: "local" | "server";
 }
 
 type View = "history" | "transcription" | "vocabulary" | "preferences";
@@ -113,12 +115,17 @@ function App() {
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
+  const transcriptionModeRef = useRef(transcriptionMode);
   const hasInitialized = useRef(false);
 
   // Keep refs in sync with state
   useEffect(() => {
     currentModelRef.current = currentModel;
   }, [currentModel]);
+
+  useEffect(() => {
+    transcriptionModeRef.current = transcriptionMode;
+  }, [transcriptionMode]);
 
   // Check setup status first
   useEffect(() => {
@@ -156,6 +163,7 @@ function App() {
         timestamp: new Date(),
         model: currentModelRef.current,
         enhanced: false,
+        source: transcriptionModeRef.current === "local" ? "local" : "server",
       };
       setTranscriptions((prev) => {
         const updated = [newTranscription, ...prev].slice(0, 100);
@@ -226,6 +234,7 @@ function App() {
         savedHistory.map((t) => ({
           ...t,
           timestamp: new Date(t.timestamp),
+          source: t.source ?? "local",
         }))
       );
     }

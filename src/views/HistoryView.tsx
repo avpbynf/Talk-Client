@@ -1,7 +1,7 @@
 import { Transcription } from "@/App";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, Trash2, Sparkles, Clock, Check, Mic } from "lucide-react";
+import { Copy, Trash2, Sparkles, Clock, Check, Mic, Globe, HardDrive } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +121,20 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                           {t.model}
                         </span>
                       )}
+                      {(() => {
+                        const source = t.source || "local";
+                        return source === "server" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-server)]/10 text-[var(--color-server)] border border-[var(--color-server)]/20">
+                            <Globe size={10} />
+                            Serveur
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-active)]/10 text-[var(--color-active)] border border-[var(--color-active)]/20">
+                            <HardDrive size={10} />
+                            Local
+                          </span>
+                        );
+                      })()}
                       {t.enhanced && (
                         <span className="badge-active text-[10px] px-1.5 py-0.5 rounded-md flex items-center gap-1">
                           <Sparkles className="h-2.5 w-2.5" />
