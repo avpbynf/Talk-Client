@@ -298,10 +298,12 @@ function App() {
     invoke("set_overlay_size", { size: "small" });
   }, []);
 
-  const navItems = [
+  const navItemsTop = [
     { id: "history" as View, icon: History, label: "Historique" },
-    { id: "transcription" as View, icon: Mic, label: "Transcription" },
     { id: "vocabulary" as View, icon: BookText, label: "Vocabulaire" },
+  ];
+  const navItemsBottom = [
+    { id: "transcription" as View, icon: Mic, label: "Transcription" },
     { id: "preferences" as View, icon: Settings, label: "Preferences" },
   ];
 
@@ -335,28 +337,57 @@ function App() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-[72px] border-r border-border-subtle bg-surface-inset flex flex-col items-center py-5 gap-2 shrink-0">
-          {/* Nav items */}
-          {navItems.map((item, index) => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className={cn(
-                "nav-indicator w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 relative group press-effect",
-                currentView === item.id
-                  ? "active bg-secondary text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
-                  : "hover:bg-surface-elevated text-muted-foreground hover:text-foreground"
-              )}
-              style={{ animationDelay: `${index * 0.05}s` }}
-              title={item.label}
-            >
-              <item.icon className="h-5 w-5" strokeWidth={currentView === item.id ? 2 : 1.5} />
-              {/* Tooltip */}
-              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-border-hover shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
-                {item.label}
-              </span>
-            </button>
-          ))}
+        <div className="w-[72px] border-r border-border-subtle bg-surface-inset flex flex-col items-center py-5 shrink-0">
+          {/* Top group */}
+          <div className="flex flex-col items-center gap-2">
+            {navItemsTop.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id)}
+                className={cn(
+                  "nav-indicator w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 relative group press-effect",
+                  currentView === item.id
+                    ? "active bg-secondary text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
+                    : "hover:bg-surface-elevated text-muted-foreground hover:text-foreground"
+                )}
+                style={{ animationDelay: `${index * 0.05}s` }}
+                title={item.label}
+              >
+                <item.icon className="h-5 w-5" strokeWidth={currentView === item.id ? 2 : 1.5} />
+                {/* Tooltip */}
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-border-hover shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Separator */}
+          <div className="w-6 h-px bg-border-subtle my-3" />
+
+          {/* Bottom group */}
+          <div className="flex flex-col items-center gap-2">
+            {navItemsBottom.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id)}
+                className={cn(
+                  "nav-indicator w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 relative group press-effect",
+                  currentView === item.id
+                    ? "active bg-secondary text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
+                    : "hover:bg-surface-elevated text-muted-foreground/80 hover:text-foreground"
+                )}
+                style={{ animationDelay: `${(index + navItemsTop.length) * 0.05}s` }}
+                title={item.label}
+              >
+                <item.icon className="h-5 w-5" strokeWidth={currentView === item.id ? 2 : 1.5} />
+                {/* Tooltip */}
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-border-hover shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
 
           {/* Status indicator at bottom */}
           <div className="mt-auto flex flex-col items-center gap-2">
