@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { RecordingMode, OverlaySize } from "@/App";
+import { RecordingMode } from "@/App";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Keyboard, Edit3, Check, X, Maximize2, Info, Layers, Hand, ToggleLeft, Monitor, Music, ClipboardCopy } from "lucide-react";
+import { Keyboard, Edit3, Check, X, Layers, Hand, ToggleLeft, Monitor, Music, ClipboardCopy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PreferencesViewProps {
@@ -13,8 +13,6 @@ interface PreferencesViewProps {
   onShortcutChange: (shortcut: string) => Promise<void>;
   cancelShortcut: string;
   onCancelShortcutChange: (shortcut: string) => Promise<void>;
-  overlaySize: OverlaySize;
-  onOverlaySizeChange: (size: OverlaySize) => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
   startMinimized: boolean;
@@ -25,12 +23,6 @@ interface PreferencesViewProps {
   onPreserveClipboardChange: (enabled: boolean) => void;
 }
 
-const overlaySizes: { id: OverlaySize; name: string; description: string; preview: string }[] = [
-  { id: "small", name: "Petit", description: "Compact et discret", preview: "120 x 40" },
-  { id: "medium", name: "Moyen", description: "Taille par défaut", preview: "220 x 60" },
-  { id: "large", name: "Grand", description: "Plus visible", preview: "280 x 80" },
-];
-
 export default function PreferencesView({
   recordingMode,
   onRecordingModeChange,
@@ -38,8 +30,6 @@ export default function PreferencesView({
   onShortcutChange,
   cancelShortcut,
   onCancelShortcutChange,
-  overlaySize,
-  onOverlaySizeChange,
   autostartEnabled,
   onAutostartChange,
   startMinimized,
@@ -302,7 +292,7 @@ export default function PreferencesView({
             </div>
 
             {/* Shortcuts */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
               {renderShortcutCard(
                 "main",
                 shortcut,
@@ -318,54 +308,11 @@ export default function PreferencesView({
             </div>
 
             {/* Overlay Section */}
-            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                <Layers className="h-4 w-4" />
-                Overlay
-              </div>
-
-              {/* Size Selection */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium">Taille de l'overlay</label>
-                <div className="space-y-2">
-                  {overlaySizes.map((size) => (
-                    <button
-                      key={size.id}
-                      onClick={() => onOverlaySizeChange(size.id)}
-                      className={cn(
-                        "w-full p-4 rounded-xl border text-left transition-all duration-200 flex items-center justify-between",
-                        overlaySize === size.id
-                          ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
-                          : "border-border-card bg-surface-inset card-interactive"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Maximize2 className={cn(
-                          "h-5 w-5",
-                          overlaySize === size.id ? "text-[var(--color-active)]" : "text-muted-foreground"
-                        )} />
-                        <div>
-                          <div className="font-medium">{size.name}</div>
-                          <div className="text-xs text-muted-foreground">{size.description}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs text-muted-foreground">{size.preview}</span>
-                        {overlaySize === size.id && <Check className="h-5 w-5 text-[var(--color-active)]" />}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Position Info */}
-              <div className="pt-4 border-t border-border-subtle">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                  <label className="font-medium">Position</label>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Glissez l'overlay pendant l'enregistrement pour changer sa position. Elle sera sauvegardée automatiquement.
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Overlay</h3>
+              <div className="p-4 rounded-xl bg-surface-raised border border-border-card">
+                <p className="text-sm text-muted">
+                  L'overlay compact s'affiche pendant l'enregistrement. Deplacez-le en le faisant glisser, la position est sauvegardee automatiquement.
                 </p>
               </div>
             </div>

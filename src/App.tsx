@@ -100,7 +100,6 @@ function App() {
   const [cancelShortcut, setCancelShortcut] = useState("Ctrl+F1");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
   const [currentGpuVendor, setCurrentGpuVendor] = useState<GpuVendor>("cpu");
-  const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("local");
   const [serverUrl, setServerUrl] = useState("https://stt.example.com");
@@ -242,7 +241,6 @@ function App() {
 
     // Load saved settings and apply them
     const savedSettings = await invoke<SavedSettings>("get_saved_settings");
-    setOverlaySize(savedSettings.overlay_size || "medium");
     setVocabulary(savedSettings.vocabulary || []);
     setTranscriptionMode(savedSettings.transcription_mode || "local");
     setServerUrl(savedSettings.server_url || "https://stt.example.com");
@@ -294,6 +292,11 @@ function App() {
     const interval = setInterval(() => checkServerHealth(true), 5000);
     return () => clearInterval(interval);
   }, [transcriptionMode, serverUrl]);
+
+  // Force overlay to small size on mount
+  useEffect(() => {
+    invoke("set_overlay_size", { size: "small" });
+  }, []);
 
   const navItems = [
     { id: "history" as View, icon: History, label: "Historique" },
@@ -513,11 +516,6 @@ function App() {
             onCancelShortcutChange={async (newShortcut) => {
               await invoke("update_cancel_shortcut", { shortcut: newShortcut });
               setCancelShortcut(newShortcut);
-            }}
-            overlaySize={overlaySize}
-            onOverlaySizeChange={async (size) => {
-              setOverlaySize(size);
-              await invoke("set_overlay_size", { size });
             }}
             autostartEnabled={autostartEnabled}
             onAutostartChange={async (enabled) => {
