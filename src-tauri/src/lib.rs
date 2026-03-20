@@ -2,6 +2,7 @@ mod audio;
 mod audio_encoder;
 mod clipboard;
 mod hotkeys;
+mod keystroke;
 mod models;
 mod server_transcription;
 mod settings;
@@ -697,6 +698,71 @@ fn set_start_minimized(enabled: bool) -> Result<(), String> {
     settings::save_settings(&app_settings)
 }
 
+#[tauri::command]
+fn get_sound_feedback() -> bool {
+    settings::load_settings().sound_feedback
+}
+
+#[tauri::command]
+fn set_sound_feedback(enabled: bool) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.sound_feedback = enabled;
+    settings::save_settings(&app_settings)
+}
+
+#[tauri::command]
+fn get_start_sound() -> String {
+    settings::load_settings().start_sound
+}
+
+#[tauri::command]
+fn set_start_sound(preset: String) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.start_sound = preset;
+    settings::save_settings(&app_settings)
+}
+
+#[tauri::command]
+fn get_stop_sound() -> String {
+    settings::load_settings().stop_sound
+}
+
+#[tauri::command]
+fn set_stop_sound(preset: String) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.stop_sound = preset;
+    settings::save_settings(&app_settings)
+}
+
+#[tauri::command]
+fn get_server_token() -> String {
+    settings::load_settings().server_token
+}
+
+#[tauri::command]
+fn set_server_token(token: String) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.server_token = token;
+    settings::save_settings(&app_settings)
+}
+
+#[tauri::command]
+fn get_companion_shortcuts() -> Vec<settings::CompanionShortcut> {
+    settings::load_settings().companion_shortcuts
+}
+
+#[tauri::command]
+fn set_companion_shortcuts(shortcuts: Vec<settings::CompanionShortcut>) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.companion_shortcuts = shortcuts;
+    settings::save_settings(&app_settings)
+}
+
+#[tauri::command]
+fn simulate_keystroke_cmd(keys: String) -> Result<(), String> {
+    keystroke::simulate_keystroke(&keys)
+}
+
 // ============================================================================
 // App Entry Point
 // ============================================================================
@@ -770,6 +836,17 @@ pub fn run() {
             set_pause_media_on_record,
             get_preserve_clipboard,
             set_preserve_clipboard,
+            get_sound_feedback,
+            set_sound_feedback,
+            get_start_sound,
+            set_start_sound,
+            get_stop_sound,
+            set_stop_sound,
+            get_server_token,
+            set_server_token,
+            get_companion_shortcuts,
+            set_companion_shortcuts,
+            simulate_keystroke_cmd,
         ])
         .setup(|app| {
             // Load .env file in dev mode only

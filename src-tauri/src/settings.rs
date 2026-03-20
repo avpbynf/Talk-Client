@@ -3,6 +3,14 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompanionShortcut {
+    pub id: String,
+    pub label: String,
+    pub keys: String,
+    pub trigger: String, // "start", "stop", "both"
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TranscriptionMode {
@@ -87,10 +95,29 @@ pub struct AppSettings {
     /// Preserve clipboard content after pasting transcription
     #[serde(default)]
     pub preserve_clipboard: bool,
+    /// Sound feedback enabled
+    #[serde(default)]
+    pub sound_feedback: bool,
+    /// Start sound preset (none, beep, click, chime)
+    #[serde(default = "default_sound_none")]
+    pub start_sound: String,
+    /// Stop sound preset (none, beep, click, chime)
+    #[serde(default = "default_sound_none")]
+    pub stop_sound: String,
+    /// API token for server (OpenAI-compatible)
+    #[serde(default)]
+    pub server_token: String,
+    /// Companion shortcuts to simulate on recording start/stop
+    #[serde(default)]
+    pub companion_shortcuts: Vec<CompanionShortcut>,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_sound_none() -> String {
+    "none".to_string()
 }
 
 fn default_server_url() -> String {
@@ -137,6 +164,11 @@ impl Default for AppSettings {
             start_minimized: false,
             pause_media_on_record: false,
             preserve_clipboard: false,
+            sound_feedback: false,
+            start_sound: default_sound_none(),
+            stop_sound: default_sound_none(),
+            server_token: String::new(),
+            companion_shortcuts: Vec::new(),
         }
     }
 }
