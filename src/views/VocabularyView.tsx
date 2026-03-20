@@ -106,17 +106,21 @@ export default function VocabularyView({
   };
 
   const addWord = async () => {
+    const existingSet = new Set(vocabulary.map((v) => v.toLowerCase()));
     const words = newWord
-      .split(/[,\s]+/)
+      .split(/[,]+/)
       .map((w) => w.trim())
-      .filter((w) => w && !vocabulary.includes(w));
+      .filter((w) => w.length > 0 && !w.includes(" ") && !existingSet.has(w.toLowerCase()));
 
-    if (words.length > 0) {
-      const newVocabulary = [...vocabulary, ...words];
-      await invoke("set_vocabulary", { words: newVocabulary });
-      onVocabularyChange(newVocabulary);
+    if (words.length === 0) {
       setNewWord("");
+      return;
     }
+
+    const newVocabulary = [...vocabulary, ...words];
+    await invoke("set_vocabulary", { words: newVocabulary });
+    onVocabularyChange(newVocabulary);
+    setNewWord("");
   };
 
   const removeWord = async (word: string) => {
@@ -145,6 +149,20 @@ export default function VocabularyView({
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
+            {/* Info box */}
+            <div className="p-4 rounded-xl bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
+              <div className="flex items-start gap-3">
+                <Info className="h-4 w-4 text-server mt-0.5 shrink-0" />
+                <div className="text-xs text-[var(--color-server)]/80">
+                  <p className="font-medium mb-1 text-server">Comment ça fonctionne ?</p>
+                  <p>
+                    Les mots de vocabulaire sont transmis directement à Whisper comme indices pour améliorer
+                    la reconnaissance. Ajoutez vos noms propres, acronymes et termes métier pour de meilleurs résultats.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Add words input */}
             <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -222,19 +240,6 @@ export default function VocabularyView({
               )}
             </div>
 
-            {/* Info box */}
-            <div className="p-4 rounded-xl bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
-              <div className="flex items-start gap-3">
-                <Info className="h-4 w-4 text-server mt-0.5 shrink-0" />
-                <div className="text-xs text-[var(--color-server)]/80">
-                  <p className="font-medium mb-1 text-server">Comment ça fonctionne ?</p>
-                  <p>
-                    Les mots de vocabulaire sont transmis directement à Whisper comme indices pour améliorer
-                    la reconnaissance. Ajoutez vos noms propres, acronymes et termes métier pour de meilleurs résultats.
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </ScrollArea>
