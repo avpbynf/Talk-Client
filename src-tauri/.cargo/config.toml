@@ -1,0 +1,6 @@
+# Ninja bypasses vswhere (which can't find Build Tools without -products *).
+# With vcvarsall.bat loaded, Ninja finds cl.exe via PATH directly.
+[env]
+CC = "cl.exe"
+CXX = "cl.exe"
+CMAKE_GENERATOR = "Ninja"

@@ -20,7 +20,7 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 
 # Whisper transcription (with optional GPU/NPU acceleration)
-whisper-rs = "0.14"
+whisper-rs = "0.16"
 
 # Audio capture
 cpal = "0.15"
