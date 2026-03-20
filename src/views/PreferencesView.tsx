@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { RecordingMode } from "@/App";
+import type { CompanionShortcut } from "@/App";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Keyboard, Edit3, Check, X, Layers, Hand, ToggleLeft, Monitor, Music, ClipboardCopy } from "lucide-react";
+import { Keyboard, Edit3, Check, X, Layers, Hand, ToggleLeft, Monitor, Music, ClipboardCopy, Volume2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { playSound, type SoundPreset } from "@/lib/audio";
 
 interface PreferencesViewProps {
   recordingMode: RecordingMode;
@@ -21,6 +23,14 @@ interface PreferencesViewProps {
   onPauseMediaOnRecordChange: (enabled: boolean) => void;
   preserveClipboard: boolean;
   onPreserveClipboardChange: (enabled: boolean) => void;
+  soundFeedback: boolean;
+  onSoundFeedbackChange: (enabled: boolean) => void;
+  startSound: string;
+  onStartSoundChange: (preset: string) => void;
+  stopSound: string;
+  onStopSoundChange: (preset: string) => void;
+  companionShortcuts: CompanionShortcut[];
+  onCompanionShortcutsChange: (shortcuts: CompanionShortcut[]) => void;
 }
 
 export default function PreferencesView({
@@ -38,6 +48,14 @@ export default function PreferencesView({
   onPauseMediaOnRecordChange,
   preserveClipboard,
   onPreserveClipboardChange,
+  soundFeedback,
+  onSoundFeedbackChange,
+  startSound,
+  onStartSoundChange,
+  stopSound,
+  onStopSoundChange,
+  companionShortcuts,
+  onCompanionShortcutsChange,
 }: PreferencesViewProps) {
   const [editingShortcut, setEditingShortcut] = useState<"main" | "cancel" | null>(null);
   const [pendingShortcut, setPendingShortcut] = useState<string[]>([]);
@@ -304,6 +322,173 @@ export default function PreferencesView({
                 cancelShortcut,
                 "Annulation",
                 "Annule l'enregistrement en cours"
+              )}
+            </div>
+
+            {/* Sons de feedback */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Sons de feedback</h3>
+              <div className="p-4 rounded-xl bg-surface-raised border border-border-card space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Activer les sons</p>
+                    <p className="text-xs text-muted">Jouer un son au demarrage et a l'arret de l'enregistrement</p>
+                  </div>
+                  <Switch checked={soundFeedback} onCheckedChange={onSoundFeedbackChange} />
+                </div>
+
+                {soundFeedback && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle slide-enter">
+                    {/* Start sound */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted">Son de demarrage</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={startSound}
+                          onChange={(e) => onStartSoundChange(e.target.value)}
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm"
+                        >
+                          <option value="none">Aucun</option>
+                          <option value="beep">Beep</option>
+                          <option value="click">Click</option>
+                          <option value="chime">Chime</option>
+                        </select>
+                        <button
+                          onClick={() => playSound("start", startSound as SoundPreset)}
+                          disabled={startSound === "none"}
+                          className="px-2 py-1.5 rounded-lg bg-surface-inset border border-border-card text-muted hover:text-foreground disabled:opacity-30 transition-colors"
+                          title="Apercu"
+                        >
+                          <Volume2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stop sound */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted">Son d'arret</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={stopSound}
+                          onChange={(e) => onStopSoundChange(e.target.value)}
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm"
+                        >
+                          <option value="none">Aucun</option>
+                          <option value="beep">Beep</option>
+                          <option value="click">Click</option>
+                          <option value="chime">Chime</option>
+                        </select>
+                        <button
+                          onClick={() => playSound("stop", stopSound as SoundPreset)}
+                          disabled={stopSound === "none"}
+                          className="px-2 py-1.5 rounded-lg bg-surface-inset border border-border-card text-muted hover:text-foreground disabled:opacity-30 transition-colors"
+                          title="Apercu"
+                        >
+                          <Volume2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Raccourcis compagnons */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Raccourcis compagnons</h3>
+                  <p className="text-xs text-muted">Envoyer des raccourcis clavier a d'autres applications</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const newCompanion: CompanionShortcut = {
+                      id: crypto.randomUUID(),
+                      label: "",
+                      keys: "",
+                      trigger: "both",
+                    };
+                    onCompanionShortcutsChange([...companionShortcuts, newCompanion]);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-raised border border-border-card text-muted hover:text-foreground hover:border-border-hover transition-colors"
+                >
+                  <Plus size={14} className="inline mr-1" />
+                  Ajouter
+                </button>
+              </div>
+
+              {companionShortcuts.length === 0 ? (
+                <div className="p-6 rounded-xl border-2 border-dashed border-border-subtle text-center">
+                  <p className="text-sm text-muted">
+                    Aucun raccourci compagnon. Ajoutez-en pour muter Discord, Teams, etc.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {companionShortcuts.map((companion) => (
+                    <div
+                      key={companion.id}
+                      className="p-4 rounded-xl bg-surface-raised border border-border-card space-y-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          value={companion.label}
+                          onChange={(e) => {
+                            const updated = companionShortcuts.map((c) =>
+                              c.id === companion.id ? { ...c, label: e.target.value } : c
+                            );
+                            onCompanionShortcutsChange(updated);
+                          }}
+                          placeholder="Ex: Mute Discord"
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm input-glow placeholder:text-muted/50"
+                        />
+                        <input
+                          type="text"
+                          value={companion.keys}
+                          onChange={(e) => {
+                            const updated = companionShortcuts.map((c) =>
+                              c.id === companion.id ? { ...c, keys: e.target.value } : c
+                            );
+                            onCompanionShortcutsChange(updated);
+                          }}
+                          placeholder="Ctrl+Shift+M"
+                          className="w-40 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm font-mono input-glow placeholder:text-muted/50"
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = companionShortcuts.filter((c) => c.id !== companion.id);
+                            onCompanionShortcutsChange(updated);
+                          }}
+                          className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        {(["start", "stop", "both"] as const).map((trigger) => (
+                          <button
+                            key={trigger}
+                            onClick={() => {
+                              const updated = companionShortcuts.map((c) =>
+                                c.id === companion.id ? { ...c, trigger } : c
+                              );
+                              onCompanionShortcutsChange(updated);
+                            }}
+                            className={cn(
+                              "px-3 py-1 rounded-lg text-xs font-medium transition-colors",
+                              companion.trigger === trigger
+                                ? "bg-[var(--color-active)]/15 text-[var(--color-active)] border border-[var(--color-active)]/30"
+                                : "bg-surface-inset border border-border-card text-muted hover:text-foreground"
+                            )}
+                          >
+                            {trigger === "start" ? "Demarrage" : trigger === "stop" ? "Arret" : "Les deux"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

@@ -10,6 +10,7 @@ import TranscriptionView from "@/views/transcription/TranscriptionView";
 import VocabularyView from "@/views/VocabularyView";
 import PreferencesView from "@/views/PreferencesView";
 import SetupWizard from "@/pages/SetupWizard";
+import { playSound, type SoundPreset } from "@/lib/audio";
 
 export interface ModelInfo {
   id: string;
@@ -39,6 +40,13 @@ export type AcceleratorBackend = "cpu" | "vulkan";
 export type GpuVendor = "vulkan" | "cpu";
 export type OverlaySize = "small" | "medium" | "large";
 export type TranscriptionMode = "local" | "server";
+
+export type CompanionShortcut = {
+  id: string;
+  label: string;
+  keys: string;
+  trigger: "start" | "stop" | "both";
+};
 
 export interface AcceleratorInfo {
   backend: AcceleratorBackend;
@@ -112,11 +120,19 @@ function App() {
   const [preserveClipboard, setPreserveClipboard] = useState(false);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("unknown");
   const isCheckingServerRef = useRef(false);
+  const [soundFeedback, setSoundFeedback] = useState(false);
+  const [startSound, setStartSound] = useState("none");
+  const [stopSound, setStopSound] = useState("none");
+  const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
   const transcriptionModeRef = useRef(transcriptionMode);
   const hasInitialized = useRef(false);
+  const soundFeedbackRef = useRef(soundFeedback);
+  const startSoundRef = useRef(startSound);
+  const stopSoundRef = useRef(stopSound);
+  const companionShortcutsRef = useRef(companionShortcuts);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -126,6 +142,11 @@ function App() {
   useEffect(() => {
     transcriptionModeRef.current = transcriptionMode;
   }, [transcriptionMode]);
+
+  useEffect(() => { soundFeedbackRef.current = soundFeedback; }, [soundFeedback]);
+  useEffect(() => { startSoundRef.current = startSound; }, [startSound]);
+  useEffect(() => { stopSoundRef.current = stopSound; }, [stopSound]);
+  useEffect(() => { companionShortcutsRef.current = companionShortcuts; }, [companionShortcuts]);
 
   // Check setup status first
   useEffect(() => {
@@ -180,10 +201,26 @@ function App() {
 
     const unlistenRecordingStarted = listen("recording-started", () => {
       setIsRecording(true);
+      // Sound feedback
+      if (soundFeedbackRef.current && startSoundRef.current !== "none") {
+        playSound("start", startSoundRef.current as SoundPreset);
+      }
+      // Companion shortcuts
+      companionShortcutsRef.current
+        .filter((c) => c.trigger === "start" || c.trigger === "both")
+        .forEach((c) => invoke("simulate_keystroke_cmd", { keys: c.keys }).catch(() => {}));
     });
 
     const unlistenRecordingStopped = listen("recording-stopped", () => {
       setIsRecording(false);
+      // Sound feedback
+      if (soundFeedbackRef.current && stopSoundRef.current !== "none") {
+        playSound("stop", stopSoundRef.current as SoundPreset);
+      }
+      // Companion shortcuts
+      companionShortcutsRef.current
+        .filter((c) => c.trigger === "stop" || c.trigger === "both")
+        .forEach((c) => invoke("simulate_keystroke_cmd", { keys: c.keys }).catch(() => {}));
     });
 
     const unlistenRecordingCancelled = listen("recording-cancelled", () => {
@@ -251,6 +288,17 @@ function App() {
 
     const savedToken = await invoke<string>("get_server_token").catch(() => "");
     setServerToken(savedToken);
+
+    const [sf, ss, es, companions] = await Promise.all([
+      invoke<boolean>("get_sound_feedback").catch(() => false),
+      invoke<string>("get_start_sound").catch(() => "none"),
+      invoke<string>("get_stop_sound").catch(() => "none"),
+      invoke<CompanionShortcut[]>("get_companion_shortcuts").catch(() => []),
+    ]);
+    setSoundFeedback(sf);
+    setStartSound(ss);
+    setStopSound(es);
+    setCompanionShortcuts(companions);
 
     // Auto-load last used model if it's downloaded
     // Only load if: mode is "local" OR (mode is "server" AND fallback is enabled)
@@ -567,6 +615,26 @@ function App() {
             onPreserveClipboardChange={async (enabled) => {
               setPreserveClipboard(enabled);
               await invoke("set_preserve_clipboard", { enabled });
+            }}
+            soundFeedback={soundFeedback}
+            onSoundFeedbackChange={async (enabled) => {
+              setSoundFeedback(enabled);
+              await invoke("set_sound_feedback", { enabled });
+            }}
+            startSound={startSound}
+            onStartSoundChange={async (preset) => {
+              setStartSound(preset);
+              await invoke("set_start_sound", { preset });
+            }}
+            stopSound={stopSound}
+            onStopSoundChange={async (preset) => {
+              setStopSound(preset);
+              await invoke("set_stop_sound", { preset });
+            }}
+            companionShortcuts={companionShortcuts}
+            onCompanionShortcutsChange={async (shortcuts) => {
+              setCompanionShortcuts(shortcuts);
+              await invoke("set_companion_shortcuts", { shortcuts });
             }}
           />
         )}
