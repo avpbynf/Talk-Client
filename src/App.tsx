@@ -314,7 +314,7 @@ function App() {
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden noise-overlay">
       {/* Titlebar */}
-      <Titlebar isRecording={isRecording} />
+      <Titlebar />
 
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 overflow-hidden">

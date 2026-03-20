@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, Copy, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface TitlebarProps {
   title?: string;
-  isRecording?: boolean;
 }
 
-export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps) {
+export function Titlebar({ title = "T4lk" }: TitlebarProps) {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -37,34 +35,10 @@ export function Titlebar({ title = "T4lk", isRecording = false }: TitlebarProps)
       onDoubleClick={handleMaximize}
       className="h-9 flex items-center justify-between bg-surface-deep border-b border-border-subtle select-none shrink-0"
     >
-      {/* Left section - Logo and title */}
-      <div data-tauri-drag-region className="flex items-center gap-3 pl-3">
-        {/* Recording indicator with glow effect */}
-        <div className="relative">
-          <div
-            className={cn(
-              "h-2.5 w-2.5 rounded-full transition-all duration-300",
-              isRecording
-                ? "bg-[var(--color-recording)] recording-glow"
-                : "bg-border-hover"
-            )}
-          />
-          {isRecording && (
-            <>
-              <div className="recording-ring" />
-              <div className="absolute inset-0 rounded-full bg-[var(--color-recording)] blur-sm opacity-60" />
-            </>
-          )}
-        </div>
-
-        <span
-          data-tauri-drag-region
-          className={cn(
-            "text-xs font-medium tracking-wide transition-colors duration-300",
-            isRecording ? "text-[var(--color-recording)]" : "text-muted-foreground"
-          )}
-        >
-          {isRecording ? "Recording..." : title}
+      {/* Left section - Title */}
+      <div className="flex items-center gap-2 pl-3" data-tauri-drag-region>
+        <span className="text-xs font-medium text-muted select-none" data-tauri-drag-region>
+          {title}
         </span>
       </div>
 
