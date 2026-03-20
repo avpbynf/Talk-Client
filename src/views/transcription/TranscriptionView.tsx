@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Activity, Globe, HardDrive, Settings2, X } from "lucide-react";
+import { Activity, Cpu, Globe, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -10,16 +9,12 @@ import type {
   GpuVendor,
   TranscriptionMode,
 } from "@/App";
-import { EngineTab } from "./EngineTab";
 import { LocalTab } from "./LocalTab";
 import { ServerTab } from "./ServerTab";
 
 export type ServerStatus = "unknown" | "checking" | "online" | "offline";
-export type EngineMode = "local" | "server" | "server_fallback";
-export type TabId = "engine" | "local" | "server";
 
 interface TranscriptionViewProps {
-  // Models
   models: ModelInfo[];
   downloadedModels: string[];
   currentModel: string | null;
@@ -33,7 +28,6 @@ interface TranscriptionViewProps {
   gpus: GpuInfo[];
   currentGpuVendor: GpuVendor;
   onGpuVendorChange: (vendor: GpuVendor) => void;
-  // Server
   transcriptionMode: TranscriptionMode;
   onTranscriptionModeChange: (mode: TranscriptionMode) => void;
   serverUrl: string;
@@ -44,13 +38,9 @@ interface TranscriptionViewProps {
   onServerTimeoutChange: (timeout: number) => void;
   serverStatus: ServerStatus;
   checkServerHealth: (silent?: boolean) => void;
+  serverToken: string;
+  onServerTokenChange: (token: string) => void;
 }
-
-const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "engine", label: "Moteur", icon: <Settings2 className="h-4 w-4" /> },
-  { id: "local", label: "Modele local", icon: <HardDrive className="h-4 w-4" /> },
-  { id: "server", label: "Serveur", icon: <Globe className="h-4 w-4" /> },
-];
 
 export default function TranscriptionView({
   models,
@@ -76,35 +66,11 @@ export default function TranscriptionView({
   onServerTimeoutChange,
   serverStatus,
   checkServerHealth,
+  serverToken,
+  onServerTokenChange,
 }: TranscriptionViewProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("engine");
-
-  // Derive engine mode from props
-  const engineMode: EngineMode =
-    transcriptionMode === "local"
-      ? "local"
-      : serverFallback
-      ? "server_fallback"
-      : "server";
-
-  const handleEngineModeChange = (mode: EngineMode) => {
-    switch (mode) {
-      case "local":
-        onTranscriptionModeChange("local");
-        break;
-      case "server":
-        onTranscriptionModeChange("server");
-        onServerFallbackChange(false);
-        break;
-      case "server_fallback":
-        onTranscriptionModeChange("server");
-        onServerFallbackChange(true);
-        break;
-    }
-  };
-
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden view-enter">
       {/* Header */}
       <div className="px-6 py-5 border-b border-border-subtle shrink-0">
         <div className="flex items-center justify-between">
@@ -133,39 +99,40 @@ export default function TranscriptionView({
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mt-4 p-1 rounded-lg bg-surface-inset border border-border-subtle w-fit">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                activeTab === tab.id
-                  ? "bg-surface-active text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card"
-              )}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+        {/* 2-mode selector */}
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <button
+            onClick={() => onTranscriptionModeChange("local")}
+            className={cn(
+              "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200",
+              transcriptionMode === "local"
+                ? "border-[var(--color-active)] bg-[var(--color-active)]/10 text-[var(--color-active)]"
+                : "border-border-card bg-surface-inset text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+            )}
+          >
+            <Cpu className="h-4 w-4" />
+            Local
+          </button>
+          <button
+            onClick={() => onTranscriptionModeChange("server")}
+            className={cn(
+              "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200",
+              transcriptionMode === "server"
+                ? "border-[var(--color-server)] bg-[var(--color-server)]/10 text-[var(--color-server)]"
+                : "border-border-card bg-surface-inset text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+            )}
+          >
+            <Globe className="h-4 w-4" />
+            Serveur
+          </button>
         </div>
       </div>
 
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6">
-          <div className="max-w-2xl mx-auto">
-            {activeTab === "engine" && (
-              <EngineTab
-                engineMode={engineMode}
-                onEngineModeChange={handleEngineModeChange}
-                currentModel={currentModel}
-                serverStatus={serverStatus}
-              />
-            )}
-            {activeTab === "local" && (
+        <div className="p-6 slide-enter">
+          <div className="max-w-2xl mx-auto space-y-6">
+            {transcriptionMode === "local" && (
               <LocalTab
                 models={models}
                 downloadedModels={downloadedModels}
@@ -181,15 +148,49 @@ export default function TranscriptionView({
                 onGpuVendorChange={onGpuVendorChange}
               />
             )}
-            {activeTab === "server" && (
-              <ServerTab
-                serverUrl={serverUrl}
-                serverTimeout={serverTimeout}
-                serverStatus={serverStatus}
-                onServerUrlChange={onServerUrlChange}
-                onServerTimeoutChange={onServerTimeoutChange}
-                checkServerHealth={checkServerHealth}
-              />
+
+            {transcriptionMode === "server" && (
+              <>
+                <ServerTab
+                  serverUrl={serverUrl}
+                  serverTimeout={serverTimeout}
+                  serverStatus={serverStatus}
+                  onServerUrlChange={onServerUrlChange}
+                  onServerTimeoutChange={onServerTimeoutChange}
+                  checkServerHealth={checkServerHealth}
+                  serverToken={serverToken}
+                  onServerTokenChange={onServerTokenChange}
+                  serverFallback={serverFallback}
+                  onServerFallbackChange={onServerFallbackChange}
+                />
+
+                {serverFallback && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-border-subtle" />
+                      <span className="text-xs text-muted-foreground font-medium">
+                        Configuration fallback local
+                      </span>
+                      <div className="flex-1 h-px bg-border-subtle" />
+                    </div>
+
+                    <LocalTab
+                      models={models}
+                      downloadedModels={downloadedModels}
+                      currentModel={currentModel}
+                      isDownloading={isDownloading}
+                      downloadProgress={downloadProgress}
+                      isLoading={isLoading}
+                      gpus={gpus}
+                      currentGpuVendor={currentGpuVendor}
+                      onDownload={onDownload}
+                      onLoad={onLoad}
+                      onDelete={onDelete}
+                      onGpuVendorChange={onGpuVendorChange}
+                    />
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

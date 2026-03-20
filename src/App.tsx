@@ -106,6 +106,7 @@ function App() {
   const [serverUrl, setServerUrl] = useState("https://stt.example.com");
   const [serverFallback, setServerFallback] = useState(true);
   const [serverTimeout, setServerTimeout] = useState(30000);
+  const [serverToken, setServerToken] = useState("");
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [startMinimized, setStartMinimized] = useState(false);
   const [pauseMediaOnRecord, setPauseMediaOnRecord] = useState(false);
@@ -249,6 +250,9 @@ function App() {
     setServerTimeout(savedSettings.server_timeout || 30000);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
+
+    const savedToken = await invoke<string>("get_server_token").catch(() => "");
+    setServerToken(savedToken);
 
     // Auto-load last used model if it's downloaded
     // Only load if: mode is "local" OR (mode is "server" AND fallback is enabled)
@@ -480,6 +484,11 @@ function App() {
             }}
             serverStatus={serverStatus}
             checkServerHealth={checkServerHealth}
+            serverToken={serverToken}
+            onServerTokenChange={async (token) => {
+              setServerToken(token);
+              await invoke("set_server_token", { token });
+            }}
           />
         )}
         {currentView === "vocabulary" && (

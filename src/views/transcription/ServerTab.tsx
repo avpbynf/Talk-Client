@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Activity, AlertCircle, Check, Clock, Loader2, RefreshCw, Server, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 import type { ServerStatus } from "./TranscriptionView";
 
 interface ServerTabProps {
@@ -10,6 +11,10 @@ interface ServerTabProps {
   onServerUrlChange: (url: string) => void;
   onServerTimeoutChange: (timeout: number) => void;
   checkServerHealth: (silent?: boolean) => void;
+  serverToken: string;
+  onServerTokenChange: (token: string) => void;
+  serverFallback: boolean;
+  onServerFallbackChange: (value: boolean) => void;
 }
 
 const TIMEOUT_OPTIONS = [
@@ -49,9 +54,14 @@ export function ServerTab({
   onServerUrlChange,
   onServerTimeoutChange,
   checkServerHealth,
+  serverToken,
+  onServerTokenChange,
+  serverFallback,
+  onServerFallbackChange,
 }: ServerTabProps) {
   const [urlInput, setUrlInput] = useState(serverUrl);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [tokenInput, setTokenInput] = useState(serverToken || "");
 
   const saveServerUrl = () => {
     try {
@@ -121,6 +131,22 @@ export function ServerTab({
             {statusIcon(serverStatus)}
             <span className="text-sm">{statusText(serverStatus)}</span>
           </div>
+
+          {/* Token API */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Token API <span className="text-muted text-xs font-normal">(optionnel)</span>
+            </label>
+            <input
+              type="password"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              onBlur={() => { if (tokenInput !== serverToken) onServerTokenChange(tokenInput); }}
+              placeholder="sk-... ou laisser vide"
+              className="w-full px-3 py-2 rounded-lg bg-surface-inset border border-border-card text-sm font-mono input-glow placeholder:text-muted/50"
+            />
+            <p className="text-xs text-muted">Compatible OpenAI API. Requis pour les services tiers.</p>
+          </div>
         </div>
       </div>
 
@@ -152,6 +178,15 @@ export function ServerTab({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Fallback local */}
+      <div className="flex items-center justify-between p-4 rounded-xl bg-surface-raised border border-border-card">
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium text-foreground">Fallback local</p>
+          <p className="text-xs text-muted">Utiliser le modele local si le serveur est indisponible</p>
+        </div>
+        <Switch checked={serverFallback} onCheckedChange={onServerFallbackChange} />
       </div>
 
       {/* SSE Info */}
