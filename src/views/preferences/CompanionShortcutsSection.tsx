@@ -299,11 +299,12 @@ export default function CompanionShortcutsSection({
               );
             }
 
-            /* ── View mode — single compact row: Label → Trigger → Keys ── */
+            /* ── View mode — clickable row: Label → Trigger → Keys ── */
             return (
               <div
                 key={companion.id}
-                className="group flex items-center gap-2.5 pl-3 pr-1.5 py-2 rounded-lg border border-border-card bg-surface-inset hover:border-border-hover transition-colors"
+                onClick={() => startEdit(companion)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border-card bg-surface-inset hover:border-border-hover hover:bg-surface-raised cursor-pointer transition-colors"
               >
                 {/* Label */}
                 <span className="flex-1 text-sm text-foreground/80 truncate min-w-0">
@@ -340,24 +341,6 @@ export default function CompanionShortcutsSection({
                     non assigne
                   </span>
                 )}
-
-                {/* Actions — visible on hover */}
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button
-                    onClick={() => startEdit(companion)}
-                    className="p-1.5 rounded-md hover:bg-secondary transition-colors"
-                    title="Modifier"
-                  >
-                    <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={() => deleteShortcut(companion.id)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
               </div>
             );
           })}
