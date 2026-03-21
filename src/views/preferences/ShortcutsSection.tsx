@@ -211,7 +211,12 @@ export default function ShortcutsSection({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+        <Keyboard className="h-4 w-4" />
+        Raccourcis
+      </div>
+      <div className="grid grid-cols-2 gap-4">
       {renderShortcutCard(
         "main",
         shortcut,
@@ -224,6 +229,7 @@ export default function ShortcutsSection({
         "Annulation",
         "Annule l'enregistrement"
       )}
+      </div>
     </div>
   );
 }

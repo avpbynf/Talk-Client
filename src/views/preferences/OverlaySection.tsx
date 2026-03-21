@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { type OverlayThemeId, THEME_IDS, getThemeLabel, getThemePreviewColors } from "@/lib/overlay-themes";
+import { cn } from "@/lib/utils";
 
 interface OverlaySectionProps {
   overlayTheme: OverlayThemeId;
@@ -18,7 +19,7 @@ export default function OverlaySection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Theme de couleur de l'effet lumineux pendant l'enregistrement.
+        Thème de couleur de l'effet lumineux pendant l'enregistrement.
       </p>
 
       <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border-subtle">
@@ -30,11 +31,12 @@ export default function OverlaySection({
             <button
               key={id}
               onClick={() => onOverlayThemeChange(id)}
-              className={`cursor-pointer flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+              className={cn(
+                "cursor-pointer flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200",
                 isActive
                   ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
                   : "border-border-card bg-surface-deep hover:border-border-hover hover:bg-surface-raised"
-              }`}
+              )}
             >
               {/* Color preview — 3 dots */}
               <div className="flex gap-1.5">
@@ -46,7 +48,7 @@ export default function OverlaySection({
                   />
                 ))}
               </div>
-              <span className={`text-xs font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className={cn("text-xs font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
                 {getThemeLabel(id)}
               </span>
             </button>

@@ -1,5 +1,5 @@
 import { Switch } from "@/components/ui/switch";
-import { Monitor, Music, ClipboardCopy } from "lucide-react";
+import { Monitor } from "lucide-react";
 
 interface SystemSectionProps {
   autostartEnabled: boolean;
@@ -61,16 +61,11 @@ export default function SystemSection({
 
         {/* Pause Media */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
-          <div className="flex gap-3">
-            <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-hybrid)]/15">
-              <Music className="h-5 w-5 text-hybrid" />
-            </div>
-            <div>
-              <label className="font-medium">Pause media</label>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Met en pause la musique pendant l'enregistrement
-              </p>
-            </div>
+          <div>
+            <label className="font-medium">Pause media</label>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Met en pause la musique pendant l'enregistrement
+            </p>
           </div>
           <Switch
             checked={pauseMediaOnRecord}
@@ -80,16 +75,11 @@ export default function SystemSection({
 
         {/* Preserve Clipboard */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
-          <div className="flex gap-3">
-            <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-warning)]/15">
-              <ClipboardCopy className="h-5 w-5 text-warning" />
-            </div>
-            <div>
-              <label className="font-medium">Préserver le presse-papier</label>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Restaure le contenu du presse-papier après le collage
-              </p>
-            </div>
+          <div>
+            <label className="font-medium">Préserver le presse-papier</label>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Restaure le contenu du presse-papier après le collage
+            </p>
           </div>
           <Switch
             checked={preserveClipboard}

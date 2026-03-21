@@ -123,7 +123,7 @@ export default function KeyCaptureField({
         >
           {displayKeys.length > 0 ? (
             displayKeys.map((key, i) => (
-              <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+              <kbd key={i}>
                 {key}
               </kbd>
             ))
@@ -149,10 +149,13 @@ export default function KeyCaptureField({
 
   return (
     <div
+      tabIndex={0}
+      role="button"
       onClick={startCapture}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startCapture(); } }}
       className={cn(
         "cursor-pointer flex items-center gap-1 min-h-[28px] px-2 py-0.5 rounded-md shrink-0 transition-colors",
-        "hover:bg-surface-deep",
+        "hover:bg-surface-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         className
       )}
     >
