@@ -272,27 +272,28 @@ export default function CompanionShortcutsSection({
                     </div>
                   </div>
 
-                  {/* Action bar */}
+                  {/* Action bar: [Supprimer] ---- [Annuler] [Enregistrer] */}
                   <div className="flex items-center gap-2 px-3 py-2 bg-surface-deep/50 border-t border-border-subtle">
                     <button
-                      onClick={saveEdit}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 transition-colors"
+                      onClick={() => deleteShortcut(companion.id)}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors"
                     >
-                      <Check className="h-3 w-3" />
-                      Enregistrer
+                      <Trash2 className="h-3 w-3" />
+                      Supprimer
                     </button>
+                    <div className="flex-1" />
                     <button
                       onClick={cancelEdit}
                       className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active transition-colors"
                     >
                       Annuler
                     </button>
-                    <div className="flex-1" />
                     <button
-                      onClick={() => deleteShortcut(companion.id)}
-                      className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      onClick={saveEdit}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 transition-colors"
                     >
-                      <Trash2 size={13} />
+                      <Check className="h-3 w-3" />
+                      Enregistrer
                     </button>
                   </div>
                 </div>
