@@ -318,30 +318,8 @@ async fn start_recording(
     *state.audio_capture_handle.lock() = Some(handle);
     *state.is_recording.lock() = true;
 
-    // Show overlay
-    if app.get_webview_window("overlay").is_none() {
-        let app_settings = settings::load_settings();
-        let (width, height) = app_settings.overlay_size.dimensions();
-
-        let mut builder = WebviewWindowBuilder::new(&app, "overlay", WebviewUrl::App("/overlay".into()))
-            .title("")
-            .inner_size(width, height)
-            .decorations(false)
-            .transparent(true)
-            .shadow(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .resizable(false);
-
-        // Use saved position or center
-        if let Some(pos) = app_settings.overlay_position {
-            builder = builder.position(pos.x, pos.y);
-        } else {
-            builder = builder.center();
-        }
-
-        let _ = builder.build();
-    } else if let Some(overlay) = app.get_webview_window("overlay") {
+    // Show overlay (pre-created at startup, just show it)
+    if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.show();
         let _ = overlay.set_always_on_top(true);
     }

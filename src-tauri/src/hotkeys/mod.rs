@@ -1,9 +1,9 @@
-use crate::{audio, audio_encoder, server_transcription, settings, AppState, RecordingMode};
+use crate::{audio, audio_encoder, server_transcription, AppState, RecordingMode};
 use crate::settings::TranscriptionMode;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, EventTarget, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, EventTarget, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use thiserror::Error;
 
@@ -444,47 +444,16 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // Show overlay first (without taking focus to keep cursor in place)
-    if app.get_webview_window("overlay").is_none() {
-        let app_settings = settings::load_settings();
-        let (width, height) = app_settings.overlay_size.dimensions();
-
-        let mut builder = WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("/overlay".into()))
-            .title("")
-            .inner_size(width, height)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .resizable(false)
-            .focused(false);
-
-        // Use saved position or center
-        if let Some(pos) = app_settings.overlay_position {
-            builder = builder.position(pos.x, pos.y);
-        } else {
-            builder = builder.center();
+    // 1. Mute virtual mic FIRST (instant — just flips an AtomicBool)
+    {
+        let vm = state.virtual_mic.lock();
+        if vm.is_active() {
+            vm.mute();
+            let _ = app.emit("meeting-mode-muted", true);
         }
-
-        match builder.build() {
-            Ok(window) => {
-                // Force show and always on top
-                let _ = window.show();
-                let _ = window.set_always_on_top(true);
-            }
-            Err(e) => {
-                eprintln!("Failed to create overlay window: {}", e);
-            }
-        }
-    } else if let Some(overlay) = app.get_webview_window("overlay") {
-        let _ = overlay.show();
-        let _ = overlay.set_always_on_top(true);
     }
 
-    // Small delay to ensure overlay is visible before we emit state
-    std::thread::sleep(std::time::Duration::from_millis(50));
-
-    // Start audio capture (use selected device or system default)
+    // 2. Start audio capture immediately (use selected device or system default)
     let device_name = state.input_device_name.lock().clone();
     let (buffer, handle) = audio::start_capture_device(device_name.as_deref()).map_err(|e| e.to_string())?;
     let buffer_for_spectrum = buffer.clone();
@@ -493,7 +462,7 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     *state.audio_capture_handle.lock() = Some(handle);
     *state.is_recording.lock() = true;
 
-    // Pause media playback if enabled AND something is actually playing
+    // 3. Pause media playback if enabled AND something is actually playing
     #[cfg(windows)]
     {
         let should_pause = *state.pause_media_on_record.lock();
@@ -503,30 +472,25 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
         }
     }
 
-    // Mute virtual mic during STT recording
-    {
-        let vm = state.virtual_mic.lock();
-        if vm.is_active() {
-            vm.mute();
-            let _ = app.emit("meeting-mode-muted", true);
-        }
+    // 4. Show overlay (pre-created at startup, just show it — never recreate)
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        let _ = overlay.show();
+        let _ = overlay.set_always_on_top(true);
     }
 
-    // Emit recording state
+    // 5. Emit recording state
     let _ = app.emit("recording-started", ());
 
-    // Start spectrum emission thread
+    // 6. Start spectrum emission thread
     let app_for_spectrum = app.clone();
     std::thread::spawn(move || {
         let num_bars = 8;
         loop {
-            // Check if still recording
             let state = app_for_spectrum.state::<AppState>();
             if !*state.is_recording.lock() {
                 break;
             }
 
-            // Get spectrum levels and emit to overlay
             let levels = buffer_for_spectrum.get_spectrum(num_bars);
             let _ = app_for_spectrum.emit_to(
                 EventTarget::webview_window("overlay"),
@@ -534,7 +498,6 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
                 levels,
             );
 
-            // Emit every 50ms for smooth animation
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
     });
