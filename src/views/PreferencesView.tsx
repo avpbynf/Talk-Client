@@ -1,10 +1,12 @@
 import { RecordingMode } from "@/App";
 import type { CompanionShortcut } from "@/App";
+import type { OverlayThemeId } from "@/lib/overlay-themes";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RecordingModeSection from "./preferences/RecordingModeSection";
 import ShortcutsSection from "./preferences/ShortcutsSection";
 import CompanionShortcutsSection from "./preferences/CompanionShortcutsSection";
 import SoundFeedbackSection from "./preferences/SoundFeedbackSection";
+import OverlaySection from "./preferences/OverlaySection";
 import SystemSection from "./preferences/SystemSection";
 
 interface PreferencesViewProps {
@@ -30,6 +32,8 @@ interface PreferencesViewProps {
   onStopSoundChange: (preset: string) => void;
   companionShortcuts: CompanionShortcut[];
   onCompanionShortcutsChange: (shortcuts: CompanionShortcut[]) => void;
+  overlayTheme: OverlayThemeId;
+  onOverlayThemeChange: (theme: OverlayThemeId) => void;
 }
 
 export default function PreferencesView({
@@ -55,6 +59,8 @@ export default function PreferencesView({
   onStopSoundChange,
   companionShortcuts,
   onCompanionShortcutsChange,
+  overlayTheme,
+  onOverlayThemeChange,
 }: PreferencesViewProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -83,6 +89,10 @@ export default function PreferencesView({
             <CompanionShortcutsSection
               companionShortcuts={companionShortcuts}
               onCompanionShortcutsChange={onCompanionShortcutsChange}
+            />
+            <OverlaySection
+              overlayTheme={overlayTheme}
+              onOverlayThemeChange={onOverlayThemeChange}
             />
             <SoundFeedbackSection
               soundFeedback={soundFeedback}

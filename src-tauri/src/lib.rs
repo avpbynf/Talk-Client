@@ -320,6 +320,7 @@ async fn start_recording(
             .inner_size(width, height)
             .decorations(false)
             .transparent(true)
+            .shadow(false)
             .always_on_top(true)
             .skip_taskbar(true)
             .resizable(false);
@@ -462,6 +463,20 @@ fn set_overlay_size(app: tauri::AppHandle, size: settings::OverlaySize) -> Resul
 }
 
 #[tauri::command]
+fn get_overlay_theme() -> settings::OverlayTheme {
+    settings::load_settings().overlay_theme
+}
+
+#[tauri::command]
+fn set_overlay_theme(app: tauri::AppHandle, theme: settings::OverlayTheme) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.overlay_theme = theme;
+    settings::save_settings(&app_settings)?;
+    let _ = app.emit("overlay-theme-changed", theme);
+    Ok(())
+}
+
+#[tauri::command]
 fn get_vocabulary(state: tauri::State<'_, AppState>) -> Vec<String> {
     state.vocabulary.lock().clone()
 }
@@ -518,6 +533,7 @@ async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
         .inner_size(200.0, 80.0)
         .decorations(false)
         .transparent(true)
+        .shadow(false)
         .always_on_top(true)
         .skip_taskbar(true)
         .resizable(false)
@@ -813,6 +829,8 @@ pub fn run() {
             get_overlay_position,
             get_overlay_size,
             set_overlay_size,
+            get_overlay_theme,
+            set_overlay_theme,
             get_vocabulary,
             set_vocabulary,
             add_vocabulary_word,
@@ -939,6 +957,7 @@ pub fn run() {
                 .inner_size(width, height)
                 .decorations(false)
                 .transparent(true)
+                .shadow(false)
                 .always_on_top(true)
                 .skip_taskbar(true)
                 .resizable(false)

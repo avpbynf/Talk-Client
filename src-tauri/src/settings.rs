@@ -48,6 +48,23 @@ impl OverlaySize {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayTheme {
+    Aurora,
+    Sunset,
+    Ocean,
+    Neon,
+    Frost,
+    Neutral,
+}
+
+impl Default for OverlayTheme {
+    fn default() -> Self {
+        Self::Aurora
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverlayPosition {
     pub x: f64,
@@ -65,6 +82,8 @@ pub struct AppSettings {
     pub overlay_position: Option<OverlayPosition>,
     #[serde(default)]
     pub overlay_size: OverlaySize,
+    #[serde(default)]
+    pub overlay_theme: OverlayTheme,
     /// Custom vocabulary words to help Whisper recognize specific terms
     #[serde(default = "default_vocabulary")]
     pub vocabulary: Vec<String>,
@@ -154,6 +173,7 @@ impl Default for AppSettings {
             gpu_vendor: GpuVendor::default(),
             overlay_position: None,
             overlay_size: OverlaySize::default(),
+            overlay_theme: OverlayTheme::default(),
             vocabulary: default_vocabulary(),
             transcription_mode: TranscriptionMode::default(),
             server_url: default_server_url(),

@@ -39,6 +39,7 @@ export type RecordingMode = "push_to_talk" | "toggle";
 export type AcceleratorBackend = "cpu" | "vulkan";
 export type GpuVendor = "vulkan" | "cpu";
 export type OverlaySize = "small" | "medium" | "large";
+export type OverlayTheme = "aurora" | "sunset" | "ocean" | "neon" | "frost" | "neutral";
 export type TranscriptionMode = "local" | "server";
 
 export type CompanionShortcut = {
@@ -66,6 +67,7 @@ interface SavedSettings {
   last_model: string | null;
   accelerator_backend: AcceleratorBackend;
   overlay_size: OverlaySize;
+  overlay_theme: OverlayTheme;
   vocabulary: string[];
   transcription_mode: TranscriptionMode;
   server_url: string;
@@ -124,6 +126,7 @@ function App() {
   const [startSound, setStartSound] = useState("none");
   const [stopSound, setStopSound] = useState("none");
   const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
+  const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("aurora");
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
@@ -285,6 +288,7 @@ function App() {
     setServerTimeout(savedSettings.server_timeout || 30000);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
+    setOverlayTheme(savedSettings.overlay_theme || "aurora");
 
     const savedToken = await invoke<string>("get_server_token").catch(() => "");
     setServerToken(savedToken);
@@ -625,6 +629,11 @@ function App() {
             onCompanionShortcutsChange={async (shortcuts) => {
               setCompanionShortcuts(shortcuts);
               await invoke("set_companion_shortcuts", { shortcuts });
+            }}
+            overlayTheme={overlayTheme}
+            onOverlayThemeChange={async (theme) => {
+              setOverlayTheme(theme);
+              await invoke("set_overlay_theme", { theme });
             }}
           />
         )}
