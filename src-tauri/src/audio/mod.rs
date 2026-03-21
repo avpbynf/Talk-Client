@@ -171,11 +171,6 @@ pub fn start_capture_device(device_name: Option<&str>) -> Result<(AudioBuffer, A
     start_capture_with_device(device)
 }
 
-/// Starts audio capture using the system default input device.
-pub fn start_capture() -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> {
-    start_capture_device(None)
-}
-
 fn start_capture_with_device(device: cpal::Device) -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> {
     use std::sync::mpsc;
 
