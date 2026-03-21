@@ -435,3 +435,98 @@ kbd {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* ============================================================================
+   Overlay animations
+   ============================================================================ */
+
+.overlay-enter {
+  animation: overlayIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.overlay-exit {
+  animation: overlayOut 0.3s ease-out forwards;
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes overlayOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Spectrum bars - smooth height transition + GPU compositing */
+.overlay-bar {
+  transition: height 80ms ease-out, background 120ms ease-out;
+  will-change: height;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  border-radius: 1.5px;
+}
+
+/* Rotating gradient border -- conic sweep */
+.overlay-glow-border {
+  background: conic-gradient(
+    from var(--overlay-angle, 0deg),
+    oklch(0.85 0.02 260 / 0) 0%,
+    oklch(0.85 0.02 260 / 0) 30%,
+    oklch(0.90 0.04 220) 45%,
+    oklch(0.95 0.01 260) 50%,
+    oklch(0.90 0.04 300) 55%,
+    oklch(0.85 0.02 260 / 0) 70%,
+    oklch(0.85 0.02 260 / 0) 100%
+  );
+  animation: overlayRotate 3s linear infinite;
+  transition: opacity 200ms ease-out;
+}
+
+@property --overlay-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes overlayRotate {
+  from { --overlay-angle: 0deg; }
+  to { --overlay-angle: 360deg; }
+}
+
+/* Processing dots */
+.overlay-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-server);
+  animation: overlayDotPulse 1.2s ease-in-out infinite;
+}
+
+.overlay-dot-neutral {
+  background: oklch(0.75 0.01 260);
+}
+
+@keyframes overlayDotPulse {
+  0%, 80%, 100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}

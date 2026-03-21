@@ -135,20 +135,3 @@ pub fn type_text(_text: &str, _preserve_clipboard: bool) -> Result<(), Clipboard
     Ok(())
 }
 
-/// Type text directly using enigo.text() - works in terminals where Ctrl+V doesn't
-#[cfg(windows)]
-pub fn type_text_direct(text: &str) -> Result<(), ClipboardError> {
-    let mut enigo = Enigo::new(&Settings::default())
-        .map_err(|e| ClipboardError::SimulateInput(e.to_string()))?;
-
-    enigo
-        .text(text)
-        .map_err(|e| ClipboardError::SimulateInput(e.to_string()))?;
-
-    Ok(())
-}
-
-#[cfg(not(windows))]
-pub fn type_text_direct(_text: &str) -> Result<(), ClipboardError> {
-    Ok(())
-}

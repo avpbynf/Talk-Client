@@ -23,17 +23,7 @@ export default function SystemSection({
   onPreserveClipboardChange,
 }: SystemSectionProps) {
   return (
-    <div className="space-y-3">
-      {/* Overlay note */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Overlay</h3>
-        <div className="p-4 rounded-xl bg-surface-raised border border-border-card">
-          <p className="text-sm text-muted">
-            L'overlay compact s'affiche pendant l'enregistrement. Deplacez-le en le faisant glisser, la position est sauvegardee automatiquement.
-          </p>
-        </div>
-      </div>
-
+    <>
       {/* System card */}
       <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -107,6 +97,6 @@ export default function SystemSection({
           />
         </div>
       </div>
-    </div>
+    </>
   );
 }

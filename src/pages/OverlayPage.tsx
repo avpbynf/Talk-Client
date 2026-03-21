@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Mic, Loader2, Brain, Server } from "lucide-react";
+import { Mic, Brain, Server } from "lucide-react";
 
 type ProcessingState = "idle" | "recording" | "transcribing" | "streaming" | "server_transcribing";
 type OverlaySize = "small" | "medium" | "large";
@@ -12,13 +12,15 @@ function OverlayPage() {
   const [progress, setProgress] = useState(0);
   const [size, setSize] = useState<OverlaySize>("medium");
   const [spectrum, setSpectrum] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
+  const [elapsed, setElapsed] = useState(0);
+  const [visible, setVisible] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
 
   // Load overlay size on mount and listen for resize
   useEffect(() => {
     invoke<OverlaySize>("get_overlay_size").then(setSize);
 
-    // Update size when window is resized (triggered by settings change)
     const currentWindow = getCurrentWindow();
     const unlistenResize = currentWindow.onResized(() => {
       invoke<OverlaySize>("get_overlay_size").then(setSize);
@@ -29,10 +31,31 @@ function OverlayPage() {
     };
   }, []);
 
+  // Timer for recording elapsed time
+  useEffect(() => {
+    if (state === "recording") {
+      setElapsed(0);
+      timerRef.current = window.setInterval(() => {
+        setElapsed((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [state]);
+
   useEffect(() => {
     const unlistenStarted = listen("recording-started", () => {
       setState("recording");
       setProgress(0);
+      setVisible(true);
     });
 
     const unlistenProcessing = listen<string>("processing-state", (event) => {
@@ -48,16 +71,15 @@ function OverlayPage() {
 
     const unlistenCancelled = listen("recording-cancelled", () => {
       setState("idle");
+      setVisible(false);
     });
 
     const unlistenSpectrum = listen<number[]>("audio-spectrum", (event) => {
       setSpectrum(event.payload);
     });
 
-    // Listen for window move to save position
     const currentWindow = getCurrentWindow();
     const unlistenMove = currentWindow.onMoved(({ payload: position }) => {
-      // Debounce saving to avoid too many writes
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -79,61 +101,79 @@ function OverlayPage() {
     };
   }, []);
 
-  if (state === "idle") {
+  // Fade out then hide
+  useEffect(() => {
+    if (state === "idle" && visible) {
+      const timeout = setTimeout(() => setVisible(false), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [state, visible]);
+
+  if (!visible && state === "idle") {
     return null;
   }
 
-  const isSmall = size === "small";
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Average audio level for glow intensity
+  const avgLevel = spectrum.reduce((a, b) => a + b, 0) / spectrum.length;
+  // Border glow opacity scales with audio level
+  const glowOpacity = 0.3 + avgLevel * 0.7;
 
   const renderContent = () => {
     switch (state) {
-      case "recording": {
-        const numBars = isSmall ? 5 : 8;
-        const displaySpectrum = spectrum.slice(0, numBars);
+      case "recording":
         return (
           <>
-            <div className="relative">
-              <Mic className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-recording`} />
-              <span className="absolute -top-1 -right-1 h-2 w-2 bg-recording rounded-full animate-pulse" />
-            </div>
-            <div className="flex items-center gap-0.5 h-6">
-              {displaySpectrum.map((level, i) => (
+            {/* Mic icon */}
+            <Mic className="h-4 w-4 text-foreground/70" />
+
+            {/* Spectrum bars */}
+            <div className="flex items-center gap-[3px] h-5">
+              {spectrum.slice(0, 7).map((level, i) => (
                 <div
                   key={i}
-                  className="w-1 bg-recording rounded-full transition-all duration-50"
+                  className="w-[3px] overlay-bar"
                   style={{
-                    height: `${Math.max(3, 3 + level * 21)}px`,
+                    height: `${Math.max(3, Math.round(3 + level * 17))}px`,
+                    background: `oklch(${0.75 + level * 0.15} ${0.01 + level * 0.04} 260)`,
                   }}
                 />
               ))}
             </div>
-            {!isSmall && <span className="text-sm font-medium text-foreground">Écoute...</span>}
+
+            {/* Elapsed time */}
+            <span className="text-xs font-mono font-medium text-foreground/60 tabular-nums tracking-wider">
+              {formatTime(elapsed)}
+            </span>
           </>
         );
-      }
 
       case "transcribing":
         return (
           <>
-            <Brain className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-server`} />
+            <Brain className="h-4 w-4 text-foreground/70" />
             {progress === 0 ? (
-              <>
-                <Loader2 className="h-4 w-4 text-server animate-spin" />
-                {!isSmall && <span className="text-sm font-medium text-foreground">Analyse...</span>}
-              </>
+              <div className="flex gap-1 items-center">
+                <span className="overlay-dot overlay-dot-neutral" style={{ animationDelay: "0ms" }} />
+                <span className="overlay-dot overlay-dot-neutral" style={{ animationDelay: "150ms" }} />
+                <span className="overlay-dot overlay-dot-neutral" style={{ animationDelay: "300ms" }} />
+              </div>
             ) : (
               <>
-                <div className={`${isSmall ? "w-12" : "w-20"} h-1.5 bg-muted rounded-full overflow-hidden`}>
+                <div className="w-16 h-1 bg-foreground/10 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-server transition-all duration-150"
+                    className="h-full bg-foreground/50 rounded-full transition-all duration-200 ease-out"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                {!isSmall && (
-                  <span className="text-sm font-medium text-foreground tabular-nums w-10">
-                    {progress}%
-                  </span>
-                )}
+                <span className="text-xs font-mono font-medium text-foreground/60 tabular-nums">
+                  {progress}%
+                </span>
               </>
             )}
           </>
@@ -143,29 +183,42 @@ function OverlayPage() {
       case "server_transcribing":
         return (
           <>
-            <Server className={`${isSmall ? "h-4 w-4" : "h-5 w-5"} text-server`} />
-            <Loader2 className="h-4 w-4 text-server animate-spin" />
-            {!isSmall && <span className="text-sm font-medium text-foreground">Transcription...</span>}
+            <Server className="h-4 w-4 text-foreground/70" />
+            <div className="flex gap-1 items-center">
+              <span className="overlay-dot overlay-dot-neutral" style={{ animationDelay: "0ms" }} />
+              <span className="overlay-dot overlay-dot-neutral" style={{ animationDelay: "150ms" }} />
+              <span className="overlay-dot overlay-dot-neutral" style={{ animationDelay: "300ms" }} />
+            </div>
           </>
         );
-
     }
   };
 
   const handleMouseDown = async () => {
     try {
       await getCurrentWindow().startDragging();
-    } catch (e) {
-      console.error("Failed to start dragging:", e);
+    } catch {
+      // Dragging failed, ignore
     }
   };
 
   return (
     <div
-      className="h-screen w-screen bg-background/95 backdrop-blur-sm px-4 py-3 flex items-center justify-center gap-3 select-none cursor-grab active:cursor-grabbing"
+      className={`h-screen w-screen select-none cursor-grab active:cursor-grabbing ${
+        state === "idle" ? "overlay-exit" : "overlay-enter"
+      }`}
       onMouseDown={handleMouseDown}
     >
-      {renderContent()}
+      {/* Rotating gradient border layer */}
+      <div
+        className="absolute inset-0 overlay-glow-border"
+        style={{ opacity: glowOpacity }}
+      />
+
+      {/* Content layer */}
+      <div className="absolute inset-[1.5px] bg-background rounded-[1px] flex items-center justify-center gap-3 px-4">
+        {renderContent()}
+      </div>
     </div>
   );
 }

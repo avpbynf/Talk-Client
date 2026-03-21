@@ -142,6 +142,7 @@ where
 
     // JSON structures for server SSE events
     #[derive(Deserialize)]
+    #[allow(dead_code)]
     struct SegmentData {
         #[serde(default)]
         text: String,
@@ -154,6 +155,7 @@ where
     }
 
     #[derive(Deserialize)]
+    #[allow(dead_code)]
     struct DoneData {
         #[serde(default)]
         text: String,

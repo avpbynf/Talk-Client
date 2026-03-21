@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { listen } from "@tauri-apps/api/event";
-import { History, Mic, Settings, BookText } from "lucide-react";
+import { History, Cpu, Settings, BookA } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
 import HistoryView from "@/views/HistoryView";
@@ -348,10 +348,10 @@ function App() {
 
   const navItemsTop = [
     { id: "history" as View, icon: History, label: "Historique" },
-    { id: "vocabulary" as View, icon: BookText, label: "Vocabulaire" },
+    { id: "vocabulary" as View, icon: BookA, label: "Vocabulaire" },
   ];
   const navItemsBottom = [
-    { id: "transcription" as View, icon: Mic, label: "Transcription" },
+    { id: "transcription" as View, icon: Cpu, label: "Transcription" },
     { id: "preferences" as View, icon: Settings, label: "Preferences" },
   ];
 
@@ -385,82 +385,73 @@ function App() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-[72px] border-r border-border-subtle bg-surface-inset flex flex-col items-center py-5 shrink-0">
+        <div className="w-[72px] shrink-0 bg-surface-inset border-r border-border-subtle flex flex-col items-center py-4">
           {/* Top group */}
-          <div className="flex flex-col items-center gap-2">
-            {navItemsTop.map((item, index) => (
+          <div className="flex flex-col gap-2 w-full px-2">
+            {navItemsTop.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id)}
                 className={cn(
-                  "nav-indicator w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 relative group press-effect",
+                  "w-full aspect-square flex flex-col items-center justify-center rounded-xl transition-all duration-200 group relative",
                   currentView === item.id
-                    ? "active bg-secondary text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
-                    : "hover:bg-surface-elevated text-muted-foreground hover:text-foreground"
+                    ? "bg-surface-active text-[var(--color-active)] shadow-sm"
+                    : "text-muted-foreground hover:bg-surface-raised hover:text-foreground"
                 )}
-                style={{ animationDelay: `${index * 0.05}s` }}
                 title={item.label}
               >
-                <item.icon className="h-5 w-5" strokeWidth={currentView === item.id ? 2 : 1.5} />
-                {/* Tooltip */}
-                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-border-hover shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
-                  {item.label}
-                </span>
+                <item.icon size={22} strokeWidth={currentView === item.id ? 2.5 : 2} />
               </button>
             ))}
           </div>
-
-          {/* Separator */}
-          <div className="w-6 h-px bg-border-subtle my-3" />
 
           {/* Bottom group */}
-          <div className="flex flex-col items-center gap-2">
-            {navItemsBottom.map((item, index) => (
+          <div className="mt-auto flex flex-col gap-2 w-full px-2">
+            <div className="w-8 h-px bg-border-subtle mx-auto mb-2" />
+            {navItemsBottom.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id)}
                 className={cn(
-                  "nav-indicator w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 relative group press-effect",
+                  "w-full aspect-square flex flex-col items-center justify-center rounded-xl transition-all duration-200 group relative opacity-80 hover:opacity-100",
                   currentView === item.id
-                    ? "active bg-secondary text-[var(--color-active)] shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
-                    : "hover:bg-surface-elevated text-muted-foreground/80 hover:text-foreground"
+                    ? "bg-surface-active text-foreground shadow-sm opacity-100"
+                    : "text-muted-foreground hover:bg-surface-raised hover:text-foreground"
                 )}
-                style={{ animationDelay: `${(index + navItemsTop.length) * 0.05}s` }}
                 title={item.label}
               >
-                <item.icon className="h-5 w-5" strokeWidth={currentView === item.id ? 2 : 1.5} />
-                {/* Tooltip */}
-                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-50 border border-border-hover shadow-lg tooltip-enter translate-x-1 group-hover:translate-x-0">
-                  {item.label}
-                </span>
+                <item.icon size={20} strokeWidth={currentView === item.id ? 2.5 : 2} />
               </button>
             ))}
           </div>
 
-          {/* Status indicator at bottom */}
-          <div className="mt-auto flex flex-col items-center gap-2">
+          {/* Status indicator */}
+          <div className="mt-6 mb-2" title={(() => {
+            const isServerMode = transcriptionMode === "server" && !serverFallback;
+            const isHybridMode = transcriptionMode === "server" && serverFallback;
+            if (isServerMode) {
+              const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
+              return `Serveur: ${statusLabel}`;
+            } else if (isHybridMode) {
+              const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
+              return `Serveur: ${statusLabel} | Local: ${currentModel || "non pret"}`;
+            } else {
+              return currentModel ? `Modele: ${currentModel}` : "Aucun modele charge";
+            }
+          })()}>
             {(() => {
               const isServerMode = transcriptionMode === "server" && !serverFallback;
               const isHybridMode = transcriptionMode === "server" && serverFallback;
-
               let dotState: "success" | "warning" | "destructive";
-              let dotTitle: string;
-
               if (isServerMode) {
                 dotState = serverStatus === "online" ? "success" : serverStatus === "offline" ? "destructive" : "warning";
-                const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
-                dotTitle = `Serveur: ${statusLabel}`;
               } else if (isHybridMode) {
                 const serverOk = serverStatus === "online";
                 const localOk = currentModel !== null;
                 dotState = serverOk || localOk ? "success" : serverStatus === "offline" && !localOk ? "destructive" : "warning";
-                const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
-                dotTitle = `Serveur: ${statusLabel} | Local: ${currentModel || "non pret"}`;
               } else {
                 dotState = currentModel ? "success" : "warning";
-                dotTitle = currentModel ? `Modele: ${currentModel}` : "Aucun modele charge";
               }
-
               return (
                 <div
                   className={cn(
@@ -469,7 +460,6 @@ function App() {
                     dotState === "warning" && "bg-warning shadow-[0_0_6px_oklch(from_var(--color-warning)_l_c_h/0.4)]",
                     dotState === "destructive" && "bg-destructive shadow-[0_0_6px_oklch(from_var(--color-destructive)_l_c_h/0.4)]"
                   )}
-                  title={dotTitle}
                 />
               );
             })()}
