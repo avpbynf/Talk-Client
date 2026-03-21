@@ -80,8 +80,8 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-center gap-2 px-2 py-2 rounded-lg border border-border-card bg-surface-inset transition-colors",
-        isDragging && "shadow-lg ring-1 ring-[var(--color-active)]/40"
+        "group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors",
+        isDragging && "shadow-lg ring-1 ring-[var(--color-active)]/40 bg-surface-inset"
       )}
     >
       {/* Drag handle */}
@@ -130,7 +130,7 @@ function SortableRow({
       {/* Delete */}
       <button
         onClick={() => onDelete(companion.id)}
-        className="p-1 rounded-md text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+        className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
         title="Supprimer"
       >
         <Trash2 className="h-3.5 w-3.5" />
