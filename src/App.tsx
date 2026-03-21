@@ -236,7 +236,11 @@ function App() {
 
     const unlistenRecordingCancelled = listen("recording-cancelled", () => {
       setIsRecording(false);
-      // Companion shortcuts — cancellation counts as "stop"
+      // Sound feedback — cancellation counts as stop
+      if (soundFeedbackRef.current && stopSoundRef.current !== "none") {
+        playSound("stop", stopSoundRef.current as SoundPreset);
+      }
+      // Companion shortcuts
       fireCompanionShortcuts("stop");
     });
 
