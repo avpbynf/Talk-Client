@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, Trash2, Check, X, Edit3, ChevronUp, ChevronDown } from "lucide-react";
+import { Keyboard, Plus, Trash2, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import KeyCaptureField from "@/components/KeyCaptureField";
 import { cn } from "@/lib/utils";
 
 interface CompanionShortcutsSectionProps {
@@ -14,7 +14,6 @@ interface Draft {
   label: string;
   keys: string;
   trigger: "start" | "stop" | "both";
-  pendingKeys: string[];
 }
 
 const TRIGGER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -44,69 +43,17 @@ export default function CompanionShortcutsSection({
 }: CompanionShortcutsSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [capturing, setCapturing] = useState(false);
-  const captureRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (capturing && captureRef.current) {
-      captureRef.current.focus();
-    }
-  }, [capturing]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const keys: string[] = [];
-    if (e.ctrlKey) keys.push("Ctrl");
-    if (e.shiftKey) keys.push("Shift");
-    if (e.altKey) keys.push("Alt");
-    if (e.metaKey) keys.push("Win");
-
-    const key = e.key;
-    const modifierKeys = ["Control", "Shift", "Alt", "Meta"];
-
-    if (!modifierKeys.includes(key)) {
-      const keyMap: Record<string, string> = {
-        " ": "Space",
-        Enter: "Enter",
-        Tab: "Tab",
-        Escape: "Escape",
-        Backspace: "Backspace",
-        Delete: "Delete",
-        ArrowUp: "Up",
-        ArrowDown: "Down",
-        ArrowLeft: "Left",
-        ArrowRight: "Right",
-      };
-
-      if (keyMap[key]) {
-        keys.push(keyMap[key]);
-      } else if (key.startsWith("F") && key.length <= 3) {
-        keys.push(key);
-      } else if (key.length === 1) {
-        keys.push(key.toUpperCase());
-      }
-    }
-
-    if (draft) {
-      setDraft({ ...draft, pendingKeys: keys });
-    }
-  };
-
-  const startEdit = async (companion: CompanionShortcut) => {
-    await invoke("disable_shortcuts");
+  const startEdit = (companion: CompanionShortcut) => {
     setEditingId(companion.id);
     setDraft({
       label: companion.label,
       keys: companion.keys,
       trigger: companion.trigger,
-      pendingKeys: [],
     });
   };
 
-  const cancelEdit = async () => {
-    // If this was a new empty shortcut, remove it
+  const cancelEdit = () => {
     if (editingId) {
       const companion = companionShortcuts.find((c) => c.id === editingId);
       if (companion && !companion.keys && !companion.label) {
@@ -117,26 +64,18 @@ export default function CompanionShortcutsSection({
     }
     setEditingId(null);
     setDraft(null);
-    setCapturing(false);
-    await invoke("enable_shortcuts");
   };
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     if (!editingId || !draft) return;
-
-    const finalKeys =
-      draft.pendingKeys.length >= 2 ? draft.pendingKeys.join("+") : draft.keys;
-
     const updated = companionShortcuts.map((c) =>
       c.id === editingId
-        ? { ...c, label: draft.label, keys: finalKeys, trigger: draft.trigger }
+        ? { ...c, label: draft.label, keys: draft.keys, trigger: draft.trigger }
         : c
     );
     onCompanionShortcutsChange(updated);
     setEditingId(null);
     setDraft(null);
-    setCapturing(false);
-    await invoke("enable_shortcuts");
   };
 
   const moveShortcut = (id: string, direction: -1 | 1) => {
@@ -149,14 +88,13 @@ export default function CompanionShortcutsSection({
     onCompanionShortcutsChange(reordered);
   };
 
-  const deleteShortcut = async (id: string) => {
+  const deleteShortcut = (id: string) => {
     onCompanionShortcutsChange(
       companionShortcuts.filter((c) => c.id !== id)
     );
     if (editingId === id) {
       setEditingId(null);
       setDraft(null);
-      await invoke("enable_shortcuts");
     }
   };
 
@@ -210,14 +148,6 @@ export default function CompanionShortcutsSection({
 
             /* ── Edit mode ─────────────────────────────────── */
             if (isEditing && draft) {
-              const draftMeta = TRIGGER_META[draft.trigger];
-              const displayKeys =
-                draft.pendingKeys.length > 0
-                  ? draft.pendingKeys
-                  : draft.keys
-                    ? draft.keys.split("+")
-                    : [];
-
               return (
                 <div
                   key={companion.id}
@@ -225,7 +155,6 @@ export default function CompanionShortcutsSection({
                 >
                   {/* Main edit row: Label → Trigger → Keys */}
                   <div className="flex items-center gap-2 p-3">
-                    {/* Label input */}
                     <input
                       type="text"
                       value={draft.label}
@@ -240,7 +169,6 @@ export default function CompanionShortcutsSection({
                       }}
                     />
 
-                    {/* Trigger dropdown */}
                     <Select
                       value={draft.trigger}
                       onValueChange={(v) =>
@@ -257,49 +185,15 @@ export default function CompanionShortcutsSection({
                       </SelectContent>
                     </Select>
 
-                    {/* Key display / capture */}
-                    {capturing ? (
-                      <div
-                        ref={captureRef}
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          handleKeyDown(e);
-                          setCapturing(false);
-                        }}
-                        onBlur={() => setCapturing(false)}
-                        className="flex gap-1.5 items-center min-h-[32px] px-2.5 py-1 rounded-md border-2 border-[var(--color-active)] bg-surface-deep min-w-[110px] focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30"
-                      >
-                        <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
-                          Appuyez sur les touches...
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {displayKeys.length > 0 ? (
-                          <div className="flex gap-1 items-center px-2.5 py-1 rounded-md border border-border-card bg-surface-deep min-h-[32px]">
-                            {displayKeys.map((key, i) => (
-                              <kbd key={i} className="text-[11px] px-1.5 py-0.5">
-                                {key}
-                              </kbd>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground/40 italic px-2.5 py-1 rounded-md border border-dashed border-border-card min-h-[32px] flex items-center">
-                            non assigne
-                          </span>
-                        )}
-                        <button
-                          onClick={() => setCapturing(true)}
-                          className="p-1.5 rounded-md hover:bg-secondary transition-colors"
-                          title="Modifier le raccourci"
-                        >
-                          <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                      </div>
-                    )}
+                    <KeyCaptureField
+                      value={draft.keys}
+                      onChange={(shortcut) =>
+                        setDraft({ ...draft, keys: shortcut })
+                      }
+                    />
                   </div>
 
-                  {/* Action bar: [Supprimer] [Up] [Down] ---- [Annuler] [Enregistrer] */}
+                  {/* Action bar */}
                   <div className="flex items-center gap-1.5 px-3 py-2 bg-surface-deep/50 border-t border-border-subtle">
                     <button
                       onClick={() => deleteShortcut(companion.id)}
@@ -343,14 +237,13 @@ export default function CompanionShortcutsSection({
               );
             }
 
-            /* ── View mode — clickable row: Label → Trigger → Keys ── */
+            /* ── View mode — clickable row ──────────────────── */
             return (
               <div
                 key={companion.id}
                 onClick={() => startEdit(companion)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border-card bg-surface-inset hover:border-border-hover hover:bg-surface-raised cursor-pointer transition-colors"
               >
-                {/* Label */}
                 <span className="flex-1 text-sm text-foreground/80 truncate min-w-0">
                   {companion.label || (
                     <span className="text-muted-foreground/40 italic">
@@ -359,7 +252,6 @@ export default function CompanionShortcutsSection({
                   )}
                 </span>
 
-                {/* Trigger badge */}
                 <span
                   className={cn(
                     "shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border",
@@ -371,7 +263,6 @@ export default function CompanionShortcutsSection({
                   {meta.label}
                 </span>
 
-                {/* Keys */}
                 {keyParts.length > 0 ? (
                   <div className="flex gap-1 shrink-0">
                     {keyParts.map((key, i) => (

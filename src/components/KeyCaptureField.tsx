@@ -1,0 +1,176 @@
+import { useState, useRef, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { Edit3 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const KEY_MAP: Record<string, string> = {
+  " ": "Space",
+  Enter: "Enter",
+  Tab: "Tab",
+  Escape: "Escape",
+  Backspace: "Backspace",
+  Delete: "Delete",
+  ArrowUp: "Up",
+  ArrowDown: "Down",
+  ArrowLeft: "Left",
+  ArrowRight: "Right",
+};
+
+const MODIFIER_KEYS = ["Control", "Shift", "Alt", "Meta"];
+
+function parseKeyEvent(e: React.KeyboardEvent): string[] {
+  const keys: string[] = [];
+  if (e.ctrlKey) keys.push("Ctrl");
+  if (e.shiftKey) keys.push("Shift");
+  if (e.altKey) keys.push("Alt");
+  if (e.metaKey) keys.push("Win");
+
+  const key = e.key;
+  if (!MODIFIER_KEYS.includes(key)) {
+    if (KEY_MAP[key]) {
+      keys.push(KEY_MAP[key]);
+    } else if (key.startsWith("F") && key.length <= 3) {
+      keys.push(key);
+    } else if (key.length === 1) {
+      keys.push(key.toUpperCase());
+    }
+  }
+
+  return keys;
+}
+
+export function hasValidCombo(keys: string[]): boolean {
+  const hasModifier = keys.some((k) =>
+    ["Ctrl", "Shift", "Alt", "Win"].includes(k)
+  );
+  const hasKey = keys.some(
+    (k) => !["Ctrl", "Shift", "Alt", "Win"].includes(k)
+  );
+  return keys.length >= 2 && hasModifier && hasKey;
+}
+
+interface KeyCaptureFieldProps {
+  /** Current shortcut string, e.g. "Ctrl+Shift+M" */
+  value: string;
+  /** Called with the new shortcut string when a valid combo is captured */
+  onChange: (shortcut: string) => void;
+  /** Accent color for the active capture border */
+  accentColor?: string;
+  /** Placeholder when no shortcut is assigned */
+  placeholder?: string;
+  /** Additional className for the outer wrapper */
+  className?: string;
+}
+
+export default function KeyCaptureField({
+  value,
+  onChange,
+  accentColor = "var(--color-active)",
+  placeholder = "Non assigne",
+  className,
+}: KeyCaptureFieldProps) {
+  const [capturing, setCapturing] = useState(false);
+  const [pendingKeys, setPendingKeys] = useState<string[]>([]);
+  const captureRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (capturing && captureRef.current) {
+      captureRef.current.focus();
+    }
+  }, [capturing]);
+
+  const startCapture = async () => {
+    await invoke("disable_shortcuts");
+    setPendingKeys([]);
+    setCapturing(true);
+  };
+
+  const stopCapture = async (save: boolean) => {
+    if (save && hasValidCombo(pendingKeys)) {
+      onChange(pendingKeys.join("+"));
+    }
+    setPendingKeys([]);
+    setCapturing(false);
+    await invoke("enable_shortcuts");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPendingKeys(parseKeyEvent(e));
+  };
+
+  const displayKeys = capturing && pendingKeys.length > 0
+    ? pendingKeys
+    : value
+      ? value.split("+")
+      : [];
+
+  if (capturing) {
+    return (
+      <div className={cn("flex items-center gap-1.5", className)}>
+        <div
+          ref={captureRef}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          onBlur={() => stopCapture(true)}
+          className="flex gap-1.5 items-center min-h-[32px] px-2.5 py-1 rounded-md border-2 bg-surface-deep min-w-[110px] focus:outline-none focus:ring-2"
+          style={{
+            borderColor: accentColor,
+            // @ts-expect-error css custom property
+            "--tw-ring-color": `color-mix(in oklch, ${accentColor} 30%, transparent)`,
+          }}
+        >
+          {displayKeys.length > 0 ? (
+            displayKeys.map((key, i) => (
+              <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+                {key}
+              </kbd>
+            ))
+          ) : (
+            <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
+              Appuyez sur les touches...
+            </span>
+          )}
+        </div>
+        {hasValidCombo(pendingKeys) && (
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              stopCapture(true);
+            }}
+            className="p-1 rounded-md text-xs font-medium hover:bg-surface-active transition-colors"
+            style={{ color: accentColor }}
+          >
+            OK
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex items-center gap-1.5 shrink-0", className)}>
+      {displayKeys.length > 0 ? (
+        <div className="flex gap-1 items-center px-2.5 py-1 rounded-md border border-border-card bg-surface-deep min-h-[32px]">
+          {displayKeys.map((key, i) => (
+            <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+              {key}
+            </kbd>
+          ))}
+        </div>
+      ) : (
+        <span className="text-[11px] text-muted-foreground/40 italic px-2.5 py-1 rounded-md border border-dashed border-border-card min-h-[32px] flex items-center">
+          {placeholder}
+        </span>
+      )}
+      <button
+        onClick={startCapture}
+        className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+        title="Modifier le raccourci"
+      >
+        <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </div>
+  );
+}
