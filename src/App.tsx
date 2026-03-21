@@ -228,6 +228,10 @@ function App() {
 
     const unlistenRecordingCancelled = listen("recording-cancelled", () => {
       setIsRecording(false);
+      // Companion shortcuts — cancellation counts as "stop"
+      companionShortcutsRef.current
+        .filter((c) => c.trigger === "stop" || c.trigger === "both")
+        .forEach((c) => invoke("simulate_keystroke_cmd", { keys: c.keys }).catch(() => {}));
     });
 
     const unlistenModelDeleted = listen<{ model_id: string }>("model-deleted", (event) => {

@@ -37,7 +37,7 @@ export function Titlebar({ title = "T4lk" }: TitlebarProps) {
     >
       {/* Left section - Title */}
       <div className="flex items-center gap-2 pl-3" data-tauri-drag-region>
-        <span className="text-xs font-medium text-muted select-none" data-tauri-drag-region>
+        <span className="text-xs font-medium text-muted-foreground select-none" data-tauri-drag-region>
           {title}
         </span>
       </div>
