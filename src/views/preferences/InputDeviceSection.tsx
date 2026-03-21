@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Mic } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function InputDeviceSection() {
   const [devices, setDevices] = useState<string[]>([]);
@@ -27,18 +34,22 @@ export default function InputDeviceSection() {
 
         <div className="space-y-2">
           <label className="font-medium">Peripherique d'entree</label>
-          <select
+          <Select
             value={selected ?? "__default__"}
-            onChange={(e) => handleChange(e.target.value)}
-            className="w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={handleChange}
           >
-            <option value="__default__">Defaut systeme</option>
-            {devices.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Defaut systeme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__default__">Defaut systeme</SelectItem>
+              {devices.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground">
             Micro utilise pour la capture audio STT
           </p>
