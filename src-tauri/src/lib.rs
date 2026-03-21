@@ -788,8 +788,8 @@ fn simulate_keystroke_cmd(keys: String) -> Result<(), String> {
 // ============================================================================
 
 #[tauri::command]
-fn get_virtual_audio_status() -> virtual_mic::VirtualAudioStatus {
-    virtual_mic::detect_virtual_audio()
+fn get_vbcable_status() -> virtual_mic::VBCableStatus {
+    virtual_mic::detect_vbcable()
 }
 
 #[tauri::command]
@@ -910,7 +910,7 @@ pub fn run() {
             get_companion_shortcuts,
             set_companion_shortcuts,
             simulate_keystroke_cmd,
-            get_virtual_audio_status,
+            get_vbcable_status,
             get_meeting_mode,
             set_meeting_mode,
         ])

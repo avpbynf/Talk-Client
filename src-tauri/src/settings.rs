@@ -129,7 +129,7 @@ pub struct AppSettings {
     /// Companion shortcuts to simulate on recording start/stop
     #[serde(default)]
     pub companion_shortcuts: Vec<CompanionShortcut>,
-    /// Enable meeting mode (route audio through virtual audio driver)
+    /// Enable meeting mode (route audio through VB-Cable)
     #[serde(default)]
     pub meeting_mode_enabled: bool,
 }

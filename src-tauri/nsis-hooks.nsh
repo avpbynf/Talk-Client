@@ -2,13 +2,14 @@
 ; Removes user data (settings, models) on uninstall
 
 !macro NSIS_HOOK_PREINSTALL
-  ; Install Virtual Audio Driver (open-source, MIT license).
-  ; Extract driver files (.sys, .inf, .cat) to $TEMP, install via pnputil.
-  ; Requires admin (UAC prompt). If declined, meeting mode is unavailable.
-  SetOutPath "$TEMP\VirtualAudioDriver"
-  File /r "${NSISDIR}\..\..\resources\VirtualAudioDriver\*.*"
-  nsExec::ExecToLog 'pnputil /add-driver "$TEMP\VirtualAudioDriver\VirtualAudioDriver.inf" /install'
-  RMDir /r "$TEMP\VirtualAudioDriver"
+  ; Install VB-Audio Virtual Cable silently.
+  ; The setup exe needs its driver files (.sys, .inf, .cat) in the same directory.
+  ; Extract the entire VBCABLE_Driver folder to $TEMP, run setup, then clean up.
+  ; VB-Cable requires admin (UAC prompt). If declined, meeting mode is unavailable.
+  SetOutPath "$TEMP\VBCABLE_Driver"
+  File /r "${NSISDIR}\..\..\resources\VBCABLE_Driver\*.*"
+  nsExec::ExecToLog '"$TEMP\VBCABLE_Driver\VBCABLE_Setup_x64.exe" /quiet /norestart'
+  RMDir /r "$TEMP\VBCABLE_Driver"
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
