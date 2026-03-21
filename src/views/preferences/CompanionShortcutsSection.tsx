@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, Trash2, Check, X } from "lucide-react";
+import { Keyboard, Plus, Trash2, Check, X, Edit3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -44,13 +44,14 @@ export default function CompanionShortcutsSection({
 }: CompanionShortcutsSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [capturing, setCapturing] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (editingId && captureRef.current) {
+    if (capturing && captureRef.current) {
       captureRef.current.focus();
     }
-  }, [editingId]);
+  }, [capturing]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     e.preventDefault();
@@ -116,6 +117,7 @@ export default function CompanionShortcutsSection({
     }
     setEditingId(null);
     setDraft(null);
+    setCapturing(false);
     await invoke("enable_shortcuts");
   };
 
@@ -133,6 +135,7 @@ export default function CompanionShortcutsSection({
     onCompanionShortcutsChange(updated);
     setEditingId(null);
     setDraft(null);
+    setCapturing(false);
     await invoke("enable_shortcuts");
   };
 
@@ -242,31 +245,46 @@ export default function CompanionShortcutsSection({
                       </SelectContent>
                     </Select>
 
-                    {/* Key capture */}
-                    <div
-                      ref={captureRef}
-                      tabIndex={0}
-                      onKeyDown={handleKeyDown}
-                      className={cn(
-                        "flex gap-1.5 items-center min-h-[32px] px-2.5 py-1 rounded-md border bg-surface-deep transition-colors min-w-[110px]",
-                        "focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30",
-                        displayKeys.length > 0
-                          ? `${draftMeta.border}`
-                          : "border-border-card"
-                      )}
-                    >
-                      {displayKeys.length > 0 ? (
-                        displayKeys.map((key, i) => (
-                          <kbd key={i} className="text-[11px] px-1.5 py-0.5">
-                            {key}
-                          </kbd>
-                        ))
-                      ) : (
+                    {/* Key display / capture */}
+                    {capturing ? (
+                      <div
+                        ref={captureRef}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          handleKeyDown(e);
+                          setCapturing(false);
+                        }}
+                        onBlur={() => setCapturing(false)}
+                        className="flex gap-1.5 items-center min-h-[32px] px-2.5 py-1 rounded-md border-2 border-[var(--color-active)] bg-surface-deep min-w-[110px] focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30"
+                      >
                         <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
-                          Appuyez...
+                          Appuyez sur les touches...
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {displayKeys.length > 0 ? (
+                          <div className="flex gap-1 items-center px-2.5 py-1 rounded-md border border-border-card bg-surface-deep min-h-[32px]">
+                            {displayKeys.map((key, i) => (
+                              <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+                                {key}
+                              </kbd>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground/40 italic px-2.5 py-1 rounded-md border border-dashed border-border-card min-h-[32px] flex items-center">
+                            non assigne
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setCapturing(true)}
+                          className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+                          title="Modifier le raccourci"
+                        >
+                          <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Action bar: [Supprimer] ---- [Annuler] [Enregistrer] */}
