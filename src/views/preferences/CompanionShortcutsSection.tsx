@@ -9,12 +9,25 @@ interface CompanionShortcutsSectionProps {
   onCompanionShortcutsChange: (shortcuts: CompanionShortcut[]) => void;
 }
 
+interface Draft {
+  label: string;
+  keys: string;
+  trigger: "start" | "stop" | "both";
+  pendingKeys: string[];
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  start: "Demarrage",
+  stop: "Arret",
+  both: "Les deux",
+};
+
 export default function CompanionShortcutsSection({
   companionShortcuts,
   onCompanionShortcutsChange,
 }: CompanionShortcutsSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingKeys, setPendingKeys] = useState<string[]>([]);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,39 +72,42 @@ export default function CompanionShortcutsSection({
       }
     }
 
-    setPendingKeys(keys);
+    if (draft) {
+      setDraft({ ...draft, pendingKeys: keys });
+    }
   };
 
-  const startCapture = async (id: string) => {
+  const startEdit = async (companion: CompanionShortcut) => {
     await invoke("disable_shortcuts");
-    setEditingId(id);
-    setPendingKeys([]);
+    setEditingId(companion.id);
+    setDraft({
+      label: companion.label,
+      keys: companion.keys,
+      trigger: companion.trigger,
+      pendingKeys: [],
+    });
   };
 
-  const cancelCapture = async () => {
+  const cancelEdit = async () => {
     setEditingId(null);
-    setPendingKeys([]);
+    setDraft(null);
     await invoke("enable_shortcuts");
   };
 
-  const saveCapture = async () => {
-    if (pendingKeys.length < 2 || !editingId) return;
+  const saveEdit = async () => {
+    if (!editingId || !draft) return;
 
-    const hasModifier = pendingKeys.some((k) =>
-      ["Ctrl", "Shift", "Alt", "Win"].includes(k)
-    );
-    const hasKey = pendingKeys.some(
-      (k) => !["Ctrl", "Shift", "Alt", "Win"].includes(k)
-    );
-    if (!hasModifier || !hasKey) return;
+    const finalKeys =
+      draft.pendingKeys.length >= 2 ? draft.pendingKeys.join("+") : draft.keys;
 
-    const newKeys = pendingKeys.join("+");
     const updated = companionShortcuts.map((c) =>
-      c.id === editingId ? { ...c, keys: newKeys } : c
+      c.id === editingId
+        ? { ...c, label: draft.label, keys: finalKeys, trigger: draft.trigger }
+        : c
     );
     onCompanionShortcutsChange(updated);
     setEditingId(null);
-    setPendingKeys([]);
+    setDraft(null);
     await invoke("enable_shortcuts");
   };
 
@@ -111,6 +127,7 @@ export default function CompanionShortcutsSection({
               trigger: "both",
             };
             onCompanionShortcutsChange([...companionShortcuts, newCompanion]);
+            startEdit(newCompanion);
           }}
           className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border-card text-muted-foreground hover:text-foreground hover:border-border-hover transition-colors"
         >
@@ -131,132 +148,167 @@ export default function CompanionShortcutsSection({
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {companionShortcuts.map((companion) => {
-            const isCapturing = editingId === companion.id;
+            const isEditing = editingId === companion.id;
             const keyParts = companion.keys
               ? companion.keys.split("+")
               : [];
 
-            return (
-              <div
-                key={companion.id}
-                className="p-4 rounded-lg border border-border-card bg-surface-inset space-y-3"
-              >
-                {/* Label + delete */}
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={companion.label}
-                    onChange={(e) => {
-                      const updated = companionShortcuts.map((c) =>
-                        c.id === companion.id
-                          ? { ...c, label: e.target.value }
-                          : c
-                      );
-                      onCompanionShortcutsChange(updated);
-                    }}
-                    placeholder="Ex: Mute Discord"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted/50"
-                  />
-                  <button
-                    onClick={() => {
-                      const updated = companionShortcuts.filter(
-                        (c) => c.id !== companion.id
-                      );
-                      onCompanionShortcutsChange(updated);
-                    }}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+            if (isEditing && draft) {
+              const displayKeys =
+                draft.pendingKeys.length > 0
+                  ? draft.pendingKeys
+                  : draft.keys
+                    ? draft.keys.split("+")
+                    : [];
 
-                {/* Key capture */}
-                {isCapturing ? (
-                  <div className="space-y-2">
+              return (
+                <div
+                  key={companion.id}
+                  className="p-3 rounded-lg border-2 border-[var(--color-active)] bg-surface-inset space-y-3"
+                >
+                  {/* Row 1: trigger + key capture + label */}
+                  <div className="flex items-center gap-2">
+                    {/* Trigger buttons */}
+                    <div className="flex shrink-0">
+                      {(["start", "stop", "both"] as const).map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setDraft({ ...draft, trigger: t })}
+                          className={cn(
+                            "px-2 py-1 text-[11px] font-medium transition-colors first:rounded-l-md last:rounded-r-md border",
+                            draft.trigger === t
+                              ? "bg-[var(--color-active)]/15 text-[var(--color-active)] border-[var(--color-active)]/30 z-10"
+                              : "border-border-card text-muted-foreground hover:text-foreground -ml-px"
+                          )}
+                        >
+                          {TRIGGER_LABELS[t]}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Key capture */}
                     <div
                       ref={captureRef}
                       tabIndex={0}
                       onKeyDown={handleKeyDown}
-                      className="flex gap-2 items-center min-h-[40px] p-2.5 rounded-lg border-2 border-[var(--color-active)] bg-surface-deep focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30"
+                      className="flex gap-1.5 items-center min-h-[32px] min-w-[120px] px-2.5 py-1 rounded-md border border-[var(--color-active)]/50 bg-surface-deep focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30"
                     >
-                      {pendingKeys.length > 0 ? (
-                        pendingKeys.map((key, i) => (
-                          <kbd key={i}>{key}</kbd>
+                      {displayKeys.length > 0 ? (
+                        displayKeys.map((key, i) => (
+                          <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+                            {key}
+                          </kbd>
                         ))
                       ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Appuyez sur les touches...
+                        <span className="text-[11px] text-muted-foreground">
+                          Touches...
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={saveCapture}
-                        disabled={pendingKeys.length < 2}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 disabled:opacity-50 transition-colors"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        OK
-                      </button>
-                      <button
-                        onClick={cancelCapture}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-active transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {keyParts.length > 0 ? (
-                      <div className="flex gap-1.5 flex-wrap flex-1">
-                        {keyParts.map((key, i) => (
-                          <kbd key={i}>{key}</kbd>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground flex-1">
-                        Aucun raccourci
-                      </span>
-                    )}
-                    <button
-                      onClick={() => startCapture(companion.id)}
-                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
-                    >
-                      <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                  </div>
-                )}
 
-                {/* Trigger selector */}
-                <div className="flex gap-2">
-                  {(["start", "stop", "both"] as const).map((trigger) => (
+                    {/* Label */}
+                    <input
+                      type="text"
+                      value={draft.label}
+                      onChange={(e) =>
+                        setDraft({ ...draft, label: e.target.value })
+                      }
+                      placeholder="Nom"
+                      className="flex-1 px-2.5 py-1 rounded-md bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted/50 min-w-0"
+                    />
+                  </div>
+
+                  {/* Row 2: save / cancel / delete */}
+                  <div className="flex items-center gap-2">
                     <button
-                      key={trigger}
+                      onClick={saveEdit}
+                      className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 transition-colors"
+                    >
+                      <Check className="h-3 w-3" />
+                      Enregistrer
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md border border-border text-muted-foreground hover:bg-surface-active transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                      Annuler
+                    </button>
+                    <div className="flex-1" />
+                    <button
                       onClick={() => {
-                        const updated = companionShortcuts.map((c) =>
-                          c.id === companion.id ? { ...c, trigger } : c
+                        const updated = companionShortcuts.filter(
+                          (c) => c.id !== companion.id
                         );
                         onCompanionShortcutsChange(updated);
+                        setEditingId(null);
+                        setDraft(null);
+                        invoke("enable_shortcuts");
                       }}
-                      className={cn(
-                        "px-3 py-1 rounded-lg text-xs font-medium transition-colors",
-                        companion.trigger === trigger
-                          ? "bg-[var(--color-active)]/15 text-[var(--color-active)] border border-[var(--color-active)]/30"
-                          : "border border-border-card text-muted-foreground hover:text-foreground"
-                      )}
+                      className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     >
-                      {trigger === "start"
-                        ? "Demarrage"
-                        : trigger === "stop"
-                          ? "Arret"
-                          : "Les deux"}
+                      <Trash2 size={13} />
                     </button>
-                  ))}
+                  </div>
                 </div>
+              );
+            }
+
+            /* View mode — single compact row */
+            return (
+              <div
+                key={companion.id}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border-card bg-surface-inset"
+              >
+                {/* Trigger badge */}
+                <span className="shrink-0 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--color-active)]/10 text-[var(--color-active)] border border-[var(--color-active)]/20">
+                  {TRIGGER_LABELS[companion.trigger]}
+                </span>
+
+                {/* Keys */}
+                {keyParts.length > 0 ? (
+                  <div className="flex gap-1 shrink-0">
+                    {keyParts.map((key, i) => (
+                      <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+                        {key}
+                      </kbd>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground shrink-0">
+                    Non assigne
+                  </span>
+                )}
+
+                {/* Label */}
+                <span className="flex-1 text-sm text-foreground truncate min-w-0">
+                  {companion.label || (
+                    <span className="text-muted-foreground">Sans nom</span>
+                  )}
+                </span>
+
+                {/* Edit */}
+                <button
+                  onClick={() => startEdit(companion)}
+                  className="p-1 rounded-md hover:bg-secondary transition-colors shrink-0"
+                >
+                  <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={() => {
+                    const updated = companionShortcuts.filter(
+                      (c) => c.id !== companion.id
+                    );
+                    onCompanionShortcutsChange(updated);
+                  }}
+                  className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             );
           })}
