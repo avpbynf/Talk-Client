@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import RecordingModeSection from "./preferences/RecordingModeSection";
 import ShortcutsSection from "./preferences/ShortcutsSection";
 import CompanionShortcutsSection from "./preferences/CompanionShortcutsSection";
+import MeetingModeSection from "./preferences/MeetingModeSection";
 import SoundFeedbackSection from "./preferences/SoundFeedbackSection";
 import OverlaySection from "./preferences/OverlaySection";
 import SystemSection from "./preferences/SystemSection";
@@ -90,6 +91,7 @@ export default function PreferencesView({
               companionShortcuts={companionShortcuts}
               onCompanionShortcutsChange={onCompanionShortcutsChange}
             />
+            <MeetingModeSection />
             <OverlaySection
               overlayTheme={overlayTheme}
               onOverlayThemeChange={onOverlayThemeChange}

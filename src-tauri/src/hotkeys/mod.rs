@@ -415,6 +415,15 @@ pub fn cancel_recording(app: &AppHandle) {
     *state.audio_capture_handle.lock() = None;
     *state.audio_buffer.lock() = None;
 
+    // Unmute virtual mic on cancel
+    {
+        let vm = state.virtual_mic.lock();
+        if vm.is_active() {
+            vm.unmute();
+            let _ = app.emit("meeting-mode-muted", false);
+        }
+    }
+
     // Resume media playback if we paused it
     #[cfg(windows)]
     resume_media_if_paused(&state);
@@ -493,6 +502,15 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
         }
     }
 
+    // Mute virtual mic during STT recording
+    {
+        let vm = state.virtual_mic.lock();
+        if vm.is_active() {
+            vm.mute();
+            let _ = app.emit("meeting-mode-muted", true);
+        }
+    }
+
     // Emit recording state
     let _ = app.emit("recording-started", ());
 
@@ -544,6 +562,15 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     // Stop audio capture - dropping the handle signals the stream thread to exit
     *state.audio_capture_handle.lock() = None;
     *state.is_recording.lock() = false;
+
+    // Unmute virtual mic after STT recording
+    {
+        let vm = state.virtual_mic.lock();
+        if vm.is_active() {
+            vm.unmute();
+            let _ = app.emit("meeting-mode-muted", false);
+        }
+    }
 
     // Resume media playback immediately at recording stop (not after transcription)
     #[cfg(windows)]

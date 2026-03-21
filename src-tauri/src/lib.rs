@@ -7,6 +7,7 @@ mod models;
 mod server_transcription;
 mod settings;
 mod transcription;
+mod virtual_mic;
 
 use audio::{AudioBuffer, AudioCaptureHandle};
 use parking_lot::Mutex;
@@ -46,6 +47,8 @@ pub struct AppState {
     pub did_pause_media: Mutex<bool>,
     /// Preserve clipboard content after pasting transcription
     pub preserve_clipboard: Mutex<bool>,
+    /// Virtual mic controller for meeting mode
+    pub virtual_mic: Mutex<virtual_mic::VirtualMicController>,
 }
 
 impl Default for AppState {
@@ -68,6 +71,7 @@ impl Default for AppState {
             pause_media_on_record: Mutex::new(false),
             did_pause_media: Mutex::new(false),
             preserve_clipboard: Mutex::new(false),
+            virtual_mic: Mutex::new(virtual_mic::VirtualMicController::new()),
         }
     }
 }
@@ -780,6 +784,47 @@ fn simulate_keystroke_cmd(keys: String) -> Result<(), String> {
 }
 
 // ============================================================================
+// Virtual Mic Commands
+// ============================================================================
+
+#[tauri::command]
+fn get_vbcable_status() -> virtual_mic::VBCableStatus {
+    virtual_mic::detect_vbcable()
+}
+
+#[tauri::command]
+fn get_meeting_mode(state: tauri::State<'_, AppState>) -> bool {
+    state.virtual_mic.lock().is_active()
+}
+
+#[tauri::command]
+fn set_meeting_mode(
+    enabled: bool,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let mut vm = state.virtual_mic.lock();
+
+    if enabled {
+        vm.enable().map_err(|e| e.to_string())?;
+    } else {
+        vm.disable();
+    }
+
+    // Save to settings
+    let mut app_settings = settings::load_settings();
+    app_settings.meeting_mode_enabled = enabled;
+    if let Err(e) = settings::save_settings(&app_settings) {
+        eprintln!("Failed to save settings: {}", e);
+    }
+
+    // Emit event to frontend
+    let _ = app.emit("meeting-mode-changed", enabled);
+
+    Ok(())
+}
+
+// ============================================================================
 // App Entry Point
 // ============================================================================
 
@@ -865,6 +910,9 @@ pub fn run() {
             get_companion_shortcuts,
             set_companion_shortcuts,
             simulate_keystroke_cmd,
+            get_vbcable_status,
+            get_meeting_mode,
+            set_meeting_mode,
         ])
         .setup(|app| {
             // Load .env file in dev mode only
@@ -887,6 +935,14 @@ pub fn run() {
                 *state.server_timeout.lock() = app_settings.server_timeout;
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
+
+                // Auto-start meeting mode if previously enabled
+                if app_settings.meeting_mode_enabled {
+                    let mut vm = state.virtual_mic.lock();
+                    if let Err(e) = vm.enable() {
+                        eprintln!("Failed to start meeting mode: {}", e);
+                    }
+                }
             }
 
             // Setup global shortcuts
