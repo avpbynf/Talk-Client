@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import RecordingModeSection from "./preferences/RecordingModeSection";
 import ShortcutsSection from "./preferences/ShortcutsSection";
 import CompanionShortcutsSection from "./preferences/CompanionShortcutsSection";
+import InputDeviceSection from "./preferences/InputDeviceSection";
 import MeetingModeSection from "./preferences/MeetingModeSection";
 import SoundFeedbackSection from "./preferences/SoundFeedbackSection";
 import OverlaySection from "./preferences/OverlaySection";
@@ -76,6 +77,7 @@ export default function PreferencesView({
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
+            <InputDeviceSection />
             <ShortcutsSection
               shortcut={shortcut}
               onShortcutChange={onShortcutChange}

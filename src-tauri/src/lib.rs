@@ -49,6 +49,8 @@ pub struct AppState {
     pub preserve_clipboard: Mutex<bool>,
     /// Virtual mic controller for meeting mode
     pub virtual_mic: Mutex<virtual_mic::VirtualMicController>,
+    /// Selected input device name (None = system default)
+    pub input_device_name: Mutex<Option<String>>,
 }
 
 impl Default for AppState {
@@ -72,6 +74,7 @@ impl Default for AppState {
             did_pause_media: Mutex::new(false),
             preserve_clipboard: Mutex::new(false),
             virtual_mic: Mutex::new(virtual_mic::VirtualMicController::new()),
+            input_device_name: Mutex::new(None),
         }
     }
 }
@@ -308,7 +311,8 @@ async fn start_recording(
         return Ok(());
     }
 
-    let (buffer, handle) = audio::start_capture().map_err(|e| e.to_string())?;
+    let device_name = state.input_device_name.lock().clone();
+    let (buffer, handle) = audio::start_capture_device(device_name.as_deref()).map_err(|e| e.to_string())?;
 
     *state.audio_buffer.lock() = Some(buffer);
     *state.audio_capture_handle.lock() = Some(handle);
@@ -825,6 +829,30 @@ fn set_meeting_mode(
 }
 
 // ============================================================================
+// Input Device Commands
+// ============================================================================
+
+#[tauri::command]
+fn list_input_devices() -> Vec<String> {
+    audio::list_input_devices()
+}
+
+#[tauri::command]
+fn get_input_device(state: tauri::State<'_, AppState>) -> Option<String> {
+    state.input_device_name.lock().clone()
+}
+
+#[tauri::command]
+fn set_input_device(device_name: Option<String>, state: tauri::State<'_, AppState>) {
+    *state.input_device_name.lock() = device_name.clone();
+    let mut app_settings = settings::load_settings();
+    app_settings.input_device_name = device_name;
+    if let Err(e) = settings::save_settings(&app_settings) {
+        eprintln!("Failed to save settings: {}", e);
+    }
+}
+
+// ============================================================================
 // App Entry Point
 // ============================================================================
 
@@ -913,6 +941,9 @@ pub fn run() {
             get_vbcable_status,
             get_meeting_mode,
             set_meeting_mode,
+            list_input_devices,
+            get_input_device,
+            set_input_device,
         ])
         .setup(|app| {
             // Load .env file in dev mode only
@@ -935,6 +966,7 @@ pub fn run() {
                 *state.server_timeout.lock() = app_settings.server_timeout;
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
+                *state.input_device_name.lock() = app_settings.input_device_name.clone();
 
                 // Auto-start meeting mode if previously enabled
                 if app_settings.meeting_mode_enabled {

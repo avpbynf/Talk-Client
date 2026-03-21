@@ -484,8 +484,9 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     // Small delay to ensure overlay is visible before we emit state
     std::thread::sleep(std::time::Duration::from_millis(50));
 
-    // Start audio capture
-    let (buffer, handle) = audio::start_capture().map_err(|e| e.to_string())?;
+    // Start audio capture (use selected device or system default)
+    let device_name = state.input_device_name.lock().clone();
+    let (buffer, handle) = audio::start_capture_device(device_name.as_deref()).map_err(|e| e.to_string())?;
     let buffer_for_spectrum = buffer.clone();
 
     *state.audio_buffer.lock() = Some(buffer);

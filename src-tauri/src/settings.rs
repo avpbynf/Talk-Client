@@ -132,6 +132,9 @@ pub struct AppSettings {
     /// Enable meeting mode (route audio through VB-Cable)
     #[serde(default)]
     pub meeting_mode_enabled: bool,
+    /// Selected input device name (None = system default)
+    #[serde(default)]
+    pub input_device_name: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -193,6 +196,7 @@ impl Default for AppSettings {
             server_token: String::new(),
             companion_shortcuts: Vec::new(),
             meeting_mode_enabled: false,
+            input_device_name: None,
         }
     }
 }

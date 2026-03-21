@@ -136,9 +136,47 @@ impl Drop for AudioCaptureHandle {
     }
 }
 
-/// Starts audio capture and returns a buffer and handle to stop it
-/// The stream is created and managed on a dedicated thread
+/// List available input devices (microphones).
+pub fn list_input_devices() -> Vec<String> {
+    let host = cpal::default_host();
+    host.input_devices()
+        .map(|devices| {
+            devices
+                .filter_map(|d| d.name().ok())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Find an input device by name, or fall back to the system default.
+fn find_input_device(device_name: Option<&str>) -> Result<cpal::Device, AudioError> {
+    let host = cpal::default_host();
+
+    if let Some(name) = device_name {
+        if let Some(device) = host.input_devices().ok().and_then(|mut devices| {
+            devices.find(|d| d.name().map(|n| n == name).unwrap_or(false))
+        }) {
+            return Ok(device);
+        }
+        eprintln!("Input device '{}' not found, falling back to default", name);
+    }
+
+    host.default_input_device().ok_or(AudioError::NoInputDevice)
+}
+
+/// Starts audio capture and returns a buffer and handle to stop it.
+/// If `device_name` is Some, uses that device; otherwise uses the system default.
+pub fn start_capture_device(device_name: Option<&str>) -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> {
+    let device = find_input_device(device_name)?;
+    start_capture_with_device(device)
+}
+
+/// Starts audio capture using the system default input device.
 pub fn start_capture() -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> {
+    start_capture_device(None)
+}
+
+fn start_capture_with_device(device: cpal::Device) -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> {
     use std::sync::mpsc;
 
     let buffer = AudioBuffer::new();
@@ -152,10 +190,7 @@ pub fn start_capture() -> Result<(AudioBuffer, AudioCaptureHandle), AudioError> 
     // Spawn dedicated thread that owns the stream
     std::thread::spawn(move || {
         let result = (|| -> Result<cpal::Stream, AudioError> {
-            let host = cpal::default_host();
-            let device = host
-                .default_input_device()
-                .ok_or(AudioError::NoInputDevice)?;
+            let device = device;
 
             let config = device
                 .default_input_config()
