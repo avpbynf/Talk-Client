@@ -1,5 +1,5 @@
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, Trash2, GripVertical } from "lucide-react";
+import { Keyboard, Plus, X, GripVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import KeyCaptureField from "@/components/KeyCaptureField";
 import { cn } from "@/lib/utils";
@@ -133,7 +133,7 @@ function SortableRow({
         className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
         title="Supprimer"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <X className="h-3.5 w-3.5" />
       </button>
     </div>
   );
