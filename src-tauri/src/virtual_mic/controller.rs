@@ -1,12 +1,12 @@
 use thiserror::Error;
 
-use super::detector::detect_vbcable;
+use super::detector::detect_virtual_audio;
 use super::router::{AudioRouter, AudioRouterError};
 
 #[derive(Error, Debug)]
 pub enum VirtualMicError {
-    #[error("VB-Cable is not installed")]
-    VBCableNotInstalled,
+    #[error("Virtual Audio Driver is not installed")]
+    DriverNotInstalled,
     #[error("Router error: {0}")]
     Router(#[from] AudioRouterError),
 }
@@ -21,11 +21,11 @@ impl VirtualMicController {
         Self { router: None }
     }
 
-    /// Enable meeting mode: start routing real mic -> VB-Cable.
+    /// Enable meeting mode: start routing real mic -> Virtual Audio Driver.
     pub fn enable(&mut self) -> Result<(), VirtualMicError> {
-        let status = detect_vbcable();
+        let status = detect_virtual_audio();
         if !status.installed {
-            return Err(VirtualMicError::VBCableNotInstalled);
+            return Err(VirtualMicError::DriverNotInstalled);
         }
         self.disable();
         let router = AudioRouter::start()?;
@@ -40,7 +40,7 @@ impl VirtualMicController {
         }
     }
 
-    /// Mute the virtual mic (write silence to VB-Cable).
+    /// Mute the virtual mic (write silence to virtual audio driver).
     pub fn mute(&self) {
         if let Some(ref router) = self.router {
             router.mute();

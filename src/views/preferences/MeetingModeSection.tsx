@@ -4,13 +4,13 @@ import { listen } from "@tauri-apps/api/event";
 import { Switch } from "@/components/ui/switch";
 import { Radio } from "lucide-react";
 
-interface VBCableStatus {
+interface VirtualAudioStatus {
   installed: boolean;
   device_name: string | null;
 }
 
 export default function MeetingModeSection() {
-  const [vbCableStatus, setVbCableStatus] = useState<VBCableStatus>({
+  const [driverStatus, setDriverStatus] = useState<VirtualAudioStatus>({
     installed: false,
     device_name: null,
   });
@@ -18,7 +18,7 @@ export default function MeetingModeSection() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    invoke<VBCableStatus>("get_vbcable_status").then(setVbCableStatus);
+    invoke<VirtualAudioStatus>("get_virtual_audio_status").then(setDriverStatus);
     invoke<boolean>("get_meeting_mode").then(setMeetingMode);
 
     const unlisten = listen<boolean>("meeting-mode-changed", (e) => {
@@ -50,17 +50,17 @@ export default function MeetingModeSection() {
           Mode reunion
         </div>
 
-        {/* VB-Cable status indicator */}
+        {/* Virtual Audio Driver status indicator */}
         <div className="flex items-center gap-2">
           <div
             className={`h-2 w-2 rounded-full ${
-              vbCableStatus.installed ? "bg-emerald-500" : "bg-red-500"
+              driverStatus.installed ? "bg-emerald-500" : "bg-red-500"
             }`}
           />
           <span className="text-xs text-muted-foreground">
-            {vbCableStatus.installed
-              ? `VB-Cable detecte (${vbCableStatus.device_name})`
-              : "VB-Cable non installe"}
+            {driverStatus.installed
+              ? `Driver audio virtuel detecte (${driverStatus.device_name})`
+              : "Driver audio virtuel non installe"}
           </span>
         </div>
 
@@ -68,25 +68,25 @@ export default function MeetingModeSection() {
         <div className="flex items-center justify-between">
           <div>
             <label
-              className={`font-medium ${!vbCableStatus.installed ? "opacity-50" : ""}`}
+              className={`font-medium ${!driverStatus.installed ? "opacity-50" : ""}`}
             >
               Mode reunion
             </label>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Route le micro via VB-Cable pour couper le son en reunion
+              Route le micro via un device virtuel pour couper le son en reunion
             </p>
           </div>
           <Switch
             checked={meetingMode}
             onCheckedChange={handleToggle}
-            disabled={!vbCableStatus.installed || loading}
+            disabled={!driverStatus.installed || loading}
           />
         </div>
 
-        {vbCableStatus.installed && (
+        {driverStatus.installed && (
           <p className="text-xs text-muted-foreground border-t border-border-subtle pt-3">
-            Configurez Teams/Discord pour utiliser &laquo;&nbsp;CABLE
-            Output&nbsp;&raquo; comme micro. Pendant la dictee, les participants
+            Configurez Teams/Discord pour utiliser &laquo;&nbsp;Virtual Mic
+            Driver&nbsp;&raquo; comme micro. Pendant la dictee, les participants
             n'entendront rien.
           </p>
         )}

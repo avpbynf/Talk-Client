@@ -4,14 +4,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
 
-use super::find_vbcable_device;
+use super::find_virtual_audio_device;
 
 #[derive(Error, Debug)]
 pub enum AudioRouterError {
     #[error("No input device available")]
     NoInputDevice,
-    #[error("VB-Cable device not found")]
-    VBCableNotFound,
+    #[error("Virtual Audio Driver not found")]
+    VirtualAudioNotFound,
     #[error("Failed to get device config: {0}")]
     DeviceConfig(String),
     #[error("Failed to build stream: {0}")]
@@ -21,14 +21,14 @@ pub enum AudioRouterError {
 }
 
 /// Audio routing engine. Captures from the default input device (real mic)
-/// and plays to the VB-Cable Input device.
+/// and plays to the Virtual Audio Driver device.
 pub struct AudioRouter {
     stop_signal: Arc<AtomicBool>,
     muted: Arc<AtomicBool>,
 }
 
 impl AudioRouter {
-    /// Start routing real mic -> VB-Cable Input.
+    /// Start routing real mic -> Virtual Audio Driver.
     /// Spawns a dedicated thread that owns both cpal streams.
     pub fn start() -> Result<Self, AudioRouterError> {
         let stop_signal = Arc::new(AtomicBool::new(false));
@@ -43,7 +43,7 @@ impl AudioRouter {
             .default_input_device()
             .ok_or(AudioRouterError::NoInputDevice)?;
         let output_device =
-            find_vbcable_device().ok_or(AudioRouterError::VBCableNotFound)?;
+            find_virtual_audio_device().ok_or(AudioRouterError::VirtualAudioNotFound)?;
 
         // Get configs
         let input_config = input_device
@@ -136,7 +136,7 @@ impl AudioRouter {
                     )
                     .map_err(|e| AudioRouterError::BuildStream(e.to_string()))?;
 
-                // Build output stream - play to VB-Cable Input
+                // Build output stream - play to Virtual Audio Driver
                 let output_stream = output_device
                     .build_output_stream(
                         &output_config.into(),
@@ -185,7 +185,7 @@ impl AudioRouter {
         Ok(Self { stop_signal, muted })
     }
 
-    /// Mute: write silence to VB-Cable instead of real audio.
+    /// Mute: write silence to Virtual Audio Driver instead of real audio.
     pub fn mute(&self) {
         self.muted.store(true, Ordering::SeqCst);
     }
