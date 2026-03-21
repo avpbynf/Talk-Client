@@ -164,6 +164,18 @@ function App() {
     initializeApp();
   }, [setupCompleted]);
 
+  const fireCompanionShortcuts = (phase: "start" | "stop") => {
+    const shortcuts = companionShortcutsRef.current.filter(
+      (c) => c.keys && (c.trigger === phase || c.trigger === "both")
+    );
+    for (const c of shortcuts) {
+      console.log(`[companion] firing "${c.label}" (${c.keys}) on ${phase}`);
+      invoke("simulate_keystroke_cmd", { keys: c.keys }).catch((err) =>
+        console.error(`[companion] "${c.label}" failed:`, err)
+      );
+    }
+  };
+
   // Event listeners - register only once (with StrictMode guard)
   const hasRegisteredListeners = useRef(false);
   useEffect(() => {
@@ -209,9 +221,7 @@ function App() {
         playSound("start", startSoundRef.current as SoundPreset);
       }
       // Companion shortcuts
-      companionShortcutsRef.current
-        .filter((c) => c.trigger === "start" || c.trigger === "both")
-        .forEach((c) => invoke("simulate_keystroke_cmd", { keys: c.keys }).catch(() => {}));
+      fireCompanionShortcuts("start");
     });
 
     const unlistenRecordingStopped = listen("recording-stopped", () => {
@@ -221,17 +231,13 @@ function App() {
         playSound("stop", stopSoundRef.current as SoundPreset);
       }
       // Companion shortcuts
-      companionShortcutsRef.current
-        .filter((c) => c.trigger === "stop" || c.trigger === "both")
-        .forEach((c) => invoke("simulate_keystroke_cmd", { keys: c.keys }).catch(() => {}));
+      fireCompanionShortcuts("stop");
     });
 
     const unlistenRecordingCancelled = listen("recording-cancelled", () => {
       setIsRecording(false);
       // Companion shortcuts — cancellation counts as "stop"
-      companionShortcutsRef.current
-        .filter((c) => c.trigger === "stop" || c.trigger === "both")
-        .forEach((c) => invoke("simulate_keystroke_cmd", { keys: c.keys }).catch(() => {}));
+      fireCompanionShortcuts("stop");
     });
 
     const unlistenModelDeleted = listen<{ model_id: string }>("model-deleted", (event) => {
@@ -239,6 +245,7 @@ function App() {
     });
 
     return () => {
+      hasRegisteredListeners.current = false;
       unlistenProgress.then((f) => f());
       unlistenComplete.then((f) => f());
       unlistenTranscription.then((f) => f());

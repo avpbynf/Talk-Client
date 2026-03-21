@@ -16,10 +16,25 @@ interface Draft {
   pendingKeys: string[];
 }
 
-const TRIGGER_LABELS: Record<string, string> = {
-  start: "Demarrage",
-  stop: "Arret",
-  both: "Les deux",
+const TRIGGER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  start: {
+    label: "Demarrage",
+    color: "text-[var(--color-success)]",
+    bg: "bg-[var(--color-success)]/12",
+    border: "border-[var(--color-success)]/25",
+  },
+  stop: {
+    label: "Arret",
+    color: "text-[var(--color-warning)]",
+    bg: "bg-[var(--color-warning)]/12",
+    border: "border-[var(--color-warning)]/25",
+  },
+  both: {
+    label: "Les deux",
+    color: "text-[var(--color-active)]",
+    bg: "bg-[var(--color-active)]/12",
+    border: "border-[var(--color-active)]/25",
+  },
 };
 
 export default function CompanionShortcutsSection({
@@ -89,6 +104,15 @@ export default function CompanionShortcutsSection({
   };
 
   const cancelEdit = async () => {
+    // If this was a new empty shortcut, remove it
+    if (editingId) {
+      const companion = companionShortcuts.find((c) => c.id === editingId);
+      if (companion && !companion.keys && !companion.label) {
+        onCompanionShortcutsChange(
+          companionShortcuts.filter((c) => c.id !== editingId)
+        );
+      }
+    }
     setEditingId(null);
     setDraft(null);
     await invoke("enable_shortcuts");
@@ -109,6 +133,17 @@ export default function CompanionShortcutsSection({
     setEditingId(null);
     setDraft(null);
     await invoke("enable_shortcuts");
+  };
+
+  const deleteShortcut = async (id: string) => {
+    onCompanionShortcutsChange(
+      companionShortcuts.filter((c) => c.id !== id)
+    );
+    if (editingId === id) {
+      setEditingId(null);
+      setDraft(null);
+      await invoke("enable_shortcuts");
+    }
   };
 
   return (
@@ -142,20 +177,24 @@ export default function CompanionShortcutsSection({
       </p>
 
       {companionShortcuts.length === 0 ? (
-        <div className="p-4 rounded-lg border border-dashed border-border-subtle text-center">
+        <div className="py-8 rounded-lg border border-dashed border-border-subtle text-center">
+          <Keyboard className="h-5 w-5 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
-            Aucun raccourci compagnon configure.
+            Aucun raccourci compagnon
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {companionShortcuts.map((companion) => {
             const isEditing = editingId === companion.id;
+            const meta = TRIGGER_META[companion.trigger];
             const keyParts = companion.keys
               ? companion.keys.split("+")
               : [];
 
+            /* ── Edit mode ─────────────────────────────────── */
             if (isEditing && draft) {
+              const draftMeta = TRIGGER_META[draft.trigger];
               const displayKeys =
                 draft.pendingKeys.length > 0
                   ? draft.pendingKeys
@@ -166,26 +205,29 @@ export default function CompanionShortcutsSection({
               return (
                 <div
                   key={companion.id}
-                  className="p-3 rounded-lg border-2 border-[var(--color-active)] bg-surface-inset space-y-3"
+                  className="rounded-lg border border-[var(--color-active)]/40 bg-surface-inset overflow-hidden"
                 >
-                  {/* Row 1: trigger + key capture + label */}
-                  <div className="flex items-center gap-2">
-                    {/* Trigger buttons */}
-                    <div className="flex shrink-0">
-                      {(["start", "stop", "both"] as const).map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setDraft({ ...draft, trigger: t })}
-                          className={cn(
-                            "px-2 py-1 text-[11px] font-medium transition-colors first:rounded-l-md last:rounded-r-md border",
-                            draft.trigger === t
-                              ? "bg-[var(--color-active)]/15 text-[var(--color-active)] border-[var(--color-active)]/30 z-10"
-                              : "border-border-card text-muted-foreground hover:text-foreground -ml-px"
-                          )}
-                        >
-                          {TRIGGER_LABELS[t]}
-                        </button>
-                      ))}
+                  {/* Main edit row */}
+                  <div className="flex items-center gap-2 p-3">
+                    {/* Segmented trigger control */}
+                    <div className="flex rounded-md overflow-hidden border border-border-card shrink-0">
+                      {(["start", "stop", "both"] as const).map((t) => {
+                        const tm = TRIGGER_META[t];
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setDraft({ ...draft, trigger: t })}
+                            className={cn(
+                              "px-2.5 py-1 text-[11px] font-semibold tracking-wide transition-all",
+                              draft.trigger === t
+                                ? `${tm.bg} ${tm.color}`
+                                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-surface-deep"
+                            )}
+                          >
+                            {TRIGGER_META[t].label}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* Key capture */}
@@ -193,7 +235,13 @@ export default function CompanionShortcutsSection({
                       ref={captureRef}
                       tabIndex={0}
                       onKeyDown={handleKeyDown}
-                      className="flex gap-1.5 items-center min-h-[32px] min-w-[120px] px-2.5 py-1 rounded-md border border-[var(--color-active)]/50 bg-surface-deep focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30"
+                      className={cn(
+                        "flex gap-1.5 items-center min-h-[32px] px-2.5 py-1 rounded-md border bg-surface-deep transition-colors min-w-[110px]",
+                        "focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30",
+                        displayKeys.length > 0
+                          ? `${draftMeta.border}`
+                          : "border-border-card"
+                      )}
                     >
                       {displayKeys.length > 0 ? (
                         displayKeys.map((key, i) => (
@@ -202,52 +250,47 @@ export default function CompanionShortcutsSection({
                           </kbd>
                         ))
                       ) : (
-                        <span className="text-[11px] text-muted-foreground">
-                          Touches...
+                        <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
+                          Appuyez...
                         </span>
                       )}
                     </div>
 
-                    {/* Label */}
+                    {/* Label input */}
                     <input
                       type="text"
                       value={draft.label}
                       onChange={(e) =>
                         setDraft({ ...draft, label: e.target.value })
                       }
-                      placeholder="Nom"
-                      className="flex-1 px-2.5 py-1 rounded-md bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted/50 min-w-0"
+                      placeholder="Nom du raccourci"
+                      className="flex-1 px-2.5 py-1 rounded-md bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted-foreground/30 min-w-0"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveEdit();
+                        if (e.key === "Escape") cancelEdit();
+                      }}
                     />
                   </div>
 
-                  {/* Row 2: save / cancel / delete */}
-                  <div className="flex items-center gap-2">
+                  {/* Action bar */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-surface-deep/50 border-t border-border-subtle">
                     <button
                       onClick={saveEdit}
-                      className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 transition-colors"
                     >
                       <Check className="h-3 w-3" />
                       Enregistrer
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md border border-border text-muted-foreground hover:bg-surface-active transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active transition-colors"
                     >
-                      <X className="h-3 w-3" />
                       Annuler
                     </button>
                     <div className="flex-1" />
                     <button
-                      onClick={() => {
-                        const updated = companionShortcuts.filter(
-                          (c) => c.id !== companion.id
-                        );
-                        onCompanionShortcutsChange(updated);
-                        setEditingId(null);
-                        setDraft(null);
-                        invoke("enable_shortcuts");
-                      }}
-                      className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      onClick={() => deleteShortcut(companion.id)}
+                      className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -256,15 +299,22 @@ export default function CompanionShortcutsSection({
               );
             }
 
-            /* View mode — single compact row */
+            /* ── View mode — single compact row ────────────── */
             return (
               <div
                 key={companion.id}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border-card bg-surface-inset"
+                className="group flex items-center gap-2.5 pl-3 pr-1.5 py-2 rounded-lg border border-border-card bg-surface-inset hover:border-border-hover transition-colors"
               >
                 {/* Trigger badge */}
-                <span className="shrink-0 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--color-active)]/10 text-[var(--color-active)] border border-[var(--color-active)]/20">
-                  {TRIGGER_LABELS[companion.trigger]}
+                <span
+                  className={cn(
+                    "shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border",
+                    meta.color,
+                    meta.bg,
+                    meta.border
+                  )}
+                >
+                  {meta.label}
                 </span>
 
                 {/* Keys */}
@@ -277,38 +327,40 @@ export default function CompanionShortcutsSection({
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[11px] text-muted-foreground shrink-0">
-                    Non assigne
+                  <span className="text-[11px] text-muted-foreground/40 shrink-0 italic">
+                    non assigne
                   </span>
                 )}
 
+                {/* Separator dot */}
+                <span className="text-border-subtle shrink-0">·</span>
+
                 {/* Label */}
-                <span className="flex-1 text-sm text-foreground truncate min-w-0">
+                <span className="flex-1 text-sm text-foreground/80 truncate min-w-0">
                   {companion.label || (
-                    <span className="text-muted-foreground">Sans nom</span>
+                    <span className="text-muted-foreground/40 italic">
+                      sans nom
+                    </span>
                   )}
                 </span>
 
-                {/* Edit */}
-                <button
-                  onClick={() => startEdit(companion)}
-                  className="p-1 rounded-md hover:bg-secondary transition-colors shrink-0"
-                >
-                  <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-
-                {/* Delete */}
-                <button
-                  onClick={() => {
-                    const updated = companionShortcuts.filter(
-                      (c) => c.id !== companion.id
-                    );
-                    onCompanionShortcutsChange(updated);
-                  }}
-                  className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                >
-                  <Trash2 size={13} />
-                </button>
+                {/* Actions — visible on hover */}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    onClick={() => startEdit(companion)}
+                    className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+                    title="Modifier"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => deleteShortcut(companion.id)}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             );
           })}
