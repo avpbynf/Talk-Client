@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Edit3 } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const KEY_MAP: Record<string, string> = {
@@ -108,13 +108,13 @@ export default function KeyCaptureField({
 
   if (capturing) {
     return (
-      <div className={cn("flex items-center gap-1.5", className)}>
+      <div className={cn("flex items-center gap-1 shrink-0", className)}>
         <div
           ref={captureRef}
           tabIndex={0}
           onKeyDown={handleKeyDown}
           onBlur={() => stopCapture(true)}
-          className="flex gap-1.5 items-center min-h-[32px] px-2.5 py-1 rounded-md border-2 bg-surface-deep min-w-[110px] focus:outline-none focus:ring-2"
+          className="flex gap-1.5 items-center min-h-[28px] px-2 py-0.5 rounded-md border bg-surface-deep min-w-[100px] focus:outline-none focus:ring-2"
           style={{
             borderColor: accentColor,
             // @ts-expect-error css custom property
@@ -129,48 +129,44 @@ export default function KeyCaptureField({
             ))
           ) : (
             <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
-              Appuyez sur les touches...
+              Appuyez...
             </span>
           )}
         </div>
-        {hasValidCombo(pendingKeys) && (
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              stopCapture(true);
-            }}
-            className="cursor-pointer p-1 rounded-md text-xs font-medium hover:bg-surface-active transition-colors"
-            style={{ color: accentColor }}
-          >
-            OK
-          </button>
-        )}
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            stopCapture(false);
+          }}
+          className="cursor-pointer p-0.5 rounded-md text-muted-foreground/40 hover:text-foreground transition-colors"
+          title="Annuler"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
     );
   }
 
   return (
-    <div className={cn("flex items-center gap-1.5 shrink-0", className)}>
+    <div
+      onClick={startCapture}
+      className={cn(
+        "cursor-pointer flex items-center gap-1 min-h-[28px] px-2 py-0.5 rounded-md shrink-0 transition-colors",
+        "hover:bg-surface-deep",
+        className
+      )}
+    >
       {displayKeys.length > 0 ? (
-        <div className="flex gap-1 items-center min-h-[32px]">
-          {displayKeys.map((key, i) => (
-            <kbd key={i} className="text-[11px] px-1.5 py-0.5">
-              {key}
-            </kbd>
-          ))}
-        </div>
+        displayKeys.map((key, i) => (
+          <kbd key={i} className="text-[11px] px-1.5 py-0.5">
+            {key}
+          </kbd>
+        ))
       ) : (
-        <span className="text-[11px] text-muted-foreground/40 italic min-h-[32px] flex items-center">
+        <span className="text-[11px] text-muted-foreground/40 italic">
           {placeholder}
         </span>
       )}
-      <button
-        onClick={startCapture}
-        className="cursor-pointer p-1.5 rounded-md hover:bg-secondary transition-colors"
-        title="Modifier le raccourci"
-      >
-        <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-      </button>
     </div>
   );
 }
