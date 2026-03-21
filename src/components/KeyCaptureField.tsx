@@ -66,7 +66,7 @@ export default function KeyCaptureField({
   value,
   onChange,
   accentColor = "var(--color-active)",
-  placeholder = "Non assigne",
+  placeholder = "Non assigné",
   className,
 }: KeyCaptureFieldProps) {
   const [capturing, setCapturing] = useState(false);
@@ -139,7 +139,7 @@ export default function KeyCaptureField({
               e.preventDefault();
               stopCapture(true);
             }}
-            className="p-1 rounded-md text-xs font-medium hover:bg-surface-active transition-colors"
+            className="cursor-pointer p-1 rounded-md text-xs font-medium hover:bg-surface-active transition-colors"
             style={{ color: accentColor }}
           >
             OK
@@ -166,7 +166,7 @@ export default function KeyCaptureField({
       )}
       <button
         onClick={startCapture}
-        className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+        className="cursor-pointer p-1.5 rounded-md hover:bg-secondary transition-colors"
         title="Modifier le raccourci"
       >
         <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />

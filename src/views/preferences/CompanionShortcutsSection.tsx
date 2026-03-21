@@ -28,13 +28,13 @@ interface CompanionShortcutsSectionProps {
 
 const TRIGGER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
   start: {
-    label: "Demarrage",
+    label: "Démarrage",
     color: "text-[var(--color-success)]",
     bg: "bg-[var(--color-success)]/12",
     border: "border-[var(--color-success)]/25",
   },
   stop: {
-    label: "Arret",
+    label: "Arrêt",
     color: "text-[var(--color-warning)]",
     bg: "bg-[var(--color-warning)]/12",
     border: "border-[var(--color-warning)]/25",
@@ -109,14 +109,14 @@ function SortableRow({
           onUpdate(companion.id, { trigger: v as "start" | "stop" | "both" })
         }
       >
-        <SelectTrigger className="w-[110px] shrink-0 bg-transparent border-transparent hover:border-border-card hover:bg-surface-deep text-foreground h-7 text-xs transition-colors">
+        <SelectTrigger className="cursor-pointer w-[110px] shrink-0 bg-transparent border-transparent hover:border-border-card hover:bg-surface-deep text-foreground h-7 text-xs transition-colors">
           <span className={cn("text-[11px] font-semibold uppercase tracking-wider", meta.color)}>
             <SelectValue />
           </span>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="start">Demarrage</SelectItem>
-          <SelectItem value="stop">Arret</SelectItem>
+          <SelectItem value="start">Démarrage</SelectItem>
+          <SelectItem value="stop">Arrêt</SelectItem>
           <SelectItem value="both">Les deux</SelectItem>
         </SelectContent>
       </Select>
@@ -130,7 +130,7 @@ function SortableRow({
       {/* Delete */}
       <button
         onClick={() => onDelete(companion.id)}
-        className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+        className="cursor-pointer p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
         title="Supprimer"
       >
         <X className="h-3.5 w-3.5" />
@@ -188,7 +188,7 @@ export default function CompanionShortcutsSection({
               },
             ]);
           }}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border-card text-muted-foreground hover:text-foreground hover:border-border-hover transition-colors"
+          className="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg border border-border-card text-muted-foreground hover:text-foreground hover:border-border-hover transition-colors"
         >
           <Plus size={14} className="inline mr-1" />
           Ajouter
@@ -196,8 +196,8 @@ export default function CompanionShortcutsSection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Envoyer des raccourcis clavier a d'autres applications au demarrage ou a
-        l'arret de l'enregistrement (ex: muter Discord, Teams).
+        Envoyer des raccourcis clavier à d'autres applications au démarrage ou à
+        l'arrêt de l'enregistrement (ex: muter Discord, Teams).
       </p>
 
       {companionShortcuts.length === 0 ? (

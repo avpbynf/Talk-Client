@@ -145,7 +145,7 @@ export default function ShortcutsSection({
           {!isEditing && (
             <button
               onClick={() => startEdit(type)}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+              className="cursor-pointer p-2 rounded-lg hover:bg-secondary transition-colors"
             >
               <Edit3 className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -181,7 +181,7 @@ export default function ShortcutsSection({
                 onClick={saveShortcut}
                 disabled={pendingShortcut.length === 0}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors",
+                  "cursor-pointer flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors",
                   type === "main"
                     ? "bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90"
                     : "bg-[var(--color-destructive)] text-white hover:bg-[var(--color-destructive)]/90"
@@ -192,7 +192,7 @@ export default function ShortcutsSection({
               </button>
               <button
                 onClick={cancelEdit}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-surface-active transition-colors"
+                className="cursor-pointer flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-surface-active transition-colors"
               >
                 <X className="h-4 w-4" />
                 Annuler

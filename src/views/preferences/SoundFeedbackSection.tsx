@@ -31,14 +31,14 @@ export default function SoundFeedbackSection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Jouer un son au demarrage et a l'arret de l'enregistrement.
+        Jouer un son au démarrage et à l'arrêt de l'enregistrement.
       </p>
 
       {soundFeedback && (
         <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle slide-enter">
           {/* Start sound */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Son de demarrage</label>
+            <label className="text-xs font-medium text-muted-foreground">Son de démarrage</label>
             <Select
               value={startSound}
               onValueChange={(value) => {
@@ -46,7 +46,7 @@ export default function SoundFeedbackSection({
                 if (value !== "none") playSound("start", value as SoundPreset);
               }}
             >
-              <SelectTrigger className="bg-surface-deep border-border-card text-foreground">
+              <SelectTrigger className="cursor-pointer bg-surface-deep border-border-card text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -60,7 +60,7 @@ export default function SoundFeedbackSection({
 
           {/* Stop sound */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Son d'arret</label>
+            <label className="text-xs font-medium text-muted-foreground">Son d'arrêt</label>
             <Select
               value={stopSound}
               onValueChange={(value) => {
@@ -68,7 +68,7 @@ export default function SoundFeedbackSection({
                 if (value !== "none") playSound("stop", value as SoundPreset);
               }}
             >
-              <SelectTrigger className="bg-surface-deep border-border-card text-foreground">
+              <SelectTrigger className="cursor-pointer bg-surface-deep border-border-card text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

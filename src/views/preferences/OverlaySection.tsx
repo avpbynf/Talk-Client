@@ -30,7 +30,7 @@ export default function OverlaySection({
             <button
               key={id}
               onClick={() => onOverlayThemeChange(id)}
-              className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+              className={`cursor-pointer flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
                 isActive
                   ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
                   : "border-border-card bg-surface-deep hover:border-border-hover hover:bg-surface-raised"

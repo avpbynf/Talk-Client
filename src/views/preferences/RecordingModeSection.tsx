@@ -22,7 +22,7 @@ export default function RecordingModeSection({
         <button
           onClick={() => onRecordingModeChange("push_to_talk")}
           className={cn(
-            "p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
+            "cursor-pointer p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
             recordingMode === "push_to_talk"
               ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
               : "border-border-card bg-surface-inset card-interactive"
@@ -41,7 +41,7 @@ export default function RecordingModeSection({
         <button
           onClick={() => onRecordingModeChange("toggle")}
           className={cn(
-            "p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
+            "cursor-pointer p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
             recordingMode === "toggle"
               ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
               : "border-border-card bg-surface-inset card-interactive"
