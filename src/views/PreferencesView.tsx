@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { RecordingMode } from "@/App";
 import type { CompanionShortcut } from "@/App";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
-import { Keyboard, Edit3, Check, X, Layers, Hand, ToggleLeft, Monitor, Music, ClipboardCopy, Volume2, Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { playSound, type SoundPreset } from "@/lib/audio";
+import RecordingModeSection from "./preferences/RecordingModeSection";
+import ShortcutsSection from "./preferences/ShortcutsSection";
+import CompanionShortcutsSection from "./preferences/CompanionShortcutsSection";
+import SoundFeedbackSection from "./preferences/SoundFeedbackSection";
+import SystemSection from "./preferences/SystemSection";
 
 interface PreferencesViewProps {
   recordingMode: RecordingMode;
@@ -57,197 +56,6 @@ export default function PreferencesView({
   companionShortcuts,
   onCompanionShortcutsChange,
 }: PreferencesViewProps) {
-  const [editingShortcut, setEditingShortcut] = useState<"main" | "cancel" | null>(null);
-  const [pendingShortcut, setPendingShortcut] = useState<string[]>([]);
-  const [shortcutError, setShortcutError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (editingShortcut && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [editingShortcut]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const keys: string[] = [];
-    if (e.ctrlKey) keys.push("Ctrl");
-    if (e.shiftKey) keys.push("Shift");
-    if (e.altKey) keys.push("Alt");
-    if (e.metaKey) keys.push("Win");
-
-    const key = e.key;
-    const modifierKeys = ["Control", "Shift", "Alt", "Meta"];
-
-    if (!modifierKeys.includes(key)) {
-      const keyMap: Record<string, string> = {
-        " ": "Space",
-        "Enter": "Enter",
-        "Tab": "Tab",
-        "Escape": "Escape",
-        "Backspace": "Backspace",
-        "Delete": "Delete",
-        "ArrowUp": "Up",
-        "ArrowDown": "Down",
-        "ArrowLeft": "Left",
-        "ArrowRight": "Right",
-      };
-
-      if (keyMap[key]) {
-        keys.push(keyMap[key]);
-      } else if (key.startsWith("F") && key.length <= 3) {
-        keys.push(key);
-      } else if (key.length === 1) {
-        keys.push(key.toUpperCase());
-      }
-    }
-
-    setPendingShortcut(keys);
-  };
-
-  const startEdit = async (type: "main" | "cancel") => {
-    await invoke("disable_shortcuts");
-    setEditingShortcut(type);
-    setPendingShortcut([]);
-    setShortcutError(null);
-  };
-
-  const cancelEdit = async () => {
-    setEditingShortcut(null);
-    setPendingShortcut([]);
-    setShortcutError(null);
-    await invoke("enable_shortcuts");
-  };
-
-  const saveShortcut = async () => {
-    if (pendingShortcut.length < 2) {
-      setShortcutError("Utilisez au moins un modificateur + une touche");
-      return;
-    }
-
-    const hasModifier = pendingShortcut.some((k) => ["Ctrl", "Shift", "Alt", "Win"].includes(k));
-    const hasKey = pendingShortcut.some((k) => !["Ctrl", "Shift", "Alt", "Win"].includes(k));
-
-    if (!hasModifier || !hasKey) {
-      setShortcutError("Utilisez au moins un modificateur + une touche");
-      return;
-    }
-
-    try {
-      const newShortcut = pendingShortcut.join("+");
-      if (editingShortcut === "main") {
-        await onShortcutChange(newShortcut);
-      } else if (editingShortcut === "cancel") {
-        await onCancelShortcutChange(newShortcut);
-      }
-      setEditingShortcut(null);
-      setShortcutError(null);
-      setPendingShortcut([]);
-      await invoke("enable_shortcuts");
-    } catch {
-      setShortcutError("Raccourci invalide ou déjà utilisé");
-      await invoke("enable_shortcuts");
-    }
-  };
-
-  const renderShortcutCard = (
-    type: "main" | "cancel",
-    currentShortcut: string,
-    label: string,
-    description: string
-  ) => {
-    const isEditing = editingShortcut === type;
-    const shortcutParts = currentShortcut.split("+");
-
-    return (
-      <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex gap-3">
-            <div className={cn(
-              "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-              type === "main" ? "bg-[var(--color-active)]/15" : "bg-[var(--color-destructive)]/15"
-            )}>
-              {type === "main" ? (
-                <Keyboard className="h-5 w-5 text-[var(--color-active)]" />
-              ) : (
-                <X className="h-5 w-5 text-[var(--color-destructive)]" />
-              )}
-            </div>
-            <div>
-              <label className="font-medium">{label}</label>
-              <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-            </div>
-          </div>
-          {!isEditing && (
-            <button
-              onClick={() => startEdit(type)}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors"
-            >
-              <Edit3 className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="space-y-3">
-            <div
-              ref={inputRef}
-              tabIndex={0}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                "flex gap-2 items-center min-h-[48px] p-3 rounded-lg border-2 bg-surface-inset focus:outline-none focus:ring-2",
-                type === "main"
-                  ? "border-[var(--color-active)] focus:ring-[var(--color-active)]/30"
-                  : "border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30"
-              )}
-            >
-              {pendingShortcut.length > 0 ? (
-                pendingShortcut.map((key, i) => (
-                  <kbd key={i}>{key}</kbd>
-                ))
-              ) : (
-                <span className="text-sm text-muted-foreground">Appuyez sur les touches...</span>
-              )}
-            </div>
-
-            {shortcutError && <p className="text-xs text-[var(--color-destructive)]">{shortcutError}</p>}
-
-            <div className="flex gap-2">
-              <button
-                onClick={saveShortcut}
-                disabled={pendingShortcut.length === 0}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors",
-                  type === "main"
-                    ? "bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90"
-                    : "bg-[var(--color-destructive)] text-white hover:bg-[var(--color-destructive)]/90"
-                )}
-              >
-                <Check className="h-4 w-4" />
-                Enregistrer
-              </button>
-              <button
-                onClick={cancelEdit}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-surface-active transition-colors"
-              >
-                <X className="h-4 w-4" />
-                Annuler
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-2 flex-wrap">
-            {shortcutParts.map((key, i) => (
-              <kbd key={i}>{key}</kbd>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -261,321 +69,39 @@ export default function PreferencesView({
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
-            {/* Recording Mode */}
-            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                <Keyboard className="h-4 w-4" />
-                Mode d'enregistrement
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => onRecordingModeChange("push_to_talk")}
-                  className={cn(
-                    "p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
-                    recordingMode === "push_to_talk"
-                      ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
-                      : "border-border-card bg-surface-inset card-interactive"
-                  )}
-                >
-                  <Hand className={cn(
-                    "h-5 w-5",
-                    recordingMode === "push_to_talk" ? "text-[var(--color-active)]" : "text-muted-foreground"
-                  )} />
-                  <div>
-                    <div className="font-medium text-sm">Maintenir</div>
-                    <div className="text-xs text-muted-foreground">Push-to-talk</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => onRecordingModeChange("toggle")}
-                  className={cn(
-                    "p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-3",
-                    recordingMode === "toggle"
-                      ? "border-[var(--color-active)] bg-[var(--color-active)]/10"
-                      : "border-border-card bg-surface-inset card-interactive"
-                  )}
-                >
-                  <ToggleLeft className={cn(
-                    "h-5 w-5",
-                    recordingMode === "toggle" ? "text-[var(--color-active)]" : "text-muted-foreground"
-                  )} />
-                  <div>
-                    <div className="font-medium text-sm">Toggle</div>
-                    <div className="text-xs text-muted-foreground">Clic on/off</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Shortcuts */}
-            <div className="grid grid-cols-2 gap-4">
-              {renderShortcutCard(
-                "main",
-                shortcut,
-                "Raccourci principal",
-                recordingMode === "toggle" ? "Démarre ou arrête" : "Maintenez pour enregistrer"
-              )}
-              {renderShortcutCard(
-                "cancel",
-                cancelShortcut,
-                "Annulation",
-                "Annule l'enregistrement en cours"
-              )}
-            </div>
-
-            {/* Sons de feedback */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Sons de feedback</h3>
-              <div className="p-4 rounded-xl bg-surface-raised border border-border-card space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">Activer les sons</p>
-                    <p className="text-xs text-muted">Jouer un son au demarrage et a l'arret de l'enregistrement</p>
-                  </div>
-                  <Switch checked={soundFeedback} onCheckedChange={onSoundFeedbackChange} />
-                </div>
-
-                {soundFeedback && (
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle slide-enter">
-                    {/* Start sound */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted">Son de demarrage</label>
-                      <div className="flex gap-2">
-                        <select
-                          value={startSound}
-                          onChange={(e) => onStartSoundChange(e.target.value)}
-                          className="flex-1 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm"
-                        >
-                          <option value="none">Aucun</option>
-                          <option value="beep">Beep</option>
-                          <option value="click">Click</option>
-                          <option value="chime">Chime</option>
-                        </select>
-                        <button
-                          onClick={() => playSound("start", startSound as SoundPreset)}
-                          disabled={startSound === "none"}
-                          className="px-2 py-1.5 rounded-lg bg-surface-inset border border-border-card text-muted hover:text-foreground disabled:opacity-30 transition-colors"
-                          title="Apercu"
-                        >
-                          <Volume2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Stop sound */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted">Son d'arret</label>
-                      <div className="flex gap-2">
-                        <select
-                          value={stopSound}
-                          onChange={(e) => onStopSoundChange(e.target.value)}
-                          className="flex-1 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm"
-                        >
-                          <option value="none">Aucun</option>
-                          <option value="beep">Beep</option>
-                          <option value="click">Click</option>
-                          <option value="chime">Chime</option>
-                        </select>
-                        <button
-                          onClick={() => playSound("stop", stopSound as SoundPreset)}
-                          disabled={stopSound === "none"}
-                          className="px-2 py-1.5 rounded-lg bg-surface-inset border border-border-card text-muted hover:text-foreground disabled:opacity-30 transition-colors"
-                          title="Apercu"
-                        >
-                          <Volume2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Raccourcis compagnons */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Raccourcis compagnons</h3>
-                  <p className="text-xs text-muted">Envoyer des raccourcis clavier a d'autres applications</p>
-                </div>
-                <button
-                  onClick={() => {
-                    const newCompanion: CompanionShortcut = {
-                      id: crypto.randomUUID(),
-                      label: "",
-                      keys: "",
-                      trigger: "both",
-                    };
-                    onCompanionShortcutsChange([...companionShortcuts, newCompanion]);
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-raised border border-border-card text-muted hover:text-foreground hover:border-border-hover transition-colors"
-                >
-                  <Plus size={14} className="inline mr-1" />
-                  Ajouter
-                </button>
-              </div>
-
-              {companionShortcuts.length === 0 ? (
-                <div className="p-6 rounded-xl border-2 border-dashed border-border-subtle text-center">
-                  <p className="text-sm text-muted">
-                    Aucun raccourci compagnon. Ajoutez-en pour muter Discord, Teams, etc.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {companionShortcuts.map((companion) => (
-                    <div
-                      key={companion.id}
-                      className="p-4 rounded-xl bg-surface-raised border border-border-card space-y-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="text"
-                          value={companion.label}
-                          onChange={(e) => {
-                            const updated = companionShortcuts.map((c) =>
-                              c.id === companion.id ? { ...c, label: e.target.value } : c
-                            );
-                            onCompanionShortcutsChange(updated);
-                          }}
-                          placeholder="Ex: Mute Discord"
-                          className="flex-1 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm input-glow placeholder:text-muted/50"
-                        />
-                        <input
-                          type="text"
-                          value={companion.keys}
-                          onChange={(e) => {
-                            const updated = companionShortcuts.map((c) =>
-                              c.id === companion.id ? { ...c, keys: e.target.value } : c
-                            );
-                            onCompanionShortcutsChange(updated);
-                          }}
-                          placeholder="Ctrl+Shift+M"
-                          className="w-40 px-3 py-1.5 rounded-lg bg-surface-inset border border-border-card text-sm font-mono input-glow placeholder:text-muted/50"
-                        />
-                        <button
-                          onClick={() => {
-                            const updated = companionShortcuts.filter((c) => c.id !== companion.id);
-                            onCompanionShortcutsChange(updated);
-                          }}
-                          className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        {(["start", "stop", "both"] as const).map((trigger) => (
-                          <button
-                            key={trigger}
-                            onClick={() => {
-                              const updated = companionShortcuts.map((c) =>
-                                c.id === companion.id ? { ...c, trigger } : c
-                              );
-                              onCompanionShortcutsChange(updated);
-                            }}
-                            className={cn(
-                              "px-3 py-1 rounded-lg text-xs font-medium transition-colors",
-                              companion.trigger === trigger
-                                ? "bg-[var(--color-active)]/15 text-[var(--color-active)] border border-[var(--color-active)]/30"
-                                : "bg-surface-inset border border-border-card text-muted hover:text-foreground"
-                            )}
-                          >
-                            {trigger === "start" ? "Demarrage" : trigger === "stop" ? "Arret" : "Les deux"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Overlay Section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Overlay</h3>
-              <div className="p-4 rounded-xl bg-surface-raised border border-border-card">
-                <p className="text-sm text-muted">
-                  L'overlay compact s'affiche pendant l'enregistrement. Deplacez-le en le faisant glisser, la position est sauvegardee automatiquement.
-                </p>
-              </div>
-            </div>
-
-            {/* System Section */}
-            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                <Monitor className="h-4 w-4" />
-                Système
-              </div>
-
-              {/* Autostart */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="font-medium">Lancer au démarrage</label>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Démarrer automatiquement avec Windows
-                  </p>
-                </div>
-                <Switch
-                  checked={autostartEnabled}
-                  onCheckedChange={onAutostartChange}
-                />
-              </div>
-
-              {/* Start Minimized */}
-              <div className="flex items-center justify-between border-t border-border-subtle pt-4">
-                <div>
-                  <label className="font-medium">Démarrer minimisé</label>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Ouvrir directement dans la barre système
-                  </p>
-                </div>
-                <Switch
-                  checked={startMinimized}
-                  onCheckedChange={onStartMinimizedChange}
-                />
-              </div>
-
-              {/* Pause Media */}
-              <div className="flex items-center justify-between border-t border-border-subtle pt-4">
-                <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-hybrid)]/15">
-                    <Music className="h-5 w-5 text-hybrid" />
-                  </div>
-                  <div>
-                    <label className="font-medium">Pause media</label>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Met en pause la musique pendant l'enregistrement
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={pauseMediaOnRecord}
-                  onCheckedChange={onPauseMediaOnRecordChange}
-                />
-              </div>
-
-              {/* Preserve Clipboard */}
-              <div className="flex items-center justify-between border-t border-border-subtle pt-4">
-                <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-warning)]/15">
-                    <ClipboardCopy className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <label className="font-medium">Préserver le presse-papier</label>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Restaure le contenu du presse-papier après le collage
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={preserveClipboard}
-                  onCheckedChange={onPreserveClipboardChange}
-                />
-              </div>
-            </div>
-
+            <RecordingModeSection
+              recordingMode={recordingMode}
+              onRecordingModeChange={onRecordingModeChange}
+            />
+            <ShortcutsSection
+              shortcut={shortcut}
+              onShortcutChange={onShortcutChange}
+              cancelShortcut={cancelShortcut}
+              onCancelShortcutChange={onCancelShortcutChange}
+              recordingMode={recordingMode}
+            />
+            <CompanionShortcutsSection
+              companionShortcuts={companionShortcuts}
+              onCompanionShortcutsChange={onCompanionShortcutsChange}
+            />
+            <SoundFeedbackSection
+              soundFeedback={soundFeedback}
+              onSoundFeedbackChange={onSoundFeedbackChange}
+              startSound={startSound}
+              onStartSoundChange={onStartSoundChange}
+              stopSound={stopSound}
+              onStopSoundChange={onStopSoundChange}
+            />
+            <SystemSection
+              autostartEnabled={autostartEnabled}
+              onAutostartChange={onAutostartChange}
+              startMinimized={startMinimized}
+              onStartMinimizedChange={onStartMinimizedChange}
+              pauseMediaOnRecord={pauseMediaOnRecord}
+              onPauseMediaOnRecordChange={onPauseMediaOnRecordChange}
+              preserveClipboard={preserveClipboard}
+              onPreserveClipboardChange={onPreserveClipboardChange}
+            />
           </div>
         </div>
       </ScrollArea>
