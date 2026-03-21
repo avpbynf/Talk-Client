@@ -3,12 +3,13 @@
 
 !macro NSIS_HOOK_PREINSTALL
   ; Install VB-Audio Virtual Cable silently.
-  ; At PREINSTALL time $INSTDIR does not exist yet, so extract to $TEMP.
+  ; The setup exe needs its driver files (.sys, .inf, .cat) in the same directory.
+  ; Extract the entire VBCABLE_Driver folder to $TEMP, run setup, then clean up.
   ; VB-Cable requires admin (UAC prompt). If declined, meeting mode is unavailable.
-  SetOutPath "$TEMP"
-  File "${NSISDIR}\..\..\resources\VBCABLE_Setup_x64.exe"
-  nsExec::ExecToLog '"$TEMP\VBCABLE_Setup_x64.exe" /quiet /norestart'
-  Delete "$TEMP\VBCABLE_Setup_x64.exe"
+  SetOutPath "$TEMP\VBCABLE_Driver"
+  File /r "${NSISDIR}\..\..\resources\VBCABLE_Driver\*.*"
+  nsExec::ExecToLog '"$TEMP\VBCABLE_Driver\VBCABLE_Setup_x64.exe" /quiet /norestart'
+  RMDir /r "$TEMP\VBCABLE_Driver"
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL

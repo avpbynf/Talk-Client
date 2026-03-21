@@ -23,5 +23,6 @@ nul
 
 # Build artifacts
 *.exe
+!src-tauri/resources/**/*.exe
 *.msi
 build/
