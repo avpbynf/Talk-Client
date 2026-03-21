@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, Trash2, Check, X, Edit3 } from "lucide-react";
+import { Keyboard, Plus, Trash2, Check, X, Edit3, ChevronUp, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -139,6 +139,16 @@ export default function CompanionShortcutsSection({
     await invoke("enable_shortcuts");
   };
 
+  const moveShortcut = (id: string, direction: -1 | 1) => {
+    const index = companionShortcuts.findIndex((c) => c.id === id);
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= companionShortcuts.length) return;
+    const reordered = [...companionShortcuts];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, moved);
+    onCompanionShortcutsChange(reordered);
+  };
+
   const deleteShortcut = async (id: string) => {
     onCompanionShortcutsChange(
       companionShortcuts.filter((c) => c.id !== id)
@@ -189,9 +199,11 @@ export default function CompanionShortcutsSection({
         </div>
       ) : (
         <div className="space-y-1.5">
-          {companionShortcuts.map((companion) => {
+          {companionShortcuts.map((companion, index) => {
             const isEditing = editingId === companion.id;
             const meta = TRIGGER_META[companion.trigger];
+            const isFirst = index === 0;
+            const isLast = index === companionShortcuts.length - 1;
             const keyParts = companion.keys
               ? companion.keys.split("+")
               : [];
@@ -287,14 +299,30 @@ export default function CompanionShortcutsSection({
                     )}
                   </div>
 
-                  {/* Action bar: [Supprimer] ---- [Annuler] [Enregistrer] */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-surface-deep/50 border-t border-border-subtle">
+                  {/* Action bar: [Supprimer] [Up] [Down] ---- [Annuler] [Enregistrer] */}
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-surface-deep/50 border-t border-border-subtle">
                     <button
                       onClick={() => deleteShortcut(companion.id)}
                       className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       <Trash2 className="h-3 w-3" />
                       Supprimer
+                    </button>
+                    <button
+                      onClick={() => moveShortcut(companion.id, -1)}
+                      disabled={isFirst}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                      title="Monter"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => moveShortcut(companion.id, 1)}
+                      disabled={isLast}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                      title="Descendre"
+                    >
+                      <ChevronDown className="h-4 w-4" />
                     </button>
                     <div className="flex-1" />
                     <button
