@@ -170,7 +170,7 @@ export default function CompanionShortcutsSection({
   };
 
   return (
-    <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
+    <div className="p-5 pb-3 rounded-xl border border-border-card bg-surface-raised space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
           <Keyboard className="h-4 w-4" />

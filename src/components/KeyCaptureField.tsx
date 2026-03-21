@@ -152,7 +152,7 @@ export default function KeyCaptureField({
   return (
     <div className={cn("flex items-center gap-1.5 shrink-0", className)}>
       {displayKeys.length > 0 ? (
-        <div className="flex gap-1 items-center px-2.5 py-1 rounded-md border border-border-card bg-surface-deep min-h-[32px]">
+        <div className="flex gap-1 items-center min-h-[32px]">
           {displayKeys.map((key, i) => (
             <kbd key={i} className="text-[11px] px-1.5 py-0.5">
               {key}
@@ -160,7 +160,7 @@ export default function KeyCaptureField({
           ))}
         </div>
       ) : (
-        <span className="text-[11px] text-muted-foreground/40 italic px-2.5 py-1 rounded-md border border-dashed border-border-card min-h-[32px] flex items-center">
+        <span className="text-[11px] text-muted-foreground/40 italic min-h-[32px] flex items-center">
           {placeholder}
         </span>
       )}
