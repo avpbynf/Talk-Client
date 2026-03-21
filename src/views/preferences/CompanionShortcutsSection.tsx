@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, Trash2, Edit3, Check, X } from "lucide-react";
+import { Keyboard, Plus, Trash2, Check, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface CompanionShortcutsSectionProps {
@@ -224,26 +225,22 @@ export default function CompanionShortcutsSection({
                       }}
                     />
 
-                    {/* Segmented trigger control */}
-                    <div className="flex rounded-md overflow-hidden border border-border-card shrink-0">
-                      {(["start", "stop", "both"] as const).map((t) => {
-                        const tm = TRIGGER_META[t];
-                        return (
-                          <button
-                            key={t}
-                            onClick={() => setDraft({ ...draft, trigger: t })}
-                            className={cn(
-                              "px-2.5 py-1 text-[11px] font-semibold tracking-wide transition-all",
-                              draft.trigger === t
-                                ? `${tm.bg} ${tm.color}`
-                                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-surface-deep"
-                            )}
-                          >
-                            {TRIGGER_META[t].label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {/* Trigger dropdown */}
+                    <Select
+                      value={draft.trigger}
+                      onValueChange={(v) =>
+                        setDraft({ ...draft, trigger: v as "start" | "stop" | "both" })
+                      }
+                    >
+                      <SelectTrigger className="w-[120px] shrink-0 bg-surface-deep border-border-card text-foreground h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="start">Demarrage</SelectItem>
+                        <SelectItem value="stop">Arret</SelectItem>
+                        <SelectItem value="both">Les deux</SelectItem>
+                      </SelectContent>
+                    </Select>
 
                     {/* Key capture */}
                     <div
