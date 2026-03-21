@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
 
-use super::find_vbcable_device;
+use super::detector::find_vbcable_device;
 
 #[derive(Error, Debug)]
 pub enum AudioRouterError {
