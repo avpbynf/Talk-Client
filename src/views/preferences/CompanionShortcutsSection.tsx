@@ -207,8 +207,23 @@ export default function CompanionShortcutsSection({
                   key={companion.id}
                   className="rounded-lg border border-[var(--color-active)]/40 bg-surface-inset overflow-hidden"
                 >
-                  {/* Main edit row */}
+                  {/* Main edit row: Label → Trigger → Keys */}
                   <div className="flex items-center gap-2 p-3">
+                    {/* Label input */}
+                    <input
+                      type="text"
+                      value={draft.label}
+                      onChange={(e) =>
+                        setDraft({ ...draft, label: e.target.value })
+                      }
+                      placeholder="Nom du raccourci"
+                      className="flex-1 px-2.5 py-1 rounded-md bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted-foreground/30 min-w-0"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveEdit();
+                        if (e.key === "Escape") cancelEdit();
+                      }}
+                    />
+
                     {/* Segmented trigger control */}
                     <div className="flex rounded-md overflow-hidden border border-border-card shrink-0">
                       {(["start", "stop", "both"] as const).map((t) => {
@@ -255,21 +270,6 @@ export default function CompanionShortcutsSection({
                         </span>
                       )}
                     </div>
-
-                    {/* Label input */}
-                    <input
-                      type="text"
-                      value={draft.label}
-                      onChange={(e) =>
-                        setDraft({ ...draft, label: e.target.value })
-                      }
-                      placeholder="Nom du raccourci"
-                      className="flex-1 px-2.5 py-1 rounded-md bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted-foreground/30 min-w-0"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveEdit();
-                        if (e.key === "Escape") cancelEdit();
-                      }}
-                    />
                   </div>
 
                   {/* Action bar */}
@@ -299,12 +299,21 @@ export default function CompanionShortcutsSection({
               );
             }
 
-            /* ── View mode — single compact row ────────────── */
+            /* ── View mode — single compact row: Label → Trigger → Keys ── */
             return (
               <div
                 key={companion.id}
                 className="group flex items-center gap-2.5 pl-3 pr-1.5 py-2 rounded-lg border border-border-card bg-surface-inset hover:border-border-hover transition-colors"
               >
+                {/* Label */}
+                <span className="flex-1 text-sm text-foreground/80 truncate min-w-0">
+                  {companion.label || (
+                    <span className="text-muted-foreground/40 italic">
+                      sans nom
+                    </span>
+                  )}
+                </span>
+
                 {/* Trigger badge */}
                 <span
                   className={cn(
@@ -331,18 +340,6 @@ export default function CompanionShortcutsSection({
                     non assigne
                   </span>
                 )}
-
-                {/* Separator dot */}
-                <span className="text-border-subtle shrink-0">·</span>
-
-                {/* Label */}
-                <span className="flex-1 text-sm text-foreground/80 truncate min-w-0">
-                  {companion.label || (
-                    <span className="text-muted-foreground/40 italic">
-                      sans nom
-                    </span>
-                  )}
-                </span>
 
                 {/* Actions — visible on hover */}
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
