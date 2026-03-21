@@ -1,19 +1,29 @@
-import { useState } from "react";
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, Trash2, Check, ChevronUp, ChevronDown } from "lucide-react";
+import { Keyboard, Plus, Trash2, GripVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import KeyCaptureField from "@/components/KeyCaptureField";
 import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface CompanionShortcutsSectionProps {
   companionShortcuts: CompanionShortcut[];
   onCompanionShortcutsChange: (shortcuts: CompanionShortcut[]) => void;
-}
-
-interface Draft {
-  label: string;
-  keys: string;
-  trigger: "start" | "stop" | "both";
 }
 
 const TRIGGER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -37,65 +47,126 @@ const TRIGGER_META: Record<string, { label: string; color: string; bg: string; b
   },
 };
 
+function SortableRow({
+  companion,
+  onUpdate,
+  onDelete,
+}: {
+  companion: CompanionShortcut;
+  onUpdate: (id: string, patch: Partial<CompanionShortcut>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: companion.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  const meta = TRIGGER_META[companion.trigger];
+  const keyParts = companion.keys ? companion.keys.split("+") : [];
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group flex items-center gap-2 px-2 py-2 rounded-lg border border-border-card bg-surface-inset transition-colors",
+        isDragging && "shadow-lg ring-1 ring-[var(--color-active)]/40"
+      )}
+    >
+      {/* Drag handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-0.5 opacity-30 group-hover:opacity-70 transition-opacity shrink-0"
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Label — inline editable */}
+      <input
+        type="text"
+        value={companion.label}
+        onChange={(e) => onUpdate(companion.id, { label: e.target.value })}
+        placeholder="Nom"
+        className="flex-1 px-2 py-0.5 rounded-md bg-transparent border border-transparent hover:border-border-card focus:border-border-card focus:bg-surface-deep text-sm text-foreground/80 placeholder:text-muted-foreground/30 min-w-0 transition-colors focus:outline-none"
+      />
+
+      {/* Trigger dropdown */}
+      <Select
+        value={companion.trigger}
+        onValueChange={(v) =>
+          onUpdate(companion.id, { trigger: v as "start" | "stop" | "both" })
+        }
+      >
+        <SelectTrigger className="w-[110px] shrink-0 bg-transparent border-transparent hover:border-border-card hover:bg-surface-deep text-foreground h-7 text-xs transition-colors">
+          <span className={cn("text-[11px] font-semibold uppercase tracking-wider", meta.color)}>
+            <SelectValue />
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="start">Demarrage</SelectItem>
+          <SelectItem value="stop">Arret</SelectItem>
+          <SelectItem value="both">Les deux</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {/* Key capture */}
+      <KeyCaptureField
+        value={companion.keys}
+        onChange={(shortcut) => onUpdate(companion.id, { keys: shortcut })}
+      />
+
+      {/* Delete */}
+      <button
+        onClick={() => onDelete(companion.id)}
+        className="p-1 rounded-md text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+        title="Supprimer"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export default function CompanionShortcutsSection({
   companionShortcuts,
   onCompanionShortcutsChange,
 }: CompanionShortcutsSectionProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
-  const startEdit = (companion: CompanionShortcut) => {
-    setEditingId(companion.id);
-    setDraft({
-      label: companion.label,
-      keys: companion.keys,
-      trigger: companion.trigger,
-    });
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = companionShortcuts.findIndex((c) => c.id === active.id);
+    const newIndex = companionShortcuts.findIndex((c) => c.id === over.id);
+    onCompanionShortcutsChange(arrayMove(companionShortcuts, oldIndex, newIndex));
   };
 
-  const cancelEdit = () => {
-    if (editingId) {
-      const companion = companionShortcuts.find((c) => c.id === editingId);
-      if (companion && !companion.keys && !companion.label) {
-        onCompanionShortcutsChange(
-          companionShortcuts.filter((c) => c.id !== editingId)
-        );
-      }
-    }
-    setEditingId(null);
-    setDraft(null);
-  };
-
-  const saveEdit = () => {
-    if (!editingId || !draft) return;
-    const updated = companionShortcuts.map((c) =>
-      c.id === editingId
-        ? { ...c, label: draft.label, keys: draft.keys, trigger: draft.trigger }
-        : c
+  const updateShortcut = (id: string, patch: Partial<CompanionShortcut>) => {
+    onCompanionShortcutsChange(
+      companionShortcuts.map((c) => (c.id === id ? { ...c, ...patch } : c))
     );
-    onCompanionShortcutsChange(updated);
-    setEditingId(null);
-    setDraft(null);
-  };
-
-  const moveShortcut = (id: string, direction: -1 | 1) => {
-    const index = companionShortcuts.findIndex((c) => c.id === id);
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= companionShortcuts.length) return;
-    const reordered = [...companionShortcuts];
-    const [moved] = reordered.splice(index, 1);
-    reordered.splice(newIndex, 0, moved);
-    onCompanionShortcutsChange(reordered);
   };
 
   const deleteShortcut = (id: string) => {
     onCompanionShortcutsChange(
       companionShortcuts.filter((c) => c.id !== id)
     );
-    if (editingId === id) {
-      setEditingId(null);
-      setDraft(null);
-    }
   };
 
   return (
@@ -107,14 +178,15 @@ export default function CompanionShortcutsSection({
         </div>
         <button
           onClick={() => {
-            const newCompanion: CompanionShortcut = {
-              id: crypto.randomUUID(),
-              label: "",
-              keys: "",
-              trigger: "both",
-            };
-            onCompanionShortcutsChange([...companionShortcuts, newCompanion]);
-            startEdit(newCompanion);
+            onCompanionShortcutsChange([
+              ...companionShortcuts,
+              {
+                id: crypto.randomUUID(),
+                label: "",
+                keys: "",
+                trigger: "both",
+              },
+            ]);
           }}
           className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border-card text-muted-foreground hover:text-foreground hover:border-border-hover transition-colors"
         >
@@ -136,150 +208,27 @@ export default function CompanionShortcutsSection({
           </p>
         </div>
       ) : (
-        <div className="space-y-1.5">
-          {companionShortcuts.map((companion, index) => {
-            const isEditing = editingId === companion.id;
-            const meta = TRIGGER_META[companion.trigger];
-            const isFirst = index === 0;
-            const isLast = index === companionShortcuts.length - 1;
-            const keyParts = companion.keys
-              ? companion.keys.split("+")
-              : [];
-
-            /* ── Edit mode ─────────────────────────────────── */
-            if (isEditing && draft) {
-              return (
-                <div
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={companionShortcuts.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-1.5">
+              {companionShortcuts.map((companion) => (
+                <SortableRow
                   key={companion.id}
-                  className="rounded-lg border border-[var(--color-active)]/40 bg-surface-inset overflow-hidden"
-                >
-                  {/* Main edit row: Label → Trigger → Keys */}
-                  <div className="flex items-center gap-2 p-3">
-                    <input
-                      type="text"
-                      value={draft.label}
-                      onChange={(e) =>
-                        setDraft({ ...draft, label: e.target.value })
-                      }
-                      placeholder="Nom du raccourci"
-                      className="flex-1 px-2.5 py-1 rounded-md bg-surface-deep border border-border-card text-sm text-foreground input-glow placeholder:text-muted-foreground/30 min-w-0"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveEdit();
-                        if (e.key === "Escape") cancelEdit();
-                      }}
-                    />
-
-                    <Select
-                      value={draft.trigger}
-                      onValueChange={(v) =>
-                        setDraft({ ...draft, trigger: v as "start" | "stop" | "both" })
-                      }
-                    >
-                      <SelectTrigger className="w-[120px] shrink-0 bg-surface-deep border-border-card text-foreground h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="start">Demarrage</SelectItem>
-                        <SelectItem value="stop">Arret</SelectItem>
-                        <SelectItem value="both">Les deux</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <KeyCaptureField
-                      value={draft.keys}
-                      onChange={(shortcut) =>
-                        setDraft({ ...draft, keys: shortcut })
-                      }
-                    />
-                  </div>
-
-                  {/* Action bar */}
-                  <div className="flex items-center gap-1.5 px-3 py-2 bg-surface-deep/50 border-t border-border-subtle">
-                    <button
-                      onClick={() => deleteShortcut(companion.id)}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Supprimer
-                    </button>
-                    <button
-                      onClick={() => moveShortcut(companion.id, -1)}
-                      disabled={isFirst}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active disabled:opacity-20 disabled:pointer-events-none transition-colors"
-                      title="Monter"
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => moveShortcut(companion.id, 1)}
-                      disabled={isLast}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active disabled:opacity-20 disabled:pointer-events-none transition-colors"
-                      title="Descendre"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                    <div className="flex-1" />
-                    <button
-                      onClick={cancelEdit}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-active transition-colors"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      onClick={saveEdit}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90 transition-colors"
-                    >
-                      <Check className="h-3 w-3" />
-                      Enregistrer
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            /* ── View mode — clickable row ──────────────────── */
-            return (
-              <div
-                key={companion.id}
-                onClick={() => startEdit(companion)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border-card bg-surface-inset hover:border-border-hover hover:bg-surface-raised cursor-pointer transition-colors"
-              >
-                <span className="flex-1 text-sm text-foreground/80 truncate min-w-0">
-                  {companion.label || (
-                    <span className="text-muted-foreground/40 italic">
-                      sans nom
-                    </span>
-                  )}
-                </span>
-
-                <span
-                  className={cn(
-                    "shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border",
-                    meta.color,
-                    meta.bg,
-                    meta.border
-                  )}
-                >
-                  {meta.label}
-                </span>
-
-                {keyParts.length > 0 ? (
-                  <div className="flex gap-1 shrink-0">
-                    {keyParts.map((key, i) => (
-                      <kbd key={i} className="text-[11px] px-1.5 py-0.5">
-                        {key}
-                      </kbd>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground/40 shrink-0 italic">
-                    non assigne
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  companion={companion}
+                  onUpdate={updateShortcut}
+                  onDelete={deleteShortcut}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
