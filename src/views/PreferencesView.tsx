@@ -75,16 +75,16 @@ export default function PreferencesView({
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
-            <RecordingModeSection
-              recordingMode={recordingMode}
-              onRecordingModeChange={onRecordingModeChange}
-            />
             <ShortcutsSection
               shortcut={shortcut}
               onShortcutChange={onShortcutChange}
               cancelShortcut={cancelShortcut}
               onCancelShortcutChange={onCancelShortcutChange}
               recordingMode={recordingMode}
+            />
+            <RecordingModeSection
+              recordingMode={recordingMode}
+              onRecordingModeChange={onRecordingModeChange}
             />
             <CompanionShortcutsSection
               companionShortcuts={companionShortcuts}
