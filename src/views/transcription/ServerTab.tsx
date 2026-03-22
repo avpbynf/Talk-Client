@@ -105,7 +105,7 @@ export function ServerTab({
                 onClick={() => checkServerHealth(false)}
                 disabled={serverStatus === "checking"}
                 className={cn(
-                  "px-3 py-2 rounded-lg border transition-all duration-200",
+                  "cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 disabled:cursor-not-allowed",
                   serverStatus === "online"
                     ? "border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success)]"
                     : serverStatus === "offline"
@@ -113,7 +113,7 @@ export function ServerTab({
                     : "border-border hover:bg-surface-active"
                 )}
               >
-                <RefreshCw className={cn("h-4 w-4", serverStatus === "checking" && "animate-spin")} />
+                <RefreshCw className={cn("h-4 w-4 transition-transform", serverStatus === "checking" && "animate-spin")} />
               </button>
             </div>
             {urlError && <p className="text-xs text-[var(--color-destructive)]">{urlError}</p>}

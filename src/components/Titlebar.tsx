@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, Copy, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export type StatusDotState = "success" | "warning" | "destructive";
 
 interface TitlebarProps {
   title?: string;
+  statusDot?: StatusDotState;
+  statusLabel?: string;
 }
 
-export function Titlebar({ title = "T4lk" }: TitlebarProps) {
+export function Titlebar({ title = "T4lk", statusDot, statusLabel }: TitlebarProps) {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -35,10 +40,20 @@ export function Titlebar({ title = "T4lk" }: TitlebarProps) {
       onDoubleClick={handleMaximize}
       className="h-9 flex items-center justify-between bg-surface-deep border-b border-border-subtle select-none shrink-0"
     >
-      {/* Left section - Title */}
+      {/* Left section - Title + Status */}
       <div className="flex items-center gap-2 pl-3" data-tauri-drag-region>
+        {statusDot && (
+          <div
+            className={cn(
+              "h-2 w-2 rounded-full transition-all duration-300",
+              statusDot === "success" && "bg-success shadow-[0_0_6px_oklch(from_var(--color-success)_l_c_h/0.5)]",
+              statusDot === "warning" && "bg-warning shadow-[0_0_5px_oklch(from_var(--color-warning)_l_c_h/0.4)]",
+              statusDot === "destructive" && "bg-destructive shadow-[0_0_5px_oklch(from_var(--color-destructive)_l_c_h/0.4)]"
+            )}
+          />
+        )}
         <span className="text-xs font-medium text-muted-foreground select-none" data-tauri-drag-region>
-          {title}
+          {statusLabel && <>{statusLabel} — </>}{title}
         </span>
       </div>
 

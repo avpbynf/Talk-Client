@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Mic } from "lucide-react";
+import { Mic, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,10 +12,14 @@ import {
 export default function InputDeviceSection() {
   const [devices, setDevices] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [defaultName, setDefaultName] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     invoke<string[]>("list_input_devices").then(setDevices);
     invoke<string | null>("get_input_device").then(setSelected);
+    invoke<string>("get_default_input_device").then(setDefaultName).catch(() => {});
   }, []);
 
   const handleChange = async (value: string) => {
@@ -25,36 +29,55 @@ export default function InputDeviceSection() {
   };
 
   return (
-    <>
-      <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
+    <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
           <Mic className="h-4 w-4" />
           Microphone
         </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Peripherique d'entree</label>
-          <Select
-            value={selected ?? "__default__"}
-            onValueChange={handleChange}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Defaut systeme" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__default__">Defaut systeme</SelectItem>
-              {devices.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Micro utilise pour la capture audio STT
-          </p>
-        </div>
+        <span className="text-[11px] text-muted-foreground/60 font-mono">
+          {devices.length} peripherique{devices.length !== 1 ? "s" : ""}
+        </span>
       </div>
-    </>
+
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 rounded-lg bg-[var(--color-active)]/10 border border-[var(--color-active)]/20 flex items-center justify-center shrink-0">
+          <Mic className="h-4 w-4 text-[var(--color-active)]" />
+        </div>
+        <Select
+          value={selected ?? "__default__"}
+          onValueChange={handleChange}
+        >
+          <SelectTrigger className="w-full bg-surface-inset border-border-card">
+            <SelectValue placeholder="Defaut systeme" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__default__">
+              Defaut systeme{defaultName ? ` (${defaultName})` : ""}
+            </SelectItem>
+            {devices.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <button
+          onClick={() => {
+            setIsRefreshing(true);
+            clearTimeout(refreshTimeout.current);
+            invoke<string[]>("list_input_devices").then((list) => {
+              setDevices(list);
+              refreshTimeout.current = setTimeout(() => setIsRefreshing(false), 600);
+            });
+          }}
+          disabled={isRefreshing}
+          className="cursor-pointer h-9 w-9 shrink-0 rounded-lg border border-border-card bg-surface-inset flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-active transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Rafraichir les peripheriques"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 transition-transform ${isRefreshing ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+    </div>
   );
 }

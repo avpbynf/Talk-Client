@@ -2,13 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { listen } from "@tauri-apps/api/event";
-import { History, Cpu, Settings, BookA } from "lucide-react";
+import { History, Cpu, Settings, BookA, Palette } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
 import HistoryView from "@/views/HistoryView";
 import TranscriptionView from "@/views/transcription/TranscriptionView";
 import VocabularyView from "@/views/VocabularyView";
 import PreferencesView from "@/views/PreferencesView";
+import AppearanceView from "@/views/AppearanceView";
 import SetupWizard from "@/pages/SetupWizard";
 import { playSound, type SoundPreset } from "@/lib/audio";
 
@@ -92,7 +93,7 @@ interface SavedTranscription {
   source?: "local" | "server";
 }
 
-type View = "history" | "transcription" | "vocabulary" | "preferences";
+type View = "history" | "transcription" | "vocabulary" | "preferences" | "appearance";
 
 function App() {
   const [setupCompleted, setSetupCompleted] = useState<boolean | null>(null);
@@ -370,6 +371,7 @@ function App() {
     { id: "vocabulary" as View, icon: BookA, label: "Vocabulaire" },
   ];
   const navItemsBottom = [
+    { id: "appearance" as View, icon: Palette, label: "Apparence" },
     { id: "transcription" as View, icon: Cpu, label: "Transcription" },
     { id: "preferences" as View, icon: Settings, label: "Preferences" },
   ];
@@ -399,7 +401,30 @@ function App() {
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden noise-overlay">
       {/* Titlebar */}
-      <Titlebar />
+      <Titlebar
+        statusDot={(() => {
+          const isServerMode = transcriptionMode === "server" && !serverFallback;
+          const isHybridMode = transcriptionMode === "server" && serverFallback;
+          if (isServerMode) {
+            return serverStatus === "online" ? "success" : serverStatus === "offline" ? "destructive" : "warning";
+          } else if (isHybridMode) {
+            const serverOk = serverStatus === "online";
+            const localOk = currentModel !== null;
+            return serverOk || localOk ? "success" : serverStatus === "offline" && !localOk ? "destructive" : "warning";
+          }
+          return currentModel ? "success" : "warning";
+        })()}
+        statusLabel={(() => {
+          const isServerMode = transcriptionMode === "server" && !serverFallback;
+          const isHybridMode = transcriptionMode === "server" && serverFallback;
+          if (isServerMode) {
+            return serverStatus === "online" ? "Serveur connecte" : serverStatus === "offline" ? "Serveur indisponible" : "Serveur";
+          } else if (isHybridMode) {
+            return serverStatus === "online" ? "Serveur connecte" : currentModel || "Non pret";
+          }
+          return currentModel || "Aucun modele";
+        })()}
+      />
 
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -426,7 +451,6 @@ function App() {
 
           {/* Bottom group */}
           <div className="mt-auto flex flex-col gap-2 w-full px-2">
-            <div className="w-8 h-px bg-border-subtle mx-auto mb-2" />
             {navItemsBottom.map((item) => (
               <button
                 key={item.id}
@@ -444,45 +468,6 @@ function App() {
             ))}
           </div>
 
-          {/* Status indicator */}
-          <div className="mt-6 mb-2" title={(() => {
-            const isServerMode = transcriptionMode === "server" && !serverFallback;
-            const isHybridMode = transcriptionMode === "server" && serverFallback;
-            if (isServerMode) {
-              const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
-              return `Serveur: ${statusLabel}`;
-            } else if (isHybridMode) {
-              const statusLabel = serverStatus === "online" ? "connecte" : serverStatus === "offline" ? "indisponible" : "non teste";
-              return `Serveur: ${statusLabel} | Local: ${currentModel || "non pret"}`;
-            } else {
-              return currentModel ? `Modele: ${currentModel}` : "Aucun modele charge";
-            }
-          })()}>
-            {(() => {
-              const isServerMode = transcriptionMode === "server" && !serverFallback;
-              const isHybridMode = transcriptionMode === "server" && serverFallback;
-              let dotState: "success" | "warning" | "destructive";
-              if (isServerMode) {
-                dotState = serverStatus === "online" ? "success" : serverStatus === "offline" ? "destructive" : "warning";
-              } else if (isHybridMode) {
-                const serverOk = serverStatus === "online";
-                const localOk = currentModel !== null;
-                dotState = serverOk || localOk ? "success" : serverStatus === "offline" && !localOk ? "destructive" : "warning";
-              } else {
-                dotState = currentModel ? "success" : "warning";
-              }
-              return (
-                <div
-                  className={cn(
-                    "h-2.5 w-2.5 rounded-full transition-all duration-300",
-                    dotState === "success" && "bg-success shadow-[0_0_8px_oklch(from_var(--color-success)_l_c_h/0.5)]",
-                    dotState === "warning" && "bg-warning shadow-[0_0_6px_oklch(from_var(--color-warning)_l_c_h/0.4)]",
-                    dotState === "destructive" && "bg-destructive shadow-[0_0_6px_oklch(from_var(--color-destructive)_l_c_h/0.4)]"
-                  )}
-                />
-              );
-            })()}
-          </div>
         </div>
 
         {/* Main content */}
@@ -588,6 +573,15 @@ function App() {
             onVocabularyChange={setVocabulary}
           />
         )}
+        {currentView === "appearance" && (
+          <AppearanceView
+            overlayTheme={overlayTheme}
+            onOverlayThemeChange={async (theme) => {
+              setOverlayTheme(theme);
+              await invoke("set_overlay_theme", { theme });
+            }}
+          />
+        )}
         {currentView === "preferences" && (
           <PreferencesView
             recordingMode={recordingMode}
@@ -625,6 +619,11 @@ function App() {
               setPreserveClipboard(enabled);
               await invoke("set_preserve_clipboard", { enabled });
             }}
+            companionShortcuts={companionShortcuts}
+            onCompanionShortcutsChange={async (shortcuts) => {
+              setCompanionShortcuts(shortcuts);
+              await invoke("set_companion_shortcuts", { shortcuts });
+            }}
             soundFeedback={soundFeedback}
             onSoundFeedbackChange={async (enabled) => {
               setSoundFeedback(enabled);
@@ -639,16 +638,6 @@ function App() {
             onStopSoundChange={async (preset) => {
               setStopSound(preset);
               await invoke("set_stop_sound", { preset });
-            }}
-            companionShortcuts={companionShortcuts}
-            onCompanionShortcutsChange={async (shortcuts) => {
-              setCompanionShortcuts(shortcuts);
-              await invoke("set_companion_shortcuts", { shortcuts });
-            }}
-            overlayTheme={overlayTheme}
-            onOverlayThemeChange={async (theme) => {
-              setOverlayTheme(theme);
-              await invoke("set_overlay_theme", { theme });
             }}
           />
         )}
