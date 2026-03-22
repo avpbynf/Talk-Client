@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, AlertCircle, Check, Clock, Loader2, RefreshCw, Server, WifiOff } from "lucide-react";
+import { AlertCircle, Check, Clock, Loader2, RefreshCw, Server, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import type { ServerStatus } from "./TranscriptionView";
@@ -134,8 +134,8 @@ export function ServerTab({
 
           {/* Token API */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Token API <span className="text-muted text-xs font-normal">(optionnel)</span>
+            <label className="text-xs font-medium text-muted-foreground">
+              Token API <span className="text-xs font-normal">(optionnel)</span>
             </label>
             <input
               type="password"
@@ -143,9 +143,9 @@ export function ServerTab({
               onChange={(e) => setTokenInput(e.target.value)}
               onBlur={() => { if (tokenInput !== serverToken) onServerTokenChange(tokenInput); }}
               placeholder="sk-... ou laisser vide"
-              className="w-full px-3 py-2 rounded-lg bg-surface-inset border border-border-card text-sm font-mono input-glow placeholder:text-muted/50"
+              className="w-full px-3 py-2 rounded-lg bg-surface-inset border border-border-card text-sm font-mono input-glow placeholder:text-muted-foreground"
             />
-            <p className="text-xs text-muted">Compatible OpenAI API. Requis pour les services tiers.</p>
+            <p className="text-xs text-muted-foreground">Compatible OpenAI API. Requis pour les services tiers.</p>
           </div>
         </div>
       </div>
@@ -184,23 +184,11 @@ export function ServerTab({
       <div className="flex items-center justify-between p-4 rounded-xl bg-surface-raised border border-border-card">
         <div className="space-y-0.5">
           <p className="text-sm font-medium text-foreground">Fallback local</p>
-          <p className="text-xs text-muted">Utiliser le modele local si le serveur est indisponible</p>
+          <p className="text-xs text-muted-foreground">Utiliser le modele local si le serveur est indisponible</p>
         </div>
         <Switch checked={serverFallback} onCheckedChange={onServerFallbackChange} />
       </div>
 
-      {/* SSE Info */}
-      <div className="p-4 rounded-lg bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
-        <div className="flex items-start gap-3">
-          <Activity className="h-4 w-4 text-server mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-server">Streaming SSE</p>
-            <p className="text-xs text-[var(--color-server)]/70 mt-1">
-              Le serveur envoie les segments en temps reel. Le texte apparait progressivement dans l'overlay pendant la transcription.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
