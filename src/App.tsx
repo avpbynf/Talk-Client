@@ -174,7 +174,6 @@ function App() {
       (c) => c.keys && (c.trigger === phase || c.trigger === "both")
     );
     for (const c of shortcuts) {
-      console.log(`[companion] firing "${c.label}" (${c.keys}) on ${phase}`);
       invoke("simulate_keystroke_cmd", { keys: c.keys }).catch((err) =>
         console.error(`[companion] "${c.label}" failed:`, err)
       );

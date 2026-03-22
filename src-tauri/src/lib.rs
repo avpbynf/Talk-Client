@@ -16,6 +16,7 @@ use std::sync::Arc;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
 pub use models::ModelManager;
 pub use transcription::{WhisperEngine, AcceleratorBackend, AcceleratorInfo, GpuVendor, GpuInfo};
@@ -51,6 +52,10 @@ pub struct AppState {
     pub virtual_mic: Mutex<virtual_mic::VirtualMicController>,
     /// Selected input device name (None = system default)
     pub input_device_name: Mutex<Option<String>>,
+    /// Current main shortcut (stored for handler dispatch, never re-registered via on_shortcut)
+    pub main_shortcut: Mutex<Option<Shortcut>>,
+    /// Current cancel shortcut (stored for handler dispatch, never re-registered via on_shortcut)
+    pub cancel_shortcut: Mutex<Option<Shortcut>>,
 }
 
 impl Default for AppState {
@@ -75,6 +80,8 @@ impl Default for AppState {
             preserve_clipboard: Mutex::new(false),
             virtual_mic: Mutex::new(virtual_mic::VirtualMicController::new()),
             input_device_name: Mutex::new(None),
+            main_shortcut: Mutex::new(None),
+            cancel_shortcut: Mutex::new(None),
         }
     }
 }
@@ -851,7 +858,20 @@ fn set_input_device(device_name: Option<String>, state: tauri::State<'_, AppStat
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    let state = app.state::<AppState>();
+                    let is_main = state.main_shortcut.lock().as_ref() == Some(shortcut);
+                    let is_cancel = state.cancel_shortcut.lock().as_ref() == Some(shortcut);
+                    if is_main {
+                        hotkeys::handle_shortcut_event(app, event.state);
+                    } else if is_cancel && matches!(event.state, ShortcutState::Pressed) {
+                        hotkeys::cancel_recording(app);
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),

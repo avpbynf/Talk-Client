@@ -104,52 +104,24 @@ pub fn save_config(config: &HotkeyConfig) -> Result<(), HotkeyError> {
 pub fn setup_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config().unwrap_or_default();
     let global_shortcut = app.global_shortcut();
+    let state = app.state::<AppState>();
 
-    // Clean up any existing shortcuts first
     let _ = global_shortcut.unregister_all();
 
-    eprintln!("Setting up shortcuts:");
-    eprintln!("  Main: {}", config.shortcut);
-    eprintln!("  Cancel: {}", config.cancel_shortcut);
-
-    // Parse and register main shortcut
+    // Store parsed shortcuts in AppState — the single handler in Builder::with_handler
+    // dispatches based on these values. No on_shortcut calls needed.
     if let Ok(shortcut) = parse_shortcut(&config.shortcut) {
-        let app_handle = app.handle().clone();
-
-        if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-            handle_shortcut_event(&app_handle, event.state);
-        }) {
-            eprintln!("  Main shortcut handler error: {}", e);
-        }
-
+        *state.main_shortcut.lock() = Some(shortcut);
         if let Err(e) = global_shortcut.register(shortcut) {
-            eprintln!("  Main shortcut register error: {} - try a different shortcut", e);
-        } else {
-            eprintln!("  Main shortcut registered OK");
+            eprintln!("Main shortcut register error: {} - try a different shortcut", e);
         }
-    } else {
-        eprintln!("  Main shortcut parse error for: {}", config.shortcut);
     }
 
-    // Register cancel shortcut
     if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
-        let app_handle_cancel = app.handle().clone();
-
-        if let Err(e) = global_shortcut.on_shortcut(cancel_parsed, move |_app, _shortcut, event| {
-            if matches!(event.state, ShortcutState::Pressed) {
-                cancel_recording(&app_handle_cancel);
-            }
-        }) {
-            eprintln!("  Cancel shortcut handler error: {}", e);
-        }
-
+        *state.cancel_shortcut.lock() = Some(cancel_parsed);
         if let Err(e) = global_shortcut.register(cancel_parsed) {
-            eprintln!("  Cancel shortcut register error: {}", e);
-        } else {
-            eprintln!("  Cancel shortcut registered OK");
+            eprintln!("Cancel shortcut register error: {}", e);
         }
-    } else {
-        eprintln!("  Cancel shortcut parse error");
     }
 
     Ok(())
@@ -163,67 +135,41 @@ pub fn disable_shortcuts(app: &AppHandle) {
 }
 
 pub fn enable_shortcuts(app: &AppHandle) {
-    let config = load_config().unwrap_or_default();
     let global_shortcut = app.global_shortcut();
+    let state = app.state::<AppState>();
 
-    // Re-register main shortcut
-    if let Ok(main_parsed) = parse_shortcut(&config.shortcut) {
-        let app_handle = app.clone();
-        let _ = global_shortcut.on_shortcut(main_parsed, move |_app, _shortcut, event| {
-            handle_shortcut_event(&app_handle, event.state);
-        });
-        let _ = global_shortcut.register(main_parsed);
+    // Just re-register — handlers are in Builder::with_handler, no closure allocation
+    let main = *state.main_shortcut.lock();
+    if let Some(main) = main {
+        let _ = global_shortcut.register(main);
     }
-
-    // Re-register cancel shortcut
-    if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
-        let app_handle_cancel = app.clone();
-        let _ = global_shortcut.on_shortcut(cancel_parsed, move |_app, _shortcut, event| {
-            if matches!(event.state, ShortcutState::Pressed) {
-                cancel_recording(&app_handle_cancel);
-            }
-        });
-        let _ = global_shortcut.register(cancel_parsed);
+    let cancel = *state.cancel_shortcut.lock();
+    if let Some(cancel) = cancel {
+        let _ = global_shortcut.register(cancel);
     }
 }
 
 pub fn update_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // First, validate the new shortcut can be parsed
     let new_parsed = parse_shortcut(new_shortcut)?;
-
     let global_shortcut = app.global_shortcut();
+    let state = app.state::<AppState>();
 
-    // Unregister ALL shortcuts first to avoid conflicts
     if let Err(e) = global_shortcut.unregister_all() {
         eprintln!("Warning: failed to unregister shortcuts: {}", e);
     }
 
-    // Register the new shortcut with handler
-    let app_handle = app.clone();
-    if let Err(e) = global_shortcut.on_shortcut(new_parsed, move |_app, _shortcut, event| {
-        handle_shortcut_event(&app_handle, event.state);
-    }) {
-        eprintln!("Warning: on_shortcut failed (may already exist): {}", e);
-    }
-
-    // Try to register main shortcut
+    // Update stored shortcut and register (no on_shortcut — handler is in Builder)
+    *state.main_shortcut.lock() = Some(new_parsed);
     if let Err(e) = global_shortcut.register(new_parsed) {
         eprintln!("Warning: register failed: {} - will work after restart", e);
     }
 
     // Re-register cancel shortcut
-    let config = load_config().unwrap_or_default();
-    if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
-        let app_handle_cancel = app.clone();
-        let _ = global_shortcut.on_shortcut(cancel_parsed, move |_app, _shortcut, event| {
-            if matches!(event.state, ShortcutState::Pressed) {
-                cancel_recording(&app_handle_cancel);
-            }
-        });
-        let _ = global_shortcut.register(cancel_parsed);
+    let cancel = *state.cancel_shortcut.lock();
+    if let Some(cancel) = cancel {
+        let _ = global_shortcut.register(cancel);
     }
 
-    // Save to config - always save even if register failed
     let mut config = load_config().unwrap_or_default();
     config.shortcut = new_shortcut.to_string();
     if let Err(e) = save_config(&config) {
@@ -234,36 +180,24 @@ pub fn update_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dy
 }
 
 pub fn update_cancel_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Validate the new shortcut can be parsed
     let new_parsed = parse_shortcut(new_shortcut)?;
-
     let global_shortcut = app.global_shortcut();
+    let state = app.state::<AppState>();
 
-    // Unregister ALL shortcuts first
     if let Err(e) = global_shortcut.unregister_all() {
         eprintln!("Warning: failed to unregister shortcuts: {}", e);
     }
 
     // Re-register main shortcut
-    let config = load_config().unwrap_or_default();
-    if let Ok(main_parsed) = parse_shortcut(&config.shortcut) {
-        let app_handle = app.clone();
-        let _ = global_shortcut.on_shortcut(main_parsed, move |_app, _shortcut, event| {
-            handle_shortcut_event(&app_handle, event.state);
-        });
-        let _ = global_shortcut.register(main_parsed);
+    let main = *state.main_shortcut.lock();
+    if let Some(main) = main {
+        let _ = global_shortcut.register(main);
     }
 
-    // Register new cancel shortcut
-    let app_handle_cancel = app.clone();
-    let _ = global_shortcut.on_shortcut(new_parsed, move |_app, _shortcut, event| {
-        if matches!(event.state, ShortcutState::Pressed) {
-            cancel_recording(&app_handle_cancel);
-        }
-    });
+    // Update stored cancel shortcut and register (no on_shortcut — handler is in Builder)
+    *state.cancel_shortcut.lock() = Some(new_parsed);
     let _ = global_shortcut.register(new_parsed);
 
-    // Save to config
     let mut config = load_config().unwrap_or_default();
     config.cancel_shortcut = new_shortcut.to_string();
     if let Err(e) = save_config(&config) {
@@ -361,7 +295,7 @@ fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, Box<dyn std::error::Er
     Ok(Shortcut::new(Some(modifiers), code))
 }
 
-fn handle_shortcut_event(app: &AppHandle, state: ShortcutState) {
+pub fn handle_shortcut_event(app: &AppHandle, state: ShortcutState) {
     let app_state = app.state::<AppState>();
     let mode = *app_state.recording_mode.lock();
 
