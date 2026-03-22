@@ -4346,6 +4346,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "t4lk"
+version = "0.4.0"
+dependencies = [
+ "clipboard-win",
+ "cpal",
+ "directories",
+ "dotenvy",
+ "enigo",
+ "futures",
+ "hound",
+ "num_cpus",
+ "parking_lot",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-opener",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "url",
+ "whisper-rs",
+ "windows 0.62.2",
+]
+
+[[package]]
 name = "tao"
 version = "0.34.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6417,35 +6446,6 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "synstructure",
-]
-
-[[package]]
-name = "t4lk"
-version = "0.4.0"
-dependencies = [
- "clipboard-win",
- "cpal",
- "directories",
- "dotenvy",
- "enigo",
- "futures",
- "hound",
- "num_cpus",
- "parking_lot",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-opener",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "url",
- "whisper-rs",
- "windows 0.62.2",
 ]
 
 [[package]]
