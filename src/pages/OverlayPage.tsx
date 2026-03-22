@@ -25,19 +25,8 @@ function OverlayPage() {
   const smoothAvgRef = useRef(0);
   const spectrumRef = useRef(spectrum);
 
-  // Inject a <style> with !important to force transparency on the overlay window.
-  // The shared index.css sets body { bg-background } (opaque dark) which causes
-  // a visible dark rectangle behind the rounded overlay pill. A <style> injection
-  // with !important reliably overrides Tailwind's @layer base rules.
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent =
-      "html, body, #root { background: transparent !important; overflow: visible !important; }";
-    document.head.appendChild(style);
-    return () => {
-      style.remove();
-    };
-  }, []);
+  // Transparent background is set by an inline <script> in index.html
+  // (runs before CSS loads to prevent dark flash during WebView2 warm-up).
 
   // Load overlay theme on mount and listen for changes from preferences
   useEffect(() => {

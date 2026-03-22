@@ -1016,7 +1016,11 @@ pub fn run() {
                 });
             }
 
-            // Pre-initialize overlay (hidden) so it's ready when needed
+            // Pre-initialize overlay and warm up the webview.
+            // Create visible so WebView2 eagerly loads HTML/JS/React.
+            // The overlay is transparent + React renders null when idle,
+            // so nothing is visible on screen. Hide after a short delay
+            // to let the rendering pipeline fully initialize.
             let (width, height) = app_settings.overlay_size.dimensions();
             let mut overlay_builder = WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("/overlay".into()))
                 .title("")
@@ -1027,7 +1031,7 @@ pub fn run() {
                 .always_on_top(true)
                 .skip_taskbar(true)
                 .resizable(false)
-                .visible(false); // Start hidden
+                .focused(false);
 
             if let Some(pos) = app_settings.overlay_position {
                 overlay_builder = overlay_builder.position(pos.x, pos.y);
@@ -1035,7 +1039,14 @@ pub fn run() {
                 overlay_builder = overlay_builder.center();
             }
 
-            let _ = overlay_builder.build();
+            if let Ok(overlay_window) = overlay_builder.build() {
+                let w = overlay_window.clone();
+                std::thread::spawn(move || {
+                    // Give WebView2 time to load and render React
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    let _ = w.hide();
+                });
+            }
 
             Ok(())
         })

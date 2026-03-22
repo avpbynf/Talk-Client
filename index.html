@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>T4lk</title>
+    <script>
+      // Force transparent background for overlay window before CSS loads.
+      // Prevents dark flash when WebView2 warm-up creates the window visible.
+      if (window.location.pathname === '/overlay') {
+        var s = document.createElement('style');
+        s.textContent = 'html,body,#root{background:transparent!important;overflow:visible!important}';
+        document.head.appendChild(s);
+      }
+    </script>
   </head>
 
   <body>
