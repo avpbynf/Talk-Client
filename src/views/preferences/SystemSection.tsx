@@ -34,7 +34,7 @@ export default function SystemSection({
         {/* Autostart */}
         <div className="flex items-center justify-between">
           <div>
-            <label className="font-medium">Lancer au démarrage</label>
+            <label className="text-sm font-medium">Lancer au démarrage</label>
             <p className="text-sm text-muted-foreground mt-0.5">
               Démarrer automatiquement avec Windows
             </p>
@@ -48,7 +48,7 @@ export default function SystemSection({
         {/* Start Minimized */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
           <div>
-            <label className="font-medium">Démarrer minimisé</label>
+            <label className="text-sm font-medium">Démarrer minimisé</label>
             <p className="text-sm text-muted-foreground mt-0.5">
               Ouvrir directement dans la barre système
             </p>
@@ -62,7 +62,7 @@ export default function SystemSection({
         {/* Pause Media */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
           <div>
-            <label className="font-medium">Pause media</label>
+            <label className="text-sm font-medium">Pause media</label>
             <p className="text-sm text-muted-foreground mt-0.5">
               Met en pause la musique pendant l'enregistrement
             </p>
@@ -76,7 +76,7 @@ export default function SystemSection({
         {/* Preserve Clipboard */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
           <div>
-            <label className="font-medium">Préserver le presse-papier</label>
+            <label className="text-sm font-medium">Préserver le presse-papier</label>
             <p className="text-sm text-muted-foreground mt-0.5">
               Restaure le contenu du presse-papier après le collage
             </p>

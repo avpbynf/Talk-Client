@@ -99,7 +99,7 @@ function SortableRow({
         value={companion.label}
         onChange={(e) => onUpdate(companion.id, { label: e.target.value })}
         placeholder="Nom"
-        className="flex-1 px-2 py-0.5 rounded-md bg-transparent border border-transparent hover:border-border-card focus:border-border-card focus:bg-surface-deep text-sm text-foreground/80 placeholder:text-muted-foreground/30 min-w-0 transition-colors focus:outline-none"
+        className="flex-1 px-2 py-0.5 rounded-md bg-transparent border border-transparent hover:border-border-card focus:border-border-card focus:bg-surface-deep text-sm text-foreground/80 placeholder:text-muted-foreground min-w-0 transition-colors focus:outline-none"
       />
 
       {/* Trigger dropdown */}
@@ -201,7 +201,7 @@ export default function CompanionShortcutsSection({
       </p>
 
       {companionShortcuts.length === 0 ? (
-        <div className="py-8 rounded-lg border border-dashed border-border-subtle text-center">
+        <div className="py-8 rounded-lg border border-dashed border-border-card text-center">
           <Keyboard className="h-5 w-5 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             Aucun raccourci compagnon

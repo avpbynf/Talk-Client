@@ -56,7 +56,7 @@ export function LocalTab({
       />
 
       {/* Models Selection */}
-      <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
+      <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-[var(--color-active)]/15 flex items-center justify-center">

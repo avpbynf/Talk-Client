@@ -28,7 +28,7 @@ export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: 
   return (
     <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-8 w-8 rounded-lg bg-[var(--color-warning)]/15 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-lg bg-[var(--color-warning)]/10 flex items-center justify-center">
           <Zap className="h-4 w-4 text-warning" />
         </div>
         <div>

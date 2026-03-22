@@ -54,7 +54,7 @@ export default function MeetingModeSection() {
         <div className="flex items-center gap-2">
           <div
             className={`h-2 w-2 rounded-full ${
-              vbCableStatus.installed ? "bg-emerald-500" : "bg-red-500"
+              vbCableStatus.installed ? "bg-success" : "bg-destructive"
             }`}
           />
           <span className="text-xs text-muted-foreground">
@@ -68,7 +68,7 @@ export default function MeetingModeSection() {
         <div className="flex items-center justify-between">
           <div>
             <label
-              className={`font-medium ${!vbCableStatus.installed ? "opacity-50" : ""}`}
+              className={`text-sm font-medium ${!vbCableStatus.installed ? "opacity-50" : ""}`}
             >
               Mode reunion
             </label>

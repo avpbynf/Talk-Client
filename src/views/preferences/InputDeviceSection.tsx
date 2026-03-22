@@ -33,7 +33,7 @@ export default function InputDeviceSection() {
         </div>
 
         <div className="space-y-2">
-          <label className="font-medium">Peripherique d'entree</label>
+          <label className="text-sm font-medium">Peripherique d'entree</label>
           <Select
             value={selected ?? "__default__"}
             onValueChange={handleChange}

@@ -76,7 +76,7 @@ export function ServerTab({
   return (
     <div className="space-y-5">
       {/* Server Connection */}
-      <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
+      <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <div className="h-8 w-8 rounded-lg bg-[var(--color-server)]/15 flex items-center justify-center">
             <Server className="h-4 w-4 text-server" />
@@ -151,7 +151,7 @@ export function ServerTab({
       </div>
 
       {/* Timeout */}
-      <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
+      <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <div className="h-8 w-8 rounded-lg bg-[var(--color-server)]/15 flex items-center justify-center">
             <Clock className="h-4 w-4 text-server" />
@@ -190,7 +190,7 @@ export function ServerTab({
       </div>
 
       {/* SSE Info */}
-      <div className="p-4 rounded-lg bg-[var(--color-server)]/5 border border-[var(--color-server)]/10">
+      <div className="p-4 rounded-lg bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
         <div className="flex items-start gap-3">
           <Activity className="h-4 w-4 text-server mt-0.5 shrink-0" />
           <div>
