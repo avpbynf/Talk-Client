@@ -154,17 +154,7 @@ fn default_server_timeout() -> u64 {
 }
 
 fn default_vocabulary() -> Vec<String> {
-    vec![
-        "T4lk".to_string(),
-        "t4lking".to_string(),
-        "t4lking-online".to_string(),
-        "Claude".to_string(),
-        "CLAUDE.md".to_string(),
-        "Zed".to_string(),
-        "Sonnet".to_string(),
-        "Celery".to_string(),
-        "Rising".to_string(),
-    ]
+    Vec::new()
 }
 
 pub fn default_accelerator() -> AcceleratorBackend {
@@ -211,7 +201,7 @@ pub struct TranscriptionEntry {
 }
 
 fn get_config_dir() -> PathBuf {
-    ProjectDirs::from("com", "t4lk", "t4lk")
+    ProjectDirs::from("com", "avpbynf", "t4lk")
         .map(|dirs| dirs.config_dir().to_path_buf())
         .unwrap_or_else(|| PathBuf::from("."))
 }

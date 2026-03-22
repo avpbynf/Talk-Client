@@ -38,7 +38,7 @@ Implementation complete, spec superseded by code.
 - (client) Simplify vocabulary, remove bundled model, add mic mute
 
 - Remove bundled 574MB GGML model: download from HuggingFace at first launch
-  - Simplify vocabulary system: remove language-based vocabularies, add 9 default terms in settings, reduce setup wizard from 5 to 3 steps
+  - Simplify vocabulary system: remove language-based vocabularies, add empty default vocabulary in settings, reduce setup wizard from 5 to 3 steps
   - Add mic mute feature: mute system microphone during recording via Windows Core Audio API
   - Simplify media pause to plain play/pause toggle (remove unreliable GSMTCS API)
   - Fix build warnings in transcription and window modules
@@ -52,7 +52,7 @@ Bundle large-v3-turbo-q5_0 GGML model (574 MB) via Git LFS for
 Rebrand all identifiers (com.avpbynf.t4lk), titles, and config paths.
   Remove Claude API integration, screenshot capture, and server formatting.
   Adapt server_transcription.rs to new OpenAI-compatible API
-  (/v1/audio/transcriptions/stream, no auth). Add T4lk business vocabulary.
+  (/v1/audio/transcriptions/stream, no auth).
   Delete 7 dead files (claude_api.rs, screenshot/mod.rs, 5 views).
 
   -944 lines removed, +184 lines added across 25 files.
@@ -68,7 +68,7 @@ Copy of whisper-client source code (Tauri v2 + React 19).
 Header (150x57) and sidebar (164x314) with purple gradient
   matching app icon, wave motif, and T4lk text.
 - Add git-cliff configuration and initial CHANGELOG
-- Change authors from personal to T4lk
+- Change authors from personal to avpbynf
 
 ### Refactoring
 

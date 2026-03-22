@@ -76,7 +76,7 @@ impl Default for HotkeyConfig {
 }
 
 fn get_config_path() -> PathBuf {
-    ProjectDirs::from("com", "t4lk", "t4lk")
+    ProjectDirs::from("com", "avpbynf", "t4lk")
         .map(|dirs| dirs.config_dir().join("hotkeys.json"))
         .unwrap_or_else(|| PathBuf::from("hotkeys.json"))
 }

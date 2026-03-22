@@ -1,12 +1,12 @@
 [package]
 name = "t4lk"
 version = "0.4.0"
-description = "T4lk — T4lk internal Speech-to-Text client"
-authors = ["T4lk"]
+description = "T4lk — Speech-to-Text desktop client"
+authors = ["avpbynf"]
 edition = "2021"
 
 [lib]
-name = "the legacy lib"
+name = "t4lk_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

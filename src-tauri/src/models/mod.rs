@@ -141,7 +141,7 @@ pub struct ModelManager {
 
 impl ModelManager {
     pub fn new() -> Self {
-        let models_dir = ProjectDirs::from("com", "t4lk", "t4lk")
+        let models_dir = ProjectDirs::from("com", "avpbynf", "t4lk")
             .map(|dirs| dirs.data_dir().join("models"))
             .unwrap_or_else(|| PathBuf::from("models"));
 

@@ -217,7 +217,7 @@ export default function VocabularyView({
                 <div className="py-8 text-center text-muted-foreground border border-dashed border-border-card rounded-lg">
                   <BookText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Aucun terme personnalisé</p>
-                  <p className="text-xs mt-1">Les termes par défaut T4lk sont déjà pré-chargés</p>
+                  <p className="text-xs mt-1">Aucun terme par défaut</p>
                 </div>
               ) : (
                 <DndContext

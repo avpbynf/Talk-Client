@@ -2,7 +2,7 @@
 
 ## Context
 
-T4lk is an internal Speech-to-Text desktop app for T4lk (Tauri v2 + React 19 + TypeScript + Tailwind CSS v4). It records audio via a global hotkey, transcribes it (locally via whisper-rs or remotely via a FastAPI server on H100 GPU), and pastes the result into the active application.
+T4lk is a Speech-to-Text desktop app (Tauri v2 + React 19 + TypeScript + Tailwind CSS v4). It records audio via a global hotkey, transcribes it (locally via whisper-rs or remotely via a FastAPI server on H100 GPU), and pastes the result into the active application.
 
 The current UI works but needs a redesign to improve navigation flow, simplify configuration, and add missing features (sound feedback, shortcut chains).
 
@@ -42,7 +42,7 @@ A status dot at the bottom indicates server/model state.
 ### 3. Vocabulary
 - Add terms (comma/space separated), drag-and-drop reorder, delete
 - Info box explaining Whisper prompt injection
-- T4lk default terms pre-loaded in Rust backend
+- Default vocabulary terms pre-loaded in Rust backend
 
 ### 4. Preferences
 - Recording mode: Push-to-talk vs Toggle
@@ -141,7 +141,7 @@ Implementation notes:
 - The History page should feel like the "home" -- it's where users land and where transcription results appear
 - Cards and sections should breathe -- generous spacing, not cramped
 - Interactive elements should have clear hover/active states
-- Keep the "professional internal tool" aesthetic -- not flashy, just well-crafted
+- Keep the "professional indie tool" aesthetic -- not flashy, just well-crafted
 
 ---
 
