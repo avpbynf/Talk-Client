@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { listen } from "@tauri-apps/api/event";
-import { History, Cpu, Settings, BookA, Palette } from "lucide-react";
+import { History, Cpu, Settings, BookA, Palette, LayoutDashboard } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
 import HistoryView from "@/views/HistoryView";
@@ -10,6 +10,7 @@ import TranscriptionView from "@/views/transcription/TranscriptionView";
 import VocabularyView from "@/views/VocabularyView";
 import PreferencesView from "@/views/PreferencesView";
 import AppearanceView from "@/views/AppearanceView";
+import AnalyticsView from "@/views/AnalyticsView";
 import SetupWizard from "@/pages/SetupWizard";
 import { playSound, type SoundPreset } from "@/lib/audio";
 import { type AppThemeId, applyAppTheme } from "@/lib/app-themes";
@@ -96,11 +97,11 @@ interface SavedTranscription {
   source?: "local" | "server";
 }
 
-type View = "history" | "transcription" | "vocabulary" | "preferences" | "appearance";
+type View = "analytics" | "history" | "transcription" | "vocabulary" | "preferences" | "appearance";
 
 function App() {
   const [setupCompleted, setSetupCompleted] = useState<boolean | null>(null);
-  const [currentView, setCurrentView] = useState<View>("history");
+  const [currentView, setCurrentView] = useState<View>("analytics");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
   const [currentModel, setCurrentModel] = useState<string | null>(null);
@@ -374,6 +375,7 @@ function App() {
   }, []);
 
   const navItemsTop = [
+    { id: "analytics" as View, icon: LayoutDashboard, label: "Accueil" },
     { id: "history" as View, icon: History, label: "Historique" },
     { id: "vocabulary" as View, icon: BookA, label: "Vocabulaire" },
   ];
@@ -479,6 +481,9 @@ function App() {
 
         {/* Main content */}
         <div className="flex-1 min-h-0 min-w-0 view-enter" key={currentView}>
+        {currentView === "analytics" && (
+          <AnalyticsView transcriptions={transcriptions} />
+        )}
         {currentView === "history" && (
           <HistoryView
             transcriptions={transcriptions}
