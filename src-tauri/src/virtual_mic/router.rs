@@ -104,7 +104,12 @@ impl AudioRouter {
                                     .iter()
                                     .flat_map(|&s| std::iter::repeat_n(s, output_channels))
                                     .collect();
-                                ring_writer.lock().extend_from_slice(&expanded);
+                                let mut ring = ring_writer.lock();
+                                ring.extend_from_slice(&expanded);
+                                if ring.len() > 96_000 {
+                                    let drain_to = ring.len() - 48_000;
+                                    ring.drain(0..drain_to);
+                                }
                             } else {
                                 let mut buf = resample_buf_clone.lock();
                                 let mut pos = resample_pos_clone.lock();
@@ -126,9 +131,17 @@ impl AudioRouter {
                                 if consumed > 0 && consumed < buf.len() {
                                     buf.drain(0..consumed);
                                     *pos -= consumed as f64;
+                                } else if consumed > 0 {
+                                    buf.clear();
+                                    *pos = 0.0;
                                 }
 
-                                ring_writer.lock().extend_from_slice(&resampled);
+                                let mut ring = ring_writer.lock();
+                                ring.extend_from_slice(&resampled);
+                                if ring.len() > 96_000 {
+                                    let drain_to = ring.len() - 48_000;
+                                    ring.drain(0..drain_to);
+                                }
                             }
                         },
                         |err| eprintln!("Virtual mic input error: {}", err),

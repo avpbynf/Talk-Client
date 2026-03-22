@@ -20,6 +20,12 @@ export default function InputDeviceSection() {
     invoke<string[]>("list_input_devices").then(setDevices);
     invoke<string | null>("get_input_device").then(setSelected);
     invoke<string>("get_default_input_device").then(setDefaultName).catch(() => {});
+
+    return () => {
+      if (refreshTimeout.current) {
+        clearTimeout(refreshTimeout.current);
+      }
+    };
   }, []);
 
   const handleChange = async (value: string) => {

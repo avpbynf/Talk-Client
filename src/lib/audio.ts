@@ -29,6 +29,11 @@ export async function playSound(
 
     const now = ctx.currentTime;
 
+    oscillator.addEventListener('ended', () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    });
+
     switch (`${type}/${preset}`) {
       case "start/beep":
         oscillator.type = "sine";

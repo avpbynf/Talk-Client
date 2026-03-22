@@ -304,6 +304,9 @@ where
                 if consumed > 0 && consumed < resample_buffer.len() {
                     resample_buffer.drain(0..consumed);
                     resample_pos -= consumed as f64;
+                } else if consumed > 0 {
+                    resample_buffer.clear();
+                    resample_pos = 0.0;
                 }
 
                 // Add to buffer
