@@ -1,15 +1,21 @@
 import type { OverlayThemeId } from "@/lib/overlay-themes";
+import type { AppThemeId } from "@/lib/app-themes";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import OverlaySection from "./preferences/OverlaySection";
+import ThemeSection from "./preferences/ThemeSection";
 
 interface AppearanceViewProps {
   overlayTheme: OverlayThemeId;
   onOverlayThemeChange: (theme: OverlayThemeId) => void;
+  appTheme: AppThemeId;
+  onAppThemeChange: (theme: AppThemeId) => void;
 }
 
 export default function AppearanceView({
   overlayTheme,
   onOverlayThemeChange,
+  appTheme,
+  onAppThemeChange,
 }: AppearanceViewProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -30,6 +36,11 @@ export default function AppearanceView({
             <OverlaySection
               overlayTheme={overlayTheme}
               onOverlayThemeChange={onOverlayThemeChange}
+            />
+
+            <ThemeSection
+              appTheme={appTheme}
+              onAppThemeChange={onAppThemeChange}
             />
           </div>
         </div>

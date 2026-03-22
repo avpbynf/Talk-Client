@@ -7,7 +7,6 @@ import {
   Plus,
   X,
   Trash2,
-  Info,
   GripVertical,
 } from "lucide-react";
 import {
@@ -108,9 +107,9 @@ export default function VocabularyView({
   const addWord = async () => {
     const existingSet = new Set(vocabulary.map((v) => v.toLowerCase()));
     const words = newWord
-      .split(/[,]+/)
+      .split(/[,\s]+/)
       .map((w) => w.trim())
-      .filter((w) => w.length > 0 && !w.includes(" ") && !existingSet.has(w.toLowerCase()));
+      .filter((w) => w.length > 0 && !existingSet.has(w.toLowerCase()));
 
     if (words.length === 0) {
       setNewWord("");
@@ -148,20 +147,6 @@ export default function VocabularyView({
 
             {/* Separator */}
             <div className="h-px bg-border-subtle" />
-            {/* Info box */}
-            <div className="p-4 rounded-xl bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
-              <div className="flex items-start gap-3">
-                <Info className="h-4 w-4 text-server mt-0.5 shrink-0" />
-                <div className="text-xs text-[var(--color-server)]/80">
-                  <p className="font-medium mb-1 text-server">Comment ça fonctionne ?</p>
-                  <p>
-                    Les mots de vocabulaire sont transmis directement à Whisper comme indices pour améliorer
-                    la reconnaissance. Ajoutez vos noms propres, acronymes et termes métier pour de meilleurs résultats.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Add words input */}
             <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -196,19 +181,21 @@ export default function VocabularyView({
             </div>
 
             {/* Word list */}
-            <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="pt-5 px-5 pb-3 rounded-xl border border-border-card bg-surface-raised space-y-3">
+              <div className="flex items-center justify-between pb-2">
                 <label className="text-sm font-medium">
                   Vos termes ({vocabulary.length})
                 </label>
                 {vocabulary.length > 0 && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={clearAll}
-                    className="text-xs text-[var(--color-destructive)] hover:text-[var(--color-destructive)]/80 flex items-center gap-1 transition-colors"
+                    className="cursor-pointer text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4 mr-2" />
                     Tout supprimer
-                  </button>
+                  </Button>
                 )}
               </div>
 

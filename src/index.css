@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/themes.css";
 
 /* Local fonts via Fontsource */
 @import "@fontsource/outfit/300.css";

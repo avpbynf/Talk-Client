@@ -65,6 +65,24 @@ impl Default for OverlayTheme {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AppTheme {
+    T4lkDark,
+    T4lkLight,
+    Zed,
+    VscodeDark,
+    VscodeLight,
+    Dracula,
+    Nord,
+}
+
+impl Default for AppTheme {
+    fn default() -> Self {
+        Self::T4lkDark
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverlayPosition {
     pub x: f64,
@@ -84,6 +102,8 @@ pub struct AppSettings {
     pub overlay_size: OverlaySize,
     #[serde(default)]
     pub overlay_theme: OverlayTheme,
+    #[serde(default)]
+    pub app_theme: AppTheme,
     /// Custom vocabulary words to help Whisper recognize specific terms
     #[serde(default = "default_vocabulary")]
     pub vocabulary: Vec<String>,
@@ -170,6 +190,7 @@ impl Default for AppSettings {
             overlay_position: None,
             overlay_size: OverlaySize::default(),
             overlay_theme: OverlayTheme::default(),
+            app_theme: AppTheme::default(),
             vocabulary: default_vocabulary(),
             transcription_mode: TranscriptionMode::default(),
             server_url: default_server_url(),

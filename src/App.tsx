@@ -12,6 +12,7 @@ import PreferencesView from "@/views/PreferencesView";
 import AppearanceView from "@/views/AppearanceView";
 import SetupWizard from "@/pages/SetupWizard";
 import { playSound, type SoundPreset } from "@/lib/audio";
+import { type AppThemeId, applyAppTheme } from "@/lib/app-themes";
 
 export interface ModelInfo {
   id: string;
@@ -41,6 +42,7 @@ export type AcceleratorBackend = "cpu" | "vulkan";
 export type GpuVendor = "vulkan" | "cpu";
 export type OverlaySize = "small" | "medium" | "large";
 export type OverlayTheme = "aurora" | "sunset" | "ocean" | "neon" | "frost" | "neutral";
+export type AppTheme = "t4lk-dark" | "t4lk-light" | "zed" | "vscode-dark" | "vscode-light" | "dracula" | "nord";
 export type TranscriptionMode = "local" | "server";
 
 export type CompanionShortcut = {
@@ -69,6 +71,7 @@ interface SavedSettings {
   accelerator_backend: AcceleratorBackend;
   overlay_size: OverlaySize;
   overlay_theme: OverlayTheme;
+  app_theme: AppTheme;
   vocabulary: string[];
   transcription_mode: TranscriptionMode;
   server_url: string;
@@ -128,6 +131,7 @@ function App() {
   const [stopSound, setStopSound] = useState("none");
   const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
   const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("aurora");
+  const [appTheme, setAppTheme] = useState<AppThemeId>("t4lk-dark");
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
@@ -305,6 +309,10 @@ function App() {
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
     setOverlayTheme(savedSettings.overlay_theme || "aurora");
+
+    const savedAppTheme = (savedSettings.app_theme || "t4lk-dark") as AppThemeId;
+    setAppTheme(savedAppTheme);
+    applyAppTheme(savedAppTheme);
 
     const savedToken = await invoke<string>("get_server_token").catch(() => "");
     setServerToken(savedToken);
@@ -579,6 +587,12 @@ function App() {
             onOverlayThemeChange={async (theme) => {
               setOverlayTheme(theme);
               await invoke("set_overlay_theme", { theme });
+            }}
+            appTheme={appTheme}
+            onAppThemeChange={async (theme) => {
+              setAppTheme(theme);
+              applyAppTheme(theme);
+              await invoke("set_app_theme", { theme });
             }}
           />
         )}

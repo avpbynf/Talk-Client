@@ -463,6 +463,19 @@ fn set_overlay_theme(app: tauri::AppHandle, theme: settings::OverlayTheme) -> Re
 }
 
 #[tauri::command]
+fn get_app_theme() -> settings::AppTheme {
+    settings::load_settings().app_theme
+}
+
+#[tauri::command]
+fn set_app_theme(theme: settings::AppTheme) -> Result<(), String> {
+    let mut app_settings = settings::load_settings();
+    app_settings.app_theme = theme;
+    settings::save_settings(&app_settings)?;
+    Ok(())
+}
+
+#[tauri::command]
 fn get_vocabulary(state: tauri::State<'_, AppState>) -> Vec<String> {
     state.vocabulary.lock().clone()
 }
@@ -882,6 +895,8 @@ pub fn run() {
             set_overlay_size,
             get_overlay_theme,
             set_overlay_theme,
+            get_app_theme,
+            set_app_theme,
             get_vocabulary,
             set_vocabulary,
             add_vocabulary_word,
