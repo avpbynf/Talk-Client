@@ -135,20 +135,19 @@ export default function VocabularyView({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border-subtle shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Vocabulaire</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Ajoutez vos termes personnalisés pour améliorer la transcription
-          </p>
-        </div>
-      </div>
-
-      {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
+            {/* Page title */}
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">Vocabulaire</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Ajoutez vos termes personnalisés pour améliorer la transcription
+              </p>
+            </div>
+
+            {/* Separator */}
+            <div className="h-px bg-border-subtle" />
             {/* Info box */}
             <div className="p-4 rounded-xl bg-[var(--color-server)]/10 border border-[var(--color-server)]/20">
               <div className="flex items-start gap-3">

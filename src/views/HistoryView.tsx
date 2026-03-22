@@ -42,28 +42,6 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Historique</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {transcriptions.length} transcription{transcriptions.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {transcriptions.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClear}
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Effacer tout
-          </Button>
-        )}
-      </div>
-
-      {/* Content */}
       <ScrollArea className="flex-1 min-h-0 w-full">
         {transcriptions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground px-4">
@@ -91,7 +69,31 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
           </div>
         ) : (
           <div className="p-6">
-            <div className="max-w-2xl mx-auto space-y-3">
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Page title integrated into content */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl font-semibold tracking-tight">Historique</h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {transcriptions.length} transcription{transcriptions.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClear}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Effacer tout
+                </Button>
+              </div>
+
+              {/* Separator */}
+              <div className="h-px bg-border-subtle" />
+
+              {/* Transcription cards - tighter spacing */}
+              <div className="space-y-3">
               {transcriptions.map((t) => (
                 <div
                   key={t.id}
@@ -161,6 +163,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         )}

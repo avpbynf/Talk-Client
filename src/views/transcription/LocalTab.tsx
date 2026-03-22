@@ -18,6 +18,7 @@ interface LocalTabProps {
   currentGpuVendor: GpuVendor;
   onDownload: (modelId: string) => void;
   onLoad: (modelId: string) => void;
+  onUnload: () => void;
   onDelete: (modelId: string) => Promise<void>;
   onGpuVendorChange: (vendor: GpuVendor) => void;
 }
@@ -33,6 +34,7 @@ export function LocalTab({
   currentGpuVendor,
   onDownload,
   onLoad,
+  onUnload,
   onDelete,
   onGpuVendorChange,
 }: LocalTabProps) {
@@ -105,6 +107,7 @@ export function LocalTab({
               isLoading={isLoading}
               onDownload={() => onDownload(model.id)}
               onLoad={() => onLoad(model.id)}
+              onUnload={onUnload}
               onDelete={() => onDelete(model.id)}
             />
           ))}

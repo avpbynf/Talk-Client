@@ -1,5 +1,4 @@
-import { Activity, Cpu, Globe, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Cpu, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type {
@@ -71,67 +70,49 @@ export default function TranscriptionView({
 }: TranscriptionViewProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden view-enter">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border-subtle shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Transcription</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Configuration du moteur de reconnaissance vocale
-            </p>
-          </div>
-          {currentModel && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-active)]/10 border border-[var(--color-active)]/20">
-                <Activity className="h-3.5 w-3.5 text-[var(--color-active)]" />
-                <span className="text-xs font-medium text-[var(--color-active)]">{currentModel}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onUnload}
-                className="border-border hover:bg-surface-active h-8"
-              >
-                <X className="h-3.5 w-3.5 mr-1.5" />
-                Decharger
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* 2-mode selector */}
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <button
-            onClick={() => onTranscriptionModeChange("local")}
-            className={cn(
-              "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200",
-              transcriptionMode === "local"
-                ? "border-[var(--color-active)] bg-[var(--color-active)]/10 text-[var(--color-active)]"
-                : "border-border-card bg-surface-inset text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
-            )}
-          >
-            <Cpu className="h-4 w-4" />
-            Local
-          </button>
-          <button
-            onClick={() => onTranscriptionModeChange("server")}
-            className={cn(
-              "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200",
-              transcriptionMode === "server"
-                ? "border-[var(--color-server)] bg-[var(--color-server)]/10 text-[var(--color-server)]"
-                : "border-border-card bg-surface-inset text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
-            )}
-          >
-            <Globe className="h-4 w-4" />
-            Serveur
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6 slide-enter">
           <div className="max-w-2xl mx-auto space-y-6">
+            {/* Page title */}
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">Transcription</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Configuration du moteur de reconnaissance vocale
+              </p>
+            </div>
+
+            {/* Mode selector */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onTranscriptionModeChange("local")}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200",
+                  transcriptionMode === "local"
+                    ? "border-[var(--color-active)] bg-[var(--color-active)]/10 text-[var(--color-active)]"
+                    : "border-border-card bg-surface-inset text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+                )}
+              >
+                <Cpu className="h-4 w-4" />
+                Local
+              </button>
+              <button
+                onClick={() => onTranscriptionModeChange("server")}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200",
+                  transcriptionMode === "server"
+                    ? "border-[var(--color-server)] bg-[var(--color-server)]/10 text-[var(--color-server)]"
+                    : "border-border-card bg-surface-inset text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+                )}
+              >
+                <Globe className="h-4 w-4" />
+                Serveur
+              </button>
+            </div>
+
+            {/* Separator */}
+            <div className="h-px bg-border-subtle" />
+
+            {/* Content */}
             {transcriptionMode === "local" && (
               <LocalTab
                 models={models}
@@ -144,6 +125,7 @@ export default function TranscriptionView({
                 currentGpuVendor={currentGpuVendor}
                 onDownload={onDownload}
                 onLoad={onLoad}
+                onUnload={onUnload}
                 onDelete={onDelete}
                 onGpuVendorChange={onGpuVendorChange}
               />
@@ -185,6 +167,7 @@ export default function TranscriptionView({
                       currentGpuVendor={currentGpuVendor}
                       onDownload={onDownload}
                       onLoad={onLoad}
+                      onUnload={onUnload}
                       onDelete={onDelete}
                       onGpuVendorChange={onGpuVendorChange}
                     />

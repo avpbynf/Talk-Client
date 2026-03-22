@@ -124,7 +124,7 @@ export default function ShortcutsSection({
     const shortcutParts = currentShortcut.split("+");
 
     return (
-      <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
+      <div className="p-5 rounded-xl border border-border-card bg-surface-inset">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex gap-3">
             <div className={cn(
@@ -211,7 +211,7 @@ export default function ShortcutsSection({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
         <Keyboard className="h-4 w-4" />
         Raccourcis

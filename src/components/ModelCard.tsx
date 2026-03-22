@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Download, Check, Loader2, Trash2 } from "lucide-react";
+import { Download, Check, Loader2, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ModelInfo, DownloadProgress } from "@/App";
 
@@ -14,6 +14,7 @@ interface ModelCardProps {
   isLoading: boolean;
   onDownload: () => void;
   onLoad: () => void;
+  onUnload: () => void;
   onDelete: () => Promise<void>;
 }
 
@@ -26,6 +27,7 @@ export function ModelCard({
   isLoading,
   onDownload,
   onLoad,
+  onUnload,
   onDelete,
 }: ModelCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -78,11 +80,12 @@ export function ModelCard({
           ) : isLoaded ? (
             <Button
               size="sm"
-              variant="secondary"
-              disabled
-              className="h-7 px-2.5 text-xs bg-[var(--color-active)]/20 text-[var(--color-active)]"
+              variant="ghost"
+              onClick={onUnload}
+              className="h-7 px-2.5 text-xs text-[var(--color-active)] hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
-              <Check className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5 mr-1" />
+              Décharger
             </Button>
           ) : (
             <>
