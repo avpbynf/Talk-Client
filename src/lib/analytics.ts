@@ -5,6 +5,11 @@ export interface DailyStats {
   words: number;
 }
 
+export interface YearlyDayActivity {
+  date: string;
+  count: number;
+}
+
 export interface AnalyticsSummary {
   totalTranscriptions: number;
   totalWords: number;

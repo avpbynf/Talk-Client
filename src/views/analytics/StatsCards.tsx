@@ -1,5 +1,3 @@
-import { type LucideIcon, MessageSquareText, Type, PiggyBank, Timer } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import type { AnalyticsSummary } from "@/lib/analytics";
 
 interface StatsCardsProps {
@@ -14,86 +12,63 @@ function formatTime(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-interface StatCardProps {
-  icon: LucideIcon;
-  title: string;
+interface StatCellProps {
+  label: string;
   value: string;
-  secondary: string;
+  detail: string;
   colorVar: string;
 }
 
-function StatCard({ icon: Icon, title, value, secondary, colorVar }: StatCardProps) {
+function StatCell({ label, value, detail, colorVar }: StatCellProps) {
   return (
-    <Card className="bg-surface-raised border-border-card overflow-hidden hover-lift">
-      <CardContent className="p-0">
-        <div className="flex h-full">
-          {/* Accent stripe */}
-          <div
-            className="w-1 shrink-0"
-            style={{ backgroundColor: `var(${colorVar})` }}
-          />
-          <div className="p-5 flex-1 min-w-0">
-            {/* Icon + title row */}
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center"
-                style={{
-                  backgroundColor: `color-mix(in oklch, var(${colorVar}) 12%, transparent)`,
-                }}
-              >
-                <Icon size={18} style={{ color: `var(${colorVar})` }} />
-              </div>
-              <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">
-                {title}
-              </span>
-            </div>
-            {/* Value */}
-            <div
-              className="text-3xl font-semibold tracking-tight font-mono"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {value}
-            </div>
-            {/* Secondary */}
-            <p className="text-xs text-muted-foreground/60 mt-2 leading-relaxed">
-              {secondary}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex-1 min-w-0 px-4 py-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        <span
+          className="h-1.5 w-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: `var(${colorVar})` }}
+        />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium truncate">
+          {label}
+        </span>
+      </div>
+      <div
+        className="text-lg font-semibold font-mono tracking-tight leading-none"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {value}
+      </div>
+      <p className="text-[10px] text-muted-foreground/50 mt-1 truncate leading-tight">
+        {detail}
+      </p>
+    </div>
   );
 }
 
 export function StatsCards({ summary }: StatsCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <StatCard
-        icon={MessageSquareText}
-        title="Transcriptions"
+    <div className="flex items-stretch divide-x divide-border-subtle/50 rounded-lg border border-border-card bg-surface-raised/50 overflow-hidden">
+      <StatCell
+        label="Transcriptions"
         value={String(summary.todayCount)}
-        secondary={`${summary.weekCount} cette semaine \u00b7 ${summary.totalTranscriptions} au total`}
+        detail={`${summary.weekCount} sem. \u00b7 ${summary.totalTranscriptions} total`}
         colorVar="--color-active"
       />
-      <StatCard
-        icon={Type}
-        title="Mots transcrits"
+      <StatCell
+        label="Mots"
         value={summary.totalWords.toLocaleString()}
-        secondary={`${summary.totalCharacters.toLocaleString()} caracteres`}
+        detail={`${summary.totalCharacters.toLocaleString()} car.`}
         colorVar="--color-hybrid"
       />
-      <StatCard
-        icon={PiggyBank}
-        title="Economie estimee"
+      <StatCell
+        label="Economie"
         value={`$${summary.costSavedUsd.toFixed(2)}`}
-        secondary={`~${summary.estimatedAudioMinutes.toFixed(1)} min audio estimees`}
+        detail={`~${summary.estimatedAudioMinutes.toFixed(1)} min audio`}
         colorVar="--color-success"
       />
-      <StatCard
-        icon={Timer}
-        title="Temps economise"
+      <StatCell
+        label="Temps gagne"
         value={formatTime(summary.timeSavedMinutes)}
-        secondary="vs frappe manuelle"
+        detail="vs frappe manuelle"
         colorVar="--color-warning"
       />
     </div>

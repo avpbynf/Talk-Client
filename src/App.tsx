@@ -387,7 +387,7 @@ function App() {
   }, []);
 
   const navItemsTop = [
-    { id: "analytics" as View, icon: LayoutDashboard, label: "Accueil" },
+    { id: "analytics" as View, icon: LayoutDashboard, label: "Dashboard" },
     { id: "history" as View, icon: History, label: "Historique" },
     { id: "vocabulary" as View, icon: BookA, label: "Vocabulaire" },
   ];

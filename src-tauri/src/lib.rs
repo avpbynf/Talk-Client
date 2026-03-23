@@ -236,6 +236,20 @@ fn db_get_analytics_summary(
 }
 
 #[tauri::command]
+fn db_get_yearly_activity(
+    db: tauri::State<'_, database::Database>,
+) -> Result<Vec<database::YearlyDayActivity>, String> {
+    db.get_yearly_activity().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_reset_stats(
+    db: tauri::State<'_, database::Database>,
+) -> Result<(), String> {
+    db.reset_stats().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_available_accelerators() -> Vec<AcceleratorInfo> {
     transcription::detect_available_accelerators()
 }
@@ -939,6 +953,8 @@ pub fn run() {
             db_get_transcription_count,
             db_clear_transcriptions,
             db_get_analytics_summary,
+            db_get_yearly_activity,
+            db_reset_stats,
             get_available_accelerators,
             get_available_gpus,
             get_best_accelerator,

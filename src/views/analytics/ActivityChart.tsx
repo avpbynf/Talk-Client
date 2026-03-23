@@ -1,100 +1,184 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { DailyStats } from "@/lib/analytics";
+import type { YearlyDayActivity } from "@/lib/analytics";
 
 interface ActivityChartProps {
-  dailyStats: DailyStats[];
+  yearlyActivity: YearlyDayActivity[];
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+const BASELINE_CEILING = 700;
+
+function intensityLevel(count: number, userMax: number): number {
+  if (count === 0) return 0;
+  const ceiling = Math.max(userMax, BASELINE_CEILING);
+  const ratio = count / ceiling;
+  if (ratio <= 0.15) return 1;
+  if (ratio <= 0.40) return 2;
+  if (ratio <= 0.70) return 3;
+  return 4;
 }
 
-export function ActivityChart({ dailyStats }: ActivityChartProps) {
-  const maxCount = Math.max(...dailyStats.map((s) => s.count), 1);
-  const allZero = dailyStats.every((s) => s.count === 0);
-  const weekTotal = dailyStats.reduce((sum, s) => sum + s.count, 0);
-  const todayKey = new Date().toISOString().slice(0, 10);
+const LEVEL_BG: Record<number, string> = {
+  0: "var(--color-surface-active)",
+  1: "color-mix(in oklch, var(--color-active) 20%, var(--color-surface-active))",
+  2: "color-mix(in oklch, var(--color-active) 40%, var(--color-surface-active))",
+  3: "color-mix(in oklch, var(--color-active) 65%, var(--color-surface-active))",
+  4: "var(--color-active)",
+};
+
+const MONTH_LABELS = [
+  "Jan", "Fev", "Mar", "Avr", "Mai", "Jun",
+  "Jul", "Aou", "Sep", "Oct", "Nov", "Dec",
+];
+
+const DAY_LABELS = ["", "Lun", "", "Mer", "", "Ven", ""];
+
+interface DayCell {
+  date: string;
+  count: number;
+  weekIndex: number;
+  dayOfWeek: number;
+}
+
+function buildGrid(yearlyActivity: YearlyDayActivity[]): {
+  cells: DayCell[];
+  weekCount: number;
+  monthPositions: { label: string; weekIndex: number }[];
+} {
+  const activityMap = new Map<string, number>();
+  for (const entry of yearlyActivity) {
+    activityMap.set(entry.date, entry.count);
+  }
+
+  const today = new Date();
+  const cells: DayCell[] = [];
+
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - 364);
+
+  const startDow = startDate.getDay();
+  if (startDow !== 0) {
+    startDate.setDate(startDate.getDate() - startDow);
+  }
+
+  const endDate = new Date(today);
+  let weekIndex = 0;
+  const monthWeeks = new Map<string, number>();
+
+  const cursor = new Date(startDate);
+  while (cursor <= endDate) {
+    const dow = cursor.getDay();
+    const dateStr = cursor.toISOString().slice(0, 10);
+    const count = activityMap.get(dateStr) ?? 0;
+
+    cells.push({ date: dateStr, count, weekIndex, dayOfWeek: dow });
+
+    const monthKey = `${cursor.getFullYear()}-${cursor.getMonth()}`;
+    if (!monthWeeks.has(monthKey)) {
+      monthWeeks.set(monthKey, weekIndex);
+    }
+
+    if (dow === 6) {
+      weekIndex++;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const totalWeeks = weekIndex + 1;
+
+  const monthPositions = Array.from(monthWeeks.entries()).map(
+    ([key, wIdx]) => ({
+      label: MONTH_LABELS[parseInt(key.split("-")[1])],
+      weekIndex: wIdx,
+    })
+  );
+
+  return { cells, weekCount: totalWeeks, monthPositions };
+}
+
+export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
+  const { cells, weekCount, monthPositions } = buildGrid(yearlyActivity);
+  const maxCount = Math.max(...cells.map((c) => c.count), 1);
+  const cellSize = 11;
+  const cellGap = 3;
+  const step = cellSize + cellGap;
+  const dayLabelWidth = 30;
+  const monthLabelHeight = 16;
+  const svgWidth = dayLabelWidth + weekCount * step;
+  const svgHeight = monthLabelHeight + 7 * step;
 
   return (
-    <Card className="bg-surface-raised border-border-card">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium">Activite</CardTitle>
-          {!allZero && (
-            <span className="text-xs font-mono text-muted-foreground bg-surface-active px-2 py-0.5 rounded-md">
-              {weekTotal} cette semaine
-            </span>
-          )}
+    <div className="rounded-lg border border-border-card bg-surface-raised/50 px-4 py-3">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium">Activite</span>
+        <div className="flex items-center gap-1">
+          {[0, 1, 2, 3, 4].map((lvl) => (
+            <div
+              key={lvl}
+              className="h-[10px] w-[10px] rounded-[2px]"
+              style={{ backgroundColor: LEVEL_BG[lvl] }}
+            />
+          ))}
         </div>
-      </CardHeader>
-      <CardContent>
-        {allZero ? (
-          <div className="h-44 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">Aucune activite cette semaine</p>
-          </div>
-        ) : (
-          <div className="relative">
-            {/* Subtle grid lines */}
-            <div className="absolute inset-x-0 top-0 bottom-8 flex flex-col justify-between pointer-events-none" aria-hidden="true">
-              <div className="border-b border-dashed border-border-subtle/30" />
-              <div className="border-b border-dashed border-border-subtle/30" />
-              <div className="border-b border-dashed border-border-subtle/30" />
-            </div>
+      </div>
 
-            {/* Bars */}
-            <div className="relative flex items-end gap-3 h-44 pb-8">
-              {dailyStats.map((stats, index) => {
-                const isToday = stats.date === todayKey;
-                const heightPercent = stats.count > 0
-                  ? Math.max((stats.count / maxCount) * 100, 4)
-                  : 0;
+      <svg
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        className="w-full h-auto block"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {/* Month labels */}
+        {monthPositions.map(({ label, weekIndex: wIdx }, i) => {
+          const nextPos = monthPositions[i + 1]?.weekIndex ?? weekCount;
+          const span = nextPos - wIdx;
+          if (span < 2) return null;
+          return (
+            <text
+              key={`${label}-${wIdx}`}
+              x={dayLabelWidth + wIdx * step}
+              y={11}
+              className="fill-muted-foreground/50"
+              style={{ fontSize: "9px" }}
+            >
+              {label}
+            </text>
+          );
+        })}
 
-                return (
-                  <div key={stats.date} className="flex flex-col items-center flex-1 h-full">
-                    <div className="flex-1 flex items-end w-full relative group">
-                      {/* Hover tooltip */}
-                      {stats.count > 0 && (
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10">
-                          <div className="bg-surface-elevated border border-border-card rounded-lg px-2.5 py-1.5 text-xs font-mono whitespace-nowrap shadow-lg">
-                            <span className="font-semibold">{stats.count}</span>
-                            <span className="text-muted-foreground ml-1">
-                              transcription{stats.count !== 1 ? "s" : ""}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      {/* Bar with gradient */}
-                      <div
-                        className="w-full rounded-t-md transition-all duration-500 ease-out"
-                        style={{
-                          height: `${heightPercent}%`,
-                          transitionDelay: `${index * 60}ms`,
-                          background: isToday
-                            ? "linear-gradient(to top, color-mix(in oklch, var(--color-active) 40%, transparent), var(--color-active))"
-                            : "linear-gradient(to top, color-mix(in oklch, var(--color-active) 15%, transparent), color-mix(in oklch, var(--color-active) 60%, transparent))",
-                          boxShadow: isToday
-                            ? "0 0 12px var(--color-active-glow), 0 -2px 8px var(--color-active-glow)"
-                            : "none",
-                        }}
-                      />
-                    </div>
-                    {/* Day label */}
-                    <span
-                      className={
-                        isToday
-                          ? "text-xs mt-2 shrink-0 font-medium text-[var(--color-active)]"
-                          : "text-xs mt-2 shrink-0 text-muted-foreground"
-                      }
-                    >
-                      {capitalize(stats.label)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        {/* Day labels (Lun, Mer, Ven) */}
+        {DAY_LABELS.map((label, dow) =>
+          label ? (
+            <text
+              key={dow}
+              x={0}
+              y={monthLabelHeight + dow * step + cellSize - 1}
+              className="fill-muted-foreground/40"
+              style={{ fontSize: "9px" }}
+            >
+              {label}
+            </text>
+          ) : null
         )}
-      </CardContent>
-    </Card>
+
+        {/* Grid cells */}
+        {cells.map((cell) => {
+          const level = intensityLevel(cell.count, maxCount);
+          return (
+            <rect
+              key={cell.date}
+              x={dayLabelWidth + cell.weekIndex * step}
+              y={monthLabelHeight + cell.dayOfWeek * step}
+              width={cellSize}
+              height={cellSize}
+              rx={2}
+              fill={LEVEL_BG[level]}
+            >
+              <title>
+                {cell.date}: {cell.count} transcription{cell.count !== 1 ? "s" : ""}
+              </title>
+            </rect>
+          );
+        })}
+      </svg>
+
+    </div>
   );
 }

@@ -22,6 +22,17 @@ CREATE INDEX IF NOT EXISTS idx_transcriptions_timestamp
     ON transcriptions(timestamp DESC);
 ";
 
+const SCHEMA_V2: &str = "
+CREATE TABLE IF NOT EXISTS daily_stats (
+    date TEXT PRIMARY KEY,
+    transcription_count INTEGER NOT NULL DEFAULT 0,
+    word_count INTEGER NOT NULL DEFAULT 0,
+    char_count INTEGER NOT NULL DEFAULT 0,
+    local_count INTEGER NOT NULL DEFAULT 0,
+    server_count INTEGER NOT NULL DEFAULT 0
+);
+";
+
 const AVERAGE_SPEECH_RATE_WPM: f64 = 150.0;
 const OPENAI_WHISPER_COST_PER_MINUTE: f64 = 0.006;
 
@@ -109,6 +120,13 @@ fn weekday_label(weekday: i32) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YearlyDayActivity {
+    pub date: String,
+    pub count: i64,
+}
+
 // ---------------------------------------------------------------------------
 // Database implementation
 // ---------------------------------------------------------------------------
@@ -143,6 +161,25 @@ impl Database {
             conn.pragma_update(None, "user_version", 1)?;
         }
 
+        if version < 2 {
+            conn.execute_batch(SCHEMA_V2)?;
+            // Backfill daily_stats from existing transcriptions
+            conn.execute_batch(
+                "INSERT OR IGNORE INTO daily_stats
+                    (date, transcription_count, word_count, char_count,
+                     local_count, server_count)
+                 SELECT date(timestamp, 'localtime'),
+                        COUNT(*),
+                        COALESCE(SUM(word_count), 0),
+                        COALESCE(SUM(char_count), 0),
+                        COALESCE(SUM(CASE WHEN source = 'local'  THEN 1 ELSE 0 END), 0),
+                        COALESCE(SUM(CASE WHEN source = 'server' THEN 1 ELSE 0 END), 0)
+                 FROM transcriptions
+                 GROUP BY date(timestamp, 'localtime');",
+            )?;
+            conn.pragma_update(None, "user_version", 2)?;
+        }
+
         Ok(())
     }
 
@@ -151,8 +188,12 @@ impl Database {
     pub fn add_transcription(&self, entry: &NewTranscription) -> Result<()> {
         let word_count = entry.text.split_whitespace().count() as i32;
         let char_count = entry.text.len() as i32;
+        let is_local = if entry.source == "local" { 1 } else { 0 };
+        let is_server = if entry.source == "server" { 1 } else { 0 };
 
         let conn = self.conn.lock();
+
+        // Insert transcription (history)
         conn.execute(
             "INSERT OR REPLACE INTO transcriptions
                 (id, text, timestamp, model, source, enhanced,
@@ -171,6 +212,28 @@ impl Database {
                 char_count,
             ],
         )?;
+
+        // Upsert daily stats (permanent, independent of history)
+        conn.execute(
+            "INSERT INTO daily_stats
+                (date, transcription_count, word_count, char_count,
+                 local_count, server_count)
+             VALUES (date(?1, 'localtime'), 1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(date) DO UPDATE SET
+                transcription_count = transcription_count + 1,
+                word_count = word_count + excluded.word_count,
+                char_count = char_count + excluded.char_count,
+                local_count = local_count + excluded.local_count,
+                server_count = server_count + excluded.server_count",
+            params![
+                entry.timestamp,
+                word_count,
+                char_count,
+                is_local,
+                is_server,
+            ],
+        )?;
+
         Ok(())
     }
 
@@ -229,44 +292,38 @@ impl Database {
     ) -> Result<AnalyticsSummary> {
         let conn = self.conn.lock();
 
-        // Global aggregates
-        let (total, total_words, total_chars, local_count, server_count, today_count): (
-            i64,
-            i64,
-            i64,
-            i64,
-            i64,
-            i64,
+        // Global aggregates from daily_stats (permanent, survives history clear)
+        let (total, total_words, total_chars, local_count, server_count): (
+            i64, i64, i64, i64, i64,
         ) = conn.query_row(
             "SELECT
-                COUNT(*),
+                COALESCE(SUM(transcription_count), 0),
                 COALESCE(SUM(word_count), 0),
                 COALESCE(SUM(char_count), 0),
-                COALESCE(SUM(CASE WHEN source = 'local'  THEN 1 ELSE 0 END), 0),
-                COALESCE(SUM(CASE WHEN source = 'server' THEN 1 ELSE 0 END), 0),
-                COALESCE(SUM(CASE WHEN date(timestamp, 'localtime') = date('now', 'localtime') THEN 1 ELSE 0 END), 0)
-             FROM transcriptions",
+                COALESCE(SUM(local_count), 0),
+                COALESCE(SUM(server_count), 0)
+             FROM daily_stats",
             [],
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                ))
-            },
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
         )?;
 
+        // Today count
+        let today_count: i64 = conn.query_row(
+            "SELECT COALESCE(transcription_count, 0) FROM daily_stats
+             WHERE date = date('now', 'localtime')",
+            [],
+            |row| row.get(0),
+        ).unwrap_or(0);
+
+        // Week count
         let week_count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM transcriptions
-             WHERE timestamp >= datetime('now', '-7 days')",
+            "SELECT COALESCE(SUM(transcription_count), 0) FROM daily_stats
+             WHERE date >= date('now', '-7 days', 'localtime')",
             [],
             |row| row.get(0),
         )?;
 
-        // Daily stats for last 7 days (zero-filled via CTE)
+        // Daily chart for last 7 days (zero-filled via CTE, reads from daily_stats)
         let mut stmt = conn.prepare(
             "WITH dates(d) AS (
                 SELECT date('now', '-6 days', 'localtime')
@@ -279,17 +336,10 @@ impl Database {
             )
             SELECT dates.d,
                    CAST(strftime('%w', dates.d) AS INTEGER),
-                   COALESCE(t.cnt, 0),
-                   COALESCE(t.words, 0)
+                   COALESCE(ds.transcription_count, 0),
+                   COALESCE(ds.word_count, 0)
             FROM dates
-            LEFT JOIN (
-                SELECT date(timestamp, 'localtime') AS day,
-                       COUNT(*)          AS cnt,
-                       SUM(word_count)   AS words
-                FROM transcriptions
-                WHERE date(timestamp, 'localtime') >= date('now', '-6 days', 'localtime')
-                GROUP BY date(timestamp, 'localtime')
-            ) t ON dates.d = t.day
+            LEFT JOIN daily_stats ds ON dates.d = ds.date
             ORDER BY dates.d",
         )?;
 
@@ -331,6 +381,33 @@ impl Database {
             week_count,
             daily_stats,
         })
+    }
+
+    pub fn get_yearly_activity(&self) -> Result<Vec<YearlyDayActivity>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare(
+            "SELECT date, transcription_count
+             FROM daily_stats
+             WHERE date >= date('now', '-364 days', 'localtime')
+             ORDER BY date",
+        )?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(YearlyDayActivity {
+                    date: row.get(0)?,
+                    count: row.get(1)?,
+                })
+            })?
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(rows)
+    }
+
+    pub fn reset_stats(&self) -> Result<()> {
+        let conn = self.conn.lock();
+        conn.execute("DELETE FROM daily_stats", [])?;
+        Ok(())
     }
 
 }

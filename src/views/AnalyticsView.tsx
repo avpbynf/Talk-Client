@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Keyboard } from "lucide-react";
+import { Keyboard, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { loadUserWpm } from "@/lib/analytics";
-import type { AnalyticsSummary } from "@/lib/analytics";
+import type { AnalyticsSummary, YearlyDayActivity } from "@/lib/analytics";
 import { StatsCards } from "@/views/analytics/StatsCards";
 import { ActivityChart } from "@/views/analytics/ActivityChart";
 import { CostComparison } from "@/views/analytics/CostComparison";
@@ -15,17 +16,31 @@ export default function AnalyticsView() {
   const [userWpm, setUserWpm] = useState<number>(() => loadUserWpm());
   const [showGame, setShowGame] = useState(false);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [yearlyActivity, setYearlyActivity] = useState<YearlyDayActivity[]>([]);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const fetchAnalytics = useCallback(async (wpm: number) => {
     try {
-      const data = await invoke<AnalyticsSummary>("db_get_analytics_summary", {
-        userWpm: wpm,
-      });
+      const [data, yearly] = await Promise.all([
+        invoke<AnalyticsSummary>("db_get_analytics_summary", { userWpm: wpm }),
+        invoke<YearlyDayActivity[]>("db_get_yearly_activity"),
+      ]);
       setSummary(data);
+      setYearlyActivity(yearly);
     } catch (err) {
       console.error("Failed to fetch analytics:", err);
     }
   }, []);
+
+  const handleResetStats = useCallback(async () => {
+    try {
+      await invoke("db_reset_stats");
+      setConfirmReset(false);
+      fetchAnalytics(userWpm);
+    } catch (err) {
+      console.error("Failed to reset stats:", err);
+    }
+  }, [fetchAnalytics, userWpm]);
 
   // Fetch on mount
   useEffect(() => {
@@ -56,11 +71,44 @@ export default function AnalyticsView() {
         <div className="p-6">
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Header */}
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight">Accueil</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Vue d'ensemble de votre utilisation
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Vue d'ensemble de votre utilisation
+                </p>
+              </div>
+              {confirmReset ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmReset(false)}
+                    className="text-muted-foreground"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetStats}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Confirmer
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmReset(true)}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Reinitialiser
+                </Button>
+              )}
             </div>
 
             <div className="h-px bg-border-subtle" />
@@ -69,7 +117,7 @@ export default function AnalyticsView() {
             <StatsCards summary={summary} />
 
             {/* Activity chart */}
-            <ActivityChart dailyStats={summary.dailyStats} />
+            <ActivityChart yearlyActivity={yearlyActivity} />
 
             {/* Detail cards */}
             <div className="grid grid-cols-2 gap-4">
