@@ -60,13 +60,13 @@ export function StatsCards({ summary }: StatsCardsProps) {
         colorVar="--color-hybrid"
       />
       <StatCell
-        label="Economie"
+        label="Économie"
         value={`$${summary.costSavedUsd.toFixed(2)}`}
         detail={`~${summary.estimatedAudioMinutes.toFixed(1)} min audio`}
         colorVar="--color-success"
       />
       <StatCell
-        label="Temps gagne"
+        label="Temps gagné"
         value={formatTime(summary.timeSavedMinutes)}
         detail="vs frappe manuelle"
         colorVar="--color-warning"

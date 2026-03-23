@@ -28,7 +28,7 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
   return (
     <Card className="bg-surface-raised border-border-card">
       <CardHeader className="pb-0">
-        <CardTitle className="text-sm font-medium">Temps economise</CardTitle>
+        <CardTitle className="text-sm font-medium">Temps économisé</CardTitle>
       </CardHeader>
       <CardContent>
         {/* Hero number */}
@@ -57,7 +57,7 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
           </div>
         </Row>
         <Row label="Mots transcrits">{summary.totalWords.toLocaleString()}</Row>
-        <Row label="Frappe equivalente">{summary.timeSavedMinutes.toFixed(1)} min</Row>
+        <Row label="Frappe équivalente">{summary.timeSavedMinutes.toFixed(1)} min</Row>
         <Row label="Transcription reelle">
           <span className="text-muted-foreground/60">~quelques sec.</span>
         </Row>

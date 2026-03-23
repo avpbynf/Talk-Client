@@ -108,7 +108,7 @@ export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
   return (
     <div className="rounded-lg border border-border-card bg-surface-raised/50 px-4 py-3">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium">Activite</span>
+        <span className="text-sm font-medium">Activité</span>
         <div className="flex items-center gap-1">
           {[0, 1, 2, 3, 4].map((lvl) => (
             <div

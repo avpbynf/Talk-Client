@@ -1,8 +1,9 @@
 import { Transcription } from "@/App";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, Trash2, Sparkles, Clock, Check, Mic, Globe, HardDrive } from "lucide-react";
+import { Trash2, Sparkles, Clock, Globe, HardDrive, ClipboardCheck } from "lucide-react";
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface HistoryViewProps {
@@ -40,67 +41,87 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
     return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
   };
 
+  const isEmpty = transcriptions.length === 0;
+
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
       <ScrollArea className="flex-1 min-h-0 w-full">
-        {transcriptions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground px-4">
-            <div className="relative mb-6">
-              <div className="h-24 w-24 rounded-2xl bg-surface-elevated flex items-center justify-center">
-                <Mic className="h-12 w-12 text-muted-foreground/50" strokeWidth={1.5} />
+        <div className="p-6">
+          <div className="max-w-2xl mx-auto space-y-6">
+            {/* Header — always visible */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight">Historique</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {isEmpty
+                    ? "Aucune transcription"
+                    : `${transcriptions.length} transcription${transcriptions.length !== 1 ? "s" : ""}`}
+                </p>
               </div>
-              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg bg-secondary flex items-center justify-center border border-border">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClear}
+                disabled={isEmpty}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Effacer tout
+              </Button>
             </div>
-            <p className="text-lg font-medium text-foreground/80 mb-2">Aucune transcription</p>
-            <p className="text-sm text-center max-w-[280px] leading-relaxed">
-              Utilisez{" "}
-              {shortcut.split("+").map((key, i, arr) => (
-                <span key={key}>
-                  <kbd>{key}</kbd>
-                  {i < arr.length - 1 && (
-                    <span className="text-muted-foreground/60 mx-1">+</span>
-                  )}
+
+            <div className="h-px bg-border-subtle" />
+
+            {isEmpty ? (
+              <p className="text-sm text-muted-foreground text-center leading-relaxed">
+                Utilisez
+                <span className="mx-2 inline-flex items-center gap-1">
+                  {shortcut.split("+").map((key, i, arr) => (
+                    <span key={key} className="inline-flex items-center">
+                      <kbd>{key}</kbd>
+                      {i < arr.length - 1 && (
+                        <span className="text-muted-foreground/60 mx-0.5">+</span>
+                      )}
+                    </span>
+                  ))}
                 </span>
-              ))}
-              {" "}pour commencer à enregistrer
-            </p>
-          </div>
-        ) : (
-          <div className="p-6">
-            <div className="max-w-2xl mx-auto space-y-6">
-              {/* Page title integrated into content */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-xl font-semibold tracking-tight">Historique</h1>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {transcriptions.length} transcription{transcriptions.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClear}
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Effacer tout
-                </Button>
-              </div>
-
-              {/* Separator */}
-              <div className="h-px bg-border-subtle" />
-
-              {/* Transcription cards - tighter spacing */}
+                et commencez à parler
+              </p>
+            ) : (
               <div className="space-y-3">
+              <AnimatePresence initial={false}>
               {transcriptions.map((t) => (
-                <div
+                <motion.div
                   key={t.id}
-                  className={cn(
-                    "stagger-item group p-4 rounded-xl border border-border-card bg-surface-raised card-interactive overflow-hidden"
-                  )}
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                  }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0, overflow: "hidden" }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ backgroundColor: "var(--color-surface-active)" }}
+                  layout
+                  onClick={() => copyToClipboard(t.text, t.id)}
+                  className="group p-4 rounded-xl border border-border-card bg-surface-raised overflow-hidden cursor-pointer relative"
                 >
+                  {/* Copy feedback — floating ghost label */}
+                  <AnimatePresence>
+                    {copiedId === t.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.85 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -14, scale: 0.9 }}
+                        transition={{ duration: 0.35, ease: "easeOut" }}
+                        className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-card shadow-lg pointer-events-none"
+                      >
+                        <ClipboardCheck size={14} className="text-[var(--color-success)]" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Text content */}
                   <p className="text-sm break-words leading-relaxed text-foreground/90">
                     {t.text}
@@ -118,7 +139,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {t.model && (
+                      {t.model && t.source !== "server" && (
                         <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-active">
                           {t.model}
                         </span>
@@ -142,31 +163,15 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                           <Sparkles className="h-2.5 w-2.5" />
                         </span>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "h-7 w-7 shrink-0 rounded-lg transition-all duration-200",
-                          copiedId === t.id
-                            ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
-                            : "opacity-0 group-hover:opacity-100 hover:bg-accent"
-                        )}
-                        onClick={() => copyToClipboard(t.text, t.id)}
-                      >
-                        {copiedId === t.id ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
+              </AnimatePresence>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </ScrollArea>
     </div>
   );
