@@ -41,6 +41,7 @@ hound = "3.5"
 # Utilities
 num_cpus = "1"
 directories = "5"
+rusqlite = { version = "0.34", features = ["bundled"] }
 thiserror = "1"
 parking_lot = "0.12"
 dotenvy = "0.15"

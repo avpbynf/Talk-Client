@@ -94,7 +94,11 @@ interface SavedTranscription {
   timestamp: string;
   model: string | null;
   enhanced: boolean;
-  source?: "local" | "server";
+  source: string;
+  audioDurationMs: number | null;
+  processingTimeMs: number | null;
+  wordCount: number;
+  charCount: number;
 }
 
 type View = "analytics" | "history" | "transcription" | "vocabulary" | "preferences" | "appearance";
@@ -198,24 +202,29 @@ function App() {
     });
 
     const unlistenTranscription = listen<string>("transcription-complete", (event) => {
+      const now = new Date();
+      const source = transcriptionModeRef.current === "local" ? "local" : "server";
       const newTranscription: Transcription = {
         id: Date.now().toString(),
         text: event.payload,
-        timestamp: new Date(),
+        timestamp: now,
         model: currentModelRef.current,
         enhanced: false,
-        source: transcriptionModeRef.current === "local" ? "local" : "server",
+        source,
       };
-      setTranscriptions((prev) => {
-        const updated = [newTranscription, ...prev].slice(0, 100);
-        // Save to disk
-        invoke("save_transcription_history", {
-          history: updated.map((t) => ({
-            ...t,
-            timestamp: t.timestamp.toISOString(),
-          })),
-        });
-        return updated;
+      setTranscriptions((prev) => [newTranscription, ...prev]);
+      // Persist to SQLite
+      invoke("db_add_transcription", {
+        entry: {
+          id: newTranscription.id,
+          text: newTranscription.text,
+          timestamp: now.toISOString(),
+          model: currentModelRef.current,
+          source,
+          enhanced: false,
+          audioDurationMs: null,
+          processingTimeMs: null,
+        },
       });
     });
 
@@ -271,7 +280,7 @@ function App() {
       invoke<ModelInfo[]>("get_available_models"),
       invoke<string[]>("get_downloaded_models"),
       invoke<HotkeyConfig>("get_hotkey_config"),
-      invoke<SavedTranscription[]>("get_transcription_history"),
+      invoke<SavedTranscription[]>("db_get_transcriptions", { limit: 200, offset: 0 }),
       invoke<GpuInfo[]>("get_available_gpus"),
       invoke<GpuVendor>("get_current_gpu_vendor"),
       invoke<boolean>("get_autostart_enabled"),
@@ -288,13 +297,16 @@ function App() {
     setAutostartEnabled(autostart);
     setStartMinimized(startMin);
 
-    // Restore transcription history
+    // Restore transcription history from SQLite
     if (savedHistory.length > 0) {
       setTranscriptions(
         savedHistory.map((t) => ({
-          ...t,
+          id: t.id,
+          text: t.text,
           timestamp: new Date(t.timestamp),
-          source: t.source ?? "local",
+          model: t.model,
+          enhanced: t.enhanced,
+          source: (t.source === "server" ? "server" : "local") as "local" | "server",
         }))
       );
     }
@@ -482,14 +494,14 @@ function App() {
         {/* Main content */}
         <div className="flex-1 min-h-0 min-w-0 view-enter" key={currentView}>
         {currentView === "analytics" && (
-          <AnalyticsView transcriptions={transcriptions} />
+          <AnalyticsView />
         )}
         {currentView === "history" && (
           <HistoryView
             transcriptions={transcriptions}
             onClear={() => {
               setTranscriptions([]);
-              invoke("save_transcription_history", { history: [] });
+              invoke("db_clear_transcriptions");
             }}
             shortcut={shortcut}
           />

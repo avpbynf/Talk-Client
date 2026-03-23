@@ -1,6 +1,7 @@
 mod audio;
 mod audio_encoder;
 mod clipboard;
+mod database;
 mod hotkeys;
 mod keystroke;
 mod models;
@@ -191,14 +192,47 @@ fn get_saved_settings() -> settings::AppSettings {
     settings::load_settings()
 }
 
+// ============================================================================
+// Database Commands
+// ============================================================================
+
 #[tauri::command]
-fn get_transcription_history() -> Vec<settings::TranscriptionEntry> {
-    settings::load_history()
+fn db_add_transcription(
+    entry: database::NewTranscription,
+    db: tauri::State<'_, database::Database>,
+) -> Result<(), String> {
+    db.add_transcription(&entry).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn save_transcription_history(history: Vec<settings::TranscriptionEntry>) -> Result<(), String> {
-    settings::save_history(&history)
+fn db_get_transcriptions(
+    limit: i64,
+    offset: i64,
+    db: tauri::State<'_, database::Database>,
+) -> Result<Vec<database::TranscriptionRow>, String> {
+    db.get_transcriptions(limit, offset).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_transcription_count(
+    db: tauri::State<'_, database::Database>,
+) -> Result<i64, String> {
+    db.get_transcription_count().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_clear_transcriptions(
+    db: tauri::State<'_, database::Database>,
+) -> Result<(), String> {
+    db.clear_transcriptions().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_analytics_summary(
+    user_wpm: f64,
+    db: tauri::State<'_, database::Database>,
+) -> Result<database::AnalyticsSummary, String> {
+    db.get_analytics_summary(user_wpm).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -900,8 +934,11 @@ pub fn run() {
             show_overlay,
             hide_overlay,
             get_saved_settings,
-            get_transcription_history,
-            save_transcription_history,
+            db_add_transcription,
+            db_get_transcriptions,
+            db_get_transcription_count,
+            db_clear_transcriptions,
+            db_get_analytics_summary,
             get_available_accelerators,
             get_available_gpus,
             get_best_accelerator,
@@ -962,6 +999,12 @@ pub fn run() {
             // Load .env file in dev mode only
             #[cfg(debug_assertions)]
             let _ = dotenvy::dotenv();
+
+            // Initialize SQLite database
+            let db_path = database::default_db_path();
+            let db = database::Database::open(&db_path)
+                .expect("Failed to open database");
+            app.manage(db);
 
             // Load saved settings into state
             let hotkey_config = hotkeys::load_config().unwrap_or_default();

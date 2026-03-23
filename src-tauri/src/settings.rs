@@ -212,15 +212,6 @@ impl Default for AppSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TranscriptionEntry {
-    pub id: String,
-    pub text: String,
-    pub timestamp: String,
-    pub model: Option<String>,
-    pub enhanced: bool,
-}
-
 fn get_config_dir() -> PathBuf {
     ProjectDirs::from("com", "avpbynf", "t4lk")
         .map(|dirs| dirs.config_dir().to_path_buf())
@@ -229,10 +220,6 @@ fn get_config_dir() -> PathBuf {
 
 fn get_settings_path() -> PathBuf {
     get_config_dir().join("settings.json")
-}
-
-fn get_history_path() -> PathBuf {
-    get_config_dir().join("history.json")
 }
 
 pub fn load_settings() -> AppSettings {
@@ -257,24 +244,4 @@ pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
     Ok(())
 }
 
-pub fn load_history() -> Vec<TranscriptionEntry> {
-    let path = get_history_path();
-    if path.exists() {
-        std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|content| serde_json::from_str(&content).ok())
-            .unwrap_or_default()
-    } else {
-        Vec::new()
-    }
-}
 
-pub fn save_history(history: &[TranscriptionEntry]) -> Result<(), String> {
-    let path = get_history_path();
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    let content = serde_json::to_string_pretty(history).map_err(|e| e.to_string())?;
-    std::fs::write(&path, content).map_err(|e| e.to_string())?;
-    Ok(())
-}

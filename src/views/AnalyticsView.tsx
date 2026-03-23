@@ -1,26 +1,54 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Keyboard } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { computeAnalytics, loadUserWpm } from "@/lib/analytics";
-import type { Transcription } from "@/App";
+import { loadUserWpm } from "@/lib/analytics";
+import type { AnalyticsSummary } from "@/lib/analytics";
 import { StatsCards } from "@/views/analytics/StatsCards";
 import { ActivityChart } from "@/views/analytics/ActivityChart";
 import { CostComparison } from "@/views/analytics/CostComparison";
 import { TimeSaved } from "@/views/analytics/TimeSaved";
 import { TypingGame } from "@/views/analytics/TypingGame";
 
-interface AnalyticsViewProps {
-  transcriptions: Transcription[];
-}
-
-export default function AnalyticsView({ transcriptions }: AnalyticsViewProps) {
+export default function AnalyticsView() {
   const [userWpm, setUserWpm] = useState<number>(() => loadUserWpm());
   const [showGame, setShowGame] = useState(false);
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
 
-  const summary = useMemo(
-    () => computeAnalytics(transcriptions, userWpm),
-    [transcriptions, userWpm],
-  );
+  const fetchAnalytics = useCallback(async (wpm: number) => {
+    try {
+      const data = await invoke<AnalyticsSummary>("db_get_analytics_summary", {
+        userWpm: wpm,
+      });
+      setSummary(data);
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err);
+    }
+  }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchAnalytics(userWpm);
+  }, [fetchAnalytics, userWpm]);
+
+  // Refetch when a new transcription arrives
+  useEffect(() => {
+    const unlisten = listen("transcription-complete", () => {
+      fetchAnalytics(userWpm);
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [fetchAnalytics, userWpm]);
+
+  if (!summary) {
+    return (
+      <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+        Chargement...
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
