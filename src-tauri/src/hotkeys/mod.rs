@@ -369,6 +369,29 @@ pub fn cancel_recording(app: &AppHandle) {
 
     // Emit cancelled event
     let _ = app.emit("recording-cancelled", ());
+
+    // Sound feedback — cancellation counts as stop
+    play_sound_feedback(app, "stop");
+}
+
+/// Play sound feedback if enabled in settings. Non-blocking.
+fn play_sound_feedback(app: &AppHandle, sound_type: &str) {
+    let settings = crate::settings::load_settings();
+    if !settings.sound_feedback {
+        return;
+    }
+    let preset = match sound_type {
+        "start" => &settings.start_sound,
+        _ => &settings.stop_sound,
+    };
+    if preset == "none" {
+        return;
+    }
+    let state = app.state::<AppState>();
+    let engine_lock = state.sound_engine.lock();
+    if let Some(ref engine) = *engine_lock {
+        engine.play(sound_type, preset);
+    }
 }
 
 fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
@@ -395,6 +418,9 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     *state.audio_buffer.lock() = Some(buffer);
     *state.audio_capture_handle.lock() = Some(handle);
     *state.is_recording.lock() = true;
+
+    // 2b. Sound feedback (instant — pre-computed PCM buffer)
+    play_sound_feedback(app, "start");
 
     // 3. Pause media playback if enabled AND something is actually playing
     #[cfg(windows)]
@@ -475,6 +501,9 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     resume_media_if_paused(&state);
 
     let _ = app.emit("recording-stopped", ());
+
+    // Sound feedback (instant — pre-computed PCM buffer)
+    play_sound_feedback(app, "stop");
 
     // Helper to emit to overlay window
     let emit_to_overlay = |app: &AppHandle, processing_state: &str| {

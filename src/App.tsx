@@ -12,7 +12,6 @@ import PreferencesView from "@/views/PreferencesView";
 import AppearanceView from "@/views/AppearanceView";
 import AnalyticsView from "@/views/AnalyticsView";
 import SetupWizard from "@/pages/SetupWizard";
-import { playSound, type SoundPreset } from "@/lib/audio";
 import { type AppThemeId, applyAppTheme } from "@/lib/app-themes";
 
 export interface ModelInfo {
@@ -142,9 +141,6 @@ function App() {
   const currentModelRef = useRef<string | null>(null);
   const transcriptionModeRef = useRef(transcriptionMode);
   const hasInitialized = useRef(false);
-  const soundFeedbackRef = useRef(soundFeedback);
-  const startSoundRef = useRef(startSound);
-  const stopSoundRef = useRef(stopSound);
   const companionShortcutsRef = useRef(companionShortcuts);
 
   // Keep refs in sync with state
@@ -156,9 +152,6 @@ function App() {
     transcriptionModeRef.current = transcriptionMode;
   }, [transcriptionMode]);
 
-  useEffect(() => { soundFeedbackRef.current = soundFeedback; }, [soundFeedback]);
-  useEffect(() => { startSoundRef.current = startSound; }, [startSound]);
-  useEffect(() => { stopSoundRef.current = stopSound; }, [stopSound]);
   useEffect(() => { companionShortcutsRef.current = companionShortcuts; }, [companionShortcuts]);
 
   // Check setup status first
@@ -230,31 +223,16 @@ function App() {
 
     const unlistenRecordingStarted = listen("recording-started", () => {
       setIsRecording(true);
-      // Sound feedback
-      if (soundFeedbackRef.current && startSoundRef.current !== "none") {
-        playSound("start", startSoundRef.current as SoundPreset);
-      }
-      // Companion shortcuts
       fireCompanionShortcuts("start");
     });
 
     const unlistenRecordingStopped = listen("recording-stopped", () => {
       setIsRecording(false);
-      // Sound feedback
-      if (soundFeedbackRef.current && stopSoundRef.current !== "none") {
-        playSound("stop", stopSoundRef.current as SoundPreset);
-      }
-      // Companion shortcuts
       fireCompanionShortcuts("stop");
     });
 
     const unlistenRecordingCancelled = listen("recording-cancelled", () => {
       setIsRecording(false);
-      // Sound feedback — cancellation counts as stop
-      if (soundFeedbackRef.current && stopSoundRef.current !== "none") {
-        playSound("stop", stopSoundRef.current as SoundPreset);
-      }
-      // Companion shortcuts
       fireCompanionShortcuts("stop");
     });
 

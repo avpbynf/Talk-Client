@@ -1,7 +1,7 @@
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Volume2 } from "lucide-react";
-import { playSound, type SoundPreset } from "@/lib/audio";
+import { invoke } from "@tauri-apps/api/core";
 
 interface SoundFeedbackSectionProps {
   soundFeedback: boolean;
@@ -43,7 +43,7 @@ export default function SoundFeedbackSection({
               value={startSound}
               onValueChange={(value) => {
                 onStartSoundChange(value);
-                if (value !== "none") playSound("start", value as SoundPreset);
+                if (value !== "none") invoke("preview_sound", { soundType: "start", preset: value });
               }}
             >
               <SelectTrigger className="cursor-pointer bg-surface-deep border-border-card text-foreground">
@@ -65,7 +65,7 @@ export default function SoundFeedbackSection({
               value={stopSound}
               onValueChange={(value) => {
                 onStopSoundChange(value);
-                if (value !== "none") playSound("stop", value as SoundPreset);
+                if (value !== "none") invoke("preview_sound", { soundType: "stop", preset: value });
               }}
             >
               <SelectTrigger className="cursor-pointer bg-surface-deep border-border-card text-foreground">

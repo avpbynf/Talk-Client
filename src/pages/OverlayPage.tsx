@@ -189,12 +189,10 @@ function OverlayPage() {
     }
   }, [state, visible]);
 
-  if (!visible && state === "idle") {
-    return null;
-  }
+  const isHidden = !visible && state === "idle";
 
-  // Average audio level for glow intensity
-  const avgLevel = spectrum.reduce((a, b) => a + b, 0) / spectrum.length;
+  // Average audio level for glow intensity (zero when hidden to avoid unnecessary work)
+  const avgLevel = isHidden ? 0 : spectrum.reduce((a, b) => a + b, 0) / spectrum.length;
   // Border glow opacity scales with audio level
   const glowOpacity = 0.3 + avgLevel * 0.7;
 
@@ -307,6 +305,7 @@ function OverlayPage() {
       className={`h-screen w-screen relative select-none cursor-grab active:cursor-grabbing ${
         state === "idle" ? "overlay-exit" : "overlay-enter"
       }`}
+      style={isHidden ? { visibility: "hidden", pointerEvents: "none" } : undefined}
       onMouseDown={handleMouseDown}
     >
       {/* Ambient color wash — clipped to pill shape so the blur doesn't

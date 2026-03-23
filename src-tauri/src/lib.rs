@@ -7,6 +7,7 @@ mod keystroke;
 mod models;
 mod server_transcription;
 mod settings;
+mod sound;
 mod transcription;
 mod virtual_mic;
 
@@ -57,6 +58,8 @@ pub struct AppState {
     pub main_shortcut: Mutex<Option<Shortcut>>,
     /// Current cancel shortcut (stored for handler dispatch, never re-registered via on_shortcut)
     pub cancel_shortcut: Mutex<Option<Shortcut>>,
+    /// Sound engine for instant audio feedback (pre-computed PCM buffers)
+    pub sound_engine: Mutex<Option<sound::SoundEngine>>,
 }
 
 impl Default for AppState {
@@ -83,6 +86,7 @@ impl Default for AppState {
             input_device_name: Mutex::new(None),
             main_shortcut: Mutex::new(None),
             cancel_shortcut: Mutex::new(None),
+            sound_engine: Mutex::new(None),
         }
     }
 }
@@ -805,6 +809,13 @@ fn set_stop_sound(preset: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn preview_sound(sound_type: String, preset: String, state: tauri::State<'_, AppState>) {
+    if let Some(ref engine) = *state.sound_engine.lock() {
+        engine.play(&sound_type, &preset);
+    }
+}
+
+#[tauri::command]
 fn get_server_token() -> String {
     settings::load_settings().server_token
 }
@@ -999,6 +1010,7 @@ pub fn run() {
             set_start_sound,
             get_stop_sound,
             set_stop_sound,
+            preview_sound,
             get_server_token,
             set_server_token,
             get_companion_shortcuts,
@@ -1108,6 +1120,11 @@ pub fn run() {
                         let _ = window_clone.hide();
                     }
                 });
+            }
+
+            // Initialize sound engine (pre-compute PCM buffers for instant playback)
+            if let Some(engine) = sound::SoundEngine::new() {
+                *app.state::<AppState>().sound_engine.lock() = Some(engine);
             }
 
             // Pre-initialize overlay and warm up the webview.

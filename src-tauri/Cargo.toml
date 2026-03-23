@@ -22,8 +22,9 @@ tauri-plugin-autostart = "2"
 # Whisper transcription (with optional GPU/NPU acceleration)
 whisper-rs = "0.16"
 
-# Audio capture
+# Audio capture & playback
 cpal = "0.15"
+rodio = "0.20"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
