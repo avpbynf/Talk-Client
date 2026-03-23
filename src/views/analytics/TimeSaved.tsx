@@ -58,7 +58,7 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
         </Row>
         <Row label="Mots transcrits">{summary.totalWords.toLocaleString()}</Row>
         <Row label="Frappe équivalente">{summary.timeSavedMinutes.toFixed(1)} min</Row>
-        <Row label="Transcription reelle">
+        <Row label="Transcription réelle">
           <span className="text-muted-foreground/60">~quelques sec.</span>
         </Row>
       </CardContent>

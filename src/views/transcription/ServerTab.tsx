@@ -40,10 +40,10 @@ function statusIcon(serverStatus: ServerStatus, size: "sm" | "md" = "md") {
 
 function statusText(serverStatus: ServerStatus) {
   switch (serverStatus) {
-    case "checking": return "Verification...";
-    case "online": return "Connecte";
+    case "checking": return "Vérification...";
+    case "online": return "Connecté";
     case "offline": return "Indisponible";
-    default: return "Non teste";
+    default: return "Non testé";
   }
 }
 
@@ -158,7 +158,7 @@ export function ServerTab({
           </div>
           <div>
             <h3 className="font-medium text-sm">Timeout</h3>
-            <p className="text-xs text-muted-foreground">Delai maximum pour la transcription</p>
+            <p className="text-xs text-muted-foreground">Délai maximum pour la transcription</p>
           </div>
         </div>
 
@@ -184,7 +184,7 @@ export function ServerTab({
       <div className="flex items-center justify-between p-4 rounded-xl bg-surface-raised border border-border-card">
         <div className="space-y-0.5">
           <p className="text-sm font-medium text-foreground">Fallback local</p>
-          <p className="text-xs text-muted-foreground">Utiliser le modele local si le serveur est indisponible</p>
+          <p className="text-xs text-muted-foreground">Utiliser le modèle local si le serveur est indisponible</p>
         </div>
         <Switch checked={serverFallback} onCheckedChange={onServerFallbackChange} />
       </div>

@@ -9,7 +9,7 @@ import MeetingModeSection from "./preferences/MeetingModeSection";
 import SoundFeedbackSection from "./preferences/SoundFeedbackSection";
 import SystemSection from "./preferences/SystemSection";
 
-interface PreferencesViewProps {
+interface PréférencesViewProps {
   recordingMode: RecordingMode;
   onRecordingModeChange: (mode: RecordingMode) => void;
   shortcut: string;
@@ -34,7 +34,7 @@ interface PreferencesViewProps {
   onStopSoundChange: (preset: string) => void;
 }
 
-export default function PreferencesView({
+export default function PréférencesView({
   recordingMode,
   onRecordingModeChange,
   shortcut,
@@ -57,7 +57,7 @@ export default function PreferencesView({
   onStartSoundChange,
   stopSound,
   onStopSoundChange,
-}: PreferencesViewProps) {
+}: PréférencesViewProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <ScrollArea className="flex-1 min-h-0">
@@ -65,9 +65,9 @@ export default function PreferencesView({
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Page title */}
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Preferences</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Préférences</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Enregistrement, raccourcis et comportement systeme
+                Enregistrement, raccourcis et comportement système
               </p>
             </div>
 

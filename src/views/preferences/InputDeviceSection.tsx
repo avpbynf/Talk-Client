@@ -42,7 +42,7 @@ export default function InputDeviceSection() {
           Microphone
         </div>
         <span className="text-[11px] text-muted-foreground/60 font-mono">
-          {devices.length} peripherique{devices.length !== 1 ? "s" : ""}
+          {devices.length} périphérique{devices.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -55,11 +55,11 @@ export default function InputDeviceSection() {
           onValueChange={handleChange}
         >
           <SelectTrigger className="w-full bg-surface-inset border-border-card">
-            <SelectValue placeholder="Defaut systeme" />
+            <SelectValue placeholder="Défaut système" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__default__">
-              Defaut systeme{defaultName ? ` (${defaultName})` : ""}
+              Défaut système{defaultName ? ` (${defaultName})` : ""}
             </SelectItem>
             {devices.map((name) => (
               <SelectItem key={name} value={name}>
@@ -79,7 +79,7 @@ export default function InputDeviceSection() {
           }}
           disabled={isRefreshing}
           className="cursor-pointer h-9 w-9 shrink-0 rounded-lg border border-border-card bg-surface-inset flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-active transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Rafraichir les peripheriques"
+          title="Rafraîchir les périphériques"
         >
           <RefreshCw className={`h-3.5 w-3.5 transition-transform ${isRefreshing ? "animate-spin" : ""}`} />
         </button>

@@ -15,8 +15,8 @@ const GPU_TOOLTIPS: Record<GpuVendor, string> = {
 };
 
 const ALL_GPU_OPTIONS: GpuInfo[] = [
-  { vendor: "cpu", name: "CPU", available: true, description: "Sans acceleration" },
-  { vendor: "vulkan", name: "Vulkan", available: true, description: "GPU generique" },
+  { vendor: "cpu", name: "CPU", available: true, description: "Sans accélération" },
+  { vendor: "vulkan", name: "Vulkan", available: true, description: "GPU générique" },
 ];
 
 export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: GpuSelectorProps) {
@@ -32,7 +32,7 @@ export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: 
           <Zap className="h-4 w-4 text-warning" />
         </div>
         <div>
-          <h3 className="font-medium text-sm">Acceleration</h3>
+          <h3 className="font-medium text-sm">Accélération</h3>
           <p className="text-xs text-muted-foreground">Backend de calcul</p>
         </div>
       </div>

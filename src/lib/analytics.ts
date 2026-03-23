@@ -25,14 +25,14 @@ export interface AnalyticsSummary {
 }
 
 export const TYPING_SENTENCES = [
-  "La productivite est l'art de faire plus avec moins d'effort.",
-  "Chaque minute economisee est une minute investie dans la creation.",
-  "La technologie devrait amplifier nos capacites, pas les remplacer.",
-  "Un bon outil disparait entre les mains de celui qui le maitrise.",
-  "Le temps est la seule ressource que l'on ne peut pas recuperer.",
-  "Automatiser les taches repetitives libere l'esprit pour l'essentiel.",
+  "La productivité est l'art de faire plus avec moins d'effort.",
+  "Chaque minute économisée est une minute investie dans la création.",
+  "La technologie devrait amplifier nos capacités, pas les remplacer.",
+  "Un bon outil disparaît entre les mains de celui qui le maîtrise.",
+  "Le temps est la seule ressource que l'on ne peut pas récupérer.",
+  "Automatiser les tâches répétitives libère l'esprit pour l'essentiel.",
   "La voix est le moyen de communication le plus naturel qui existe.",
-  "Transcrire ses pensees a la vitesse de la parole change tout.",
+  "Transcrire ses pensées à la vitesse de la parole change tout.",
 ];
 
 export function getRandomSentence(): string {

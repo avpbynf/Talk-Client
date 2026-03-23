@@ -394,7 +394,7 @@ function App() {
   const navItemsBottom = [
     { id: "appearance" as View, icon: Palette, label: "Apparence" },
     { id: "transcription" as View, icon: Cpu, label: "Transcription" },
-    { id: "preferences" as View, icon: Settings, label: "Preferences" },
+    { id: "preferences" as View, icon: Settings, label: "Préférences" },
   ];
 
   // Show loading state while checking setup status
@@ -439,11 +439,11 @@ function App() {
           const isServerMode = transcriptionMode === "server" && !serverFallback;
           const isHybridMode = transcriptionMode === "server" && serverFallback;
           if (isServerMode) {
-            return serverStatus === "online" ? "Serveur connecte" : serverStatus === "offline" ? "Serveur indisponible" : "Serveur";
+            return serverStatus === "online" ? "Serveur connecté" : serverStatus === "offline" ? "Serveur indisponible" : "Serveur";
           } else if (isHybridMode) {
-            return serverStatus === "online" ? "Serveur connecte" : currentModel || "Non pret";
+            return serverStatus === "online" ? "Serveur connecté" : currentModel || "Non prêt";
           }
-          return currentModel || "Aucun modele";
+          return currentModel || "Aucun modèle";
         })()}
       />
 

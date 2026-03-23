@@ -127,7 +127,7 @@ export function ModelCard({
         <div className="mt-3 pt-3 border-t border-border-subtle space-y-1.5">
           <Progress value={downloadProgress.progress} className="h-1.5" />
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>Telechargement...</span>
+            <span>Téléchargement...</span>
             <span>{downloadProgress.downloaded_mb} / {downloadProgress.total_mb} MB</span>
           </div>
         </div>
