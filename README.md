@@ -22,28 +22,30 @@ about. Talk is the third option: your own machine records, your own GPU transcri
 the text lands in the window that already had focus. No account, no upload, no tab to
 switch to.
 
-It is one half of a pair. [Talk-Server](https://github.com/avpbynf/Talk-Server) holds a
-large Whisper model on a real card and answers the OpenAI transcription API; this app
-records the audio, sends it there, and puts the answer where the cursor is. Point it at
-a server and it uses one. Do not, and it runs whisper.cpp locally on Vulkan instead.
+**Two ways to run it, and the wizard asks on its first screen.** Local loads a Whisper
+model on this machine, through whisper.cpp on Vulkan, and needs nothing else: no
+network, no server, no account. Server points the app at a
+[Talk-Server](https://github.com/avpbynf/Talk-Server) instance instead, which is what
+makes a machine with no GPU usable and what lets one card serve several machines from
+a single loaded model. Local is the default, and either mode can be changed later on
+the Transcription page.
 
-**It falls back on its own.** When the server does not answer, the local engine takes
-over mid-shortcut and you keep dictating. That is the whole reason the second engine
-exists: a machine on the other side of the house being off should cost you accuracy, not
-the ability to talk. The trade has one price worth knowing about, which is that a real
-bug and an unreachable server look identical from the outside, since both end in the
-same silent fallback. When transcriptions get worse for no reason, the Transcription
-page and the server URL on it are the first place to look.
+**Server mode carries a fallback**, on unless you turn it off: when the server does not
+answer, the local engine takes over mid-shortcut and you keep dictating. Its price is
+that a real bug and an unreachable server look identical from the outside, since both
+end in the same quiet switch. When transcriptions get worse for no reason, the
+Transcription page and the server URL on it are the first place to look.
 
 ## Quick start
 
 Take the installer from the [releases](https://github.com/avpbynf/Talk-Client/releases)
 page and run it. It asks for no elevation and installs for the current user only.
 
-The first launch opens a wizard: pick a model, then either give it a server URL and
-token or skip that and stay local. The GGML model is not bundled, so the first local
-transcription downloads it from HuggingFace and caches it in AppData, which keeps the
-installer itself down to a few megabytes.
+The first launch opens a wizard. It asks for the mode first: local detects the GPU and
+downloads a model, server asks for a URL and a token and checks the connection before
+moving on. The GGML model is not bundled, so local mode fetches it from HuggingFace on
+first use and caches it in AppData, which keeps the installer itself down to a few
+megabytes.
 
 Then hold the shortcut and talk.
 
@@ -53,7 +55,7 @@ Then hold the shortcut and talk.
 overlay shows what is being heard, and it can be dragged wherever it is not in the way.
 
 **The text goes in by keystroke or through the clipboard.** Typing it straight into the
-focused window is the default and needs no paste; the clipboard route is there for the
+focused window is the default and needs no paste. The clipboard route is there for the
 applications that refuse synthetic input.
 
 **A vocabulary biases the model toward your words.** Product names, colleagues,
@@ -76,14 +78,21 @@ It starts with Windows and lives in the tray, if you want it to.
 Windows only. The native side compiles whisper.cpp from source, so budget a long first
 build.
 
-| Requirement | Notes |
-|---|---|
-| Rust 1.90 | pinned by `src-tauri/rust-toolchain.toml` |
-| [Bun](https://bun.sh) | frontend package manager and task runner |
-| Visual Studio 2022 | "Desktop development with C++" workload, Community or Build Tools |
-| CMake and Ninja | needed to build whisper.cpp |
-| LLVM | `whisper-rs-sys` generates its bindings with bindgen, which loads `libclang.dll` |
-| Vulkan SDK | only for the default `vulkan` feature |
+| Requirement | Why | Get it |
+|---|---|---|
+| Rust 1.90 | pinned by `src-tauri/rust-toolchain.toml` | [rustup.rs](https://rustup.rs) |
+| Bun | frontend package manager and task runner | [bun.sh](https://bun.sh) |
+| Visual Studio 2022 | the "Desktop development with C++" workload, Community or Build Tools | [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/) |
+| CMake | whisper.cpp is a CMake project | [cmake.org](https://cmake.org/download/) |
+| Ninja | the generator `.cargo/config.toml` asks for | [ninja-build.org](https://ninja-build.org) |
+| LLVM | `whisper-rs-sys` generates its bindings with bindgen, which loads `libclang.dll` | [releases.llvm.org](https://releases.llvm.org) |
+| Vulkan SDK | only for the default `vulkan` feature | [vulkan.lunarg.com](https://vulkan.lunarg.com/sdk/home) |
+
+All but Visual Studio come from winget, which is quicker than seven download pages:
+
+```bash
+winget install Rustlang.Rustup Oven-sh.Bun Kitware.CMake Ninja-build.Ninja LLVM.LLVM KhronosGroup.VulkanSDK
+```
 
 ```bash
 bun install
@@ -108,12 +117,12 @@ cargo build --manifest-path src-tauri/Cargo.toml --no-default-features
   scripts rather than calling `tauri` directly.
 - **A bindgen panic about `libclang`.** LLVM is not installed, or not where bindgen
   looks. Install it, or point `LIBCLANG_PATH` at the directory holding `libclang.dll`.
-  The panic names no file of this project, which makes it read like a broken dependency;
-  it is not one.
+  The panic names no file of this project, which makes it read like a broken dependency.
+  It is not one.
 - **A path that is too long.** `vulkan-shaders-gen` nests its own build tree around 220
   characters deep, and the default target directory sits under the checkout, so the two
   together cross the Windows limit. MSBuild says so plainly, as `MSB4184` naming a path
-  it cannot normalise; CMake, reached the same way, instead claims the C compiler cannot
+  it cannot normalise. CMake, reached the same way, instead claims the C compiler cannot
   build a trivial program. Point the build somewhere short, which is what CI does:
 
   ```bash
