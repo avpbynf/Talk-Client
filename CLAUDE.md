@@ -1,4 +1,4 @@
-# t4lk-client
+# Talk-Client
 
 Tauri v2 desktop Speech-to-Text app, Windows only. Rust backend, React 19 frontend.
 See [README.md](README.md) for features, build requirements and troubleshooting.
@@ -51,9 +51,24 @@ so a cold build takes a long while; `tauri:check` is the fast feedback loop.
   VB-Cable from vb-audio.com and unpack it there before building an installer.
 - **Transcription is server-first.** A failing local model is not the whole story;
   check the server URL and token on the Transcription page first.
+- **Two spellings of the old name are load-bearing.** The product is Talk, but
+  `com.avpbynf.t4lk` still names the config and data directories, through
+  `ProjectDirs::from("com", "avpbynf", "t4lk")` in four places and through the two
+  paths `nsis-hooks.nsh` hardcodes for the uninstaller, and `t4lk.db` still names the
+  history file. `AppTheme` keeps a `serde(alias)` on its two renamed variants for the
+  same reason: `load_settings()` drops the whole file on a parse error and returns the
+  defaults, so one stale value would take the server URL, the token and the shortcuts
+  with it. Renaming any of them needs a migration first, not a find and replace.
+- **The installer bitmaps carry the wordmark.** `src-tauri/icons/nsis-header.bmp` and
+  `nsis-sidebar.bmp` are 24-bit BMP at sizes NSIS fixes, so they cannot be produced by
+  the build. `python scripts/make-installer-images.py` redraws both from the real icon
+  and the real Outfit face; run it after any change to the mark.
 - **Feedback loops are not symmetric.** The frontend checks in seconds with
   `bun run build`, which is the same `tsc` pass the release runs. The Rust side cannot
-  be checked at all without CMake, Ninja and the Vulkan SDK, because `whisper-rs-sys`
-  compiles whisper.cpp from its build script; even `cargo check` runs it. On a machine
-  without them, CI is the only verification and the loop is roughly twenty minutes, so
-  read Rust changes carefully before pushing rather than iterating on the runner.
+  be checked at all without CMake, Ninja, the Vulkan SDK and an LLVM install, because
+  `whisper-rs-sys` compiles whisper.cpp from its build script and generates its
+  bindings with bindgen; even `cargo check` runs both. Missing LLVM is the one that
+  misleads, since bindgen panics about `libclang.dll` and names no file of ours. On a
+  machine without them, CI is the only verification and the loop is roughly twenty
+  minutes, so read Rust changes carefully before pushing rather than iterating on the
+  runner.
