@@ -135,6 +135,7 @@ function App() {
   const [stopSound, setStopSound] = useState("none");
   const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
   const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("aurora");
+  const [overlaySize, setOverlaySize] = useState<OverlaySize>("small");
   const [appTheme, setAppTheme] = useState<AppThemeId>("talk-dark");
 
   // Refs to avoid re-registering listeners
@@ -299,6 +300,7 @@ function App() {
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
     setOverlayTheme(savedSettings.overlay_theme || "aurora");
+    setOverlaySize(savedSettings.overlay_size || "small");
 
     const savedAppTheme = (savedSettings.app_theme || "talk-dark") as AppThemeId;
     setAppTheme(savedAppTheme);
@@ -358,11 +360,6 @@ function App() {
     const interval = setInterval(() => checkServerHealth(true), 5000);
     return () => clearInterval(interval);
   }, [transcriptionMode, serverUrl]);
-
-  // Force overlay to small size on mount
-  useEffect(() => {
-    invoke("set_overlay_size", { size: "small" });
-  }, []);
 
   const navItemsTop = [
     { id: "analytics" as View, icon: LayoutDashboard, label: "Dashboard" },
@@ -581,6 +578,11 @@ function App() {
             onOverlayThemeChange={async (theme) => {
               setOverlayTheme(theme);
               await invoke("set_overlay_theme", { theme });
+            }}
+            overlaySize={overlaySize}
+            onOverlaySizeChange={async (size) => {
+              setOverlaySize(size);
+              await invoke("set_overlay_size", { size });
             }}
             appTheme={appTheme}
             onAppThemeChange={async (theme) => {

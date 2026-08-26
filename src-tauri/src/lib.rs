@@ -585,10 +585,13 @@ async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // Create new overlay window
+    // Create new overlay window. Same size as the one built at startup: a
+    // hardcoded one here matched no OverlaySize variant, so an overlay that had
+    // to be re-created came back ignoring the setting.
+    let (width, height) = settings::load_settings().overlay_size.dimensions();
     WebviewWindowBuilder::new(&app, "overlay", WebviewUrl::App("/overlay".into()))
         .title("")
-        .inner_size(200.0, 80.0)
+        .inner_size(width, height)
         .decorations(false)
         .transparent(true)
         .shadow(false)
