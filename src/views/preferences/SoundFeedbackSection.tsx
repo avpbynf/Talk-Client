@@ -31,14 +31,14 @@ export default function SoundFeedbackSection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Jouer un son au démarrage et à l'arrêt de l'enregistrement.
+        Play a sound when recording starts and when it stops.
       </p>
 
       {soundFeedback && (
         <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle slide-enter">
           {/* Start sound */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Son de démarrage</label>
+            <label className="text-xs font-medium text-muted-foreground">When it starts</label>
             <Select
               value={startSound}
               onValueChange={(value) => {
@@ -50,7 +50,7 @@ export default function SoundFeedbackSection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Aucun</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 <SelectItem value="beep">Beep</SelectItem>
                 <SelectItem value="click">Click</SelectItem>
                 <SelectItem value="chime">Chime</SelectItem>
@@ -60,7 +60,7 @@ export default function SoundFeedbackSection({
 
           {/* Stop sound */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Son d'arrêt</label>
+            <label className="text-xs font-medium text-muted-foreground">When it stops</label>
             <Select
               value={stopSound}
               onValueChange={(value) => {
@@ -72,7 +72,7 @@ export default function SoundFeedbackSection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Aucun</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 <SelectItem value="beep">Beep</SelectItem>
                 <SelectItem value="click">Click</SelectItem>
                 <SelectItem value="chime">Chime</SelectItem>

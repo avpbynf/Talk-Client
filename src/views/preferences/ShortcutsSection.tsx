@@ -109,7 +109,7 @@ export default function ShortcutsSection({
       setPendingShortcut([]);
       await invoke("enable_shortcuts");
     } catch {
-      setShortcutError("Raccourci invalide ou déjà utilisé");
+      setShortcutError("That combination is invalid or already taken");
       await invoke("enable_shortcuts");
     }
   };
@@ -221,7 +221,7 @@ export default function ShortcutsSection({
         "main",
         shortcut,
         "Raccourci principal",
-        recordingMode === "toggle" ? "Démarre ou arrête" : "Maintenez pour enregistrer"
+        recordingMode === "toggle" ? "Starts and stops" : "Hold it down to record"
       )}
       {renderShortcutCard(
         "cancel",

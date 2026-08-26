@@ -65,10 +65,10 @@ export function TypingGame({ onWpmMeasured }: TypingGameProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-sm font-medium">
-              Calibrer votre vitesse de frappe
+              Measure your typing speed
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">
-              Recopiez le texte ci-dessous le plus vite possible
+              Type the line below as fast as you comfortably can
             </CardDescription>
           </div>
           {/* Live WPM indicator */}

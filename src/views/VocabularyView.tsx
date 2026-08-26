@@ -139,9 +139,9 @@ export default function VocabularyView({
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Page title */}
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Vocabulaire</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Vocabulary</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Ajoutez vos termes personnalisés pour améliorer la transcription
+                The words you use that Whisper would otherwise guess at
               </p>
             </div>
 
@@ -151,13 +151,13 @@ export default function VocabularyView({
             <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 <Plus className="h-4 w-4" />
-                Mots personnalisés
+                Your words
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-medium">Ajouter des termes spécifiques</label>
+                <label className="text-sm font-medium">Add your terms</label>
                 <p className="text-xs text-muted-foreground">
-                  Ajoutez des noms propres, acronymes ou termes métier pour améliorer la reconnaissance.
+                  Proper nouns, acronyms, anything from your trade. They bias the model toward what you actually say.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -174,7 +174,7 @@ export default function VocabularyView({
                     className="bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90"
                   >
                     <Plus className="h-4 w-4 mr-1" />
-                    Ajouter
+                    Add
                   </Button>
                 </div>
               </div>
@@ -202,8 +202,8 @@ export default function VocabularyView({
               {vocabulary.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground border border-dashed border-border-card rounded-lg">
                   <BookText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Aucun terme personnalisé</p>
-                  <p className="text-xs mt-1">Aucun terme par défaut</p>
+                  <p className="text-sm">Nothing here yet</p>
+                  <p className="text-xs mt-1">Whisper is guessing on its own</p>
                 </div>
               ) : (
                 <DndContext

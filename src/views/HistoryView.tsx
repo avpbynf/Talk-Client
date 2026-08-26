@@ -1,4 +1,5 @@
 import { Transcription } from "@/App";
+import { UI_LOCALE } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Sparkles, Clock, Globe, HardDrive, ClipboardCheck } from "lucide-react";
@@ -31,7 +32,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("fr-FR", {
+    return date.toLocaleTimeString(UI_LOCALE, {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -43,11 +44,11 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return "Aujourd'hui";
+      return "Today";
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Hier";
+      return "Yesterday";
     }
-    return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    return date.toLocaleDateString(UI_LOCALE, { day: "numeric", month: "short" });
   };
 
   const isEmpty = transcriptions.length === 0;
@@ -60,10 +61,10 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
             {/* Header — always visible */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-semibold tracking-tight">Historique</h1>
+                <h1 className="text-xl font-semibold tracking-tight">History</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {isEmpty
-                    ? "Aucune transcription"
+                    ? "Nothing dictated yet"
                     : `${transcriptions.length} transcription${transcriptions.length !== 1 ? "s" : ""}`}
                 </p>
               </div>
@@ -75,7 +76,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                 className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Effacer tout
+                Clear all
               </Button>
             </div>
 
@@ -83,7 +84,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
 
             {isEmpty ? (
               <p className="text-sm text-muted-foreground text-center leading-relaxed">
-                Utilisez
+                Press
                 <span className="mx-2 inline-flex items-center gap-1">
                   {shortcut.split("+").map((key, i, arr) => (
                     <span key={key} className="inline-flex items-center">
@@ -94,7 +95,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                     </span>
                   ))}
                 </span>
-                et commencez à parler
+                and start talking
               </p>
             ) : (
               <div className="space-y-3">
@@ -158,7 +159,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                         return source === "server" ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-server)]/10 text-[var(--color-server)] border border-[var(--color-server)]/20">
                             <Globe size={10} />
-                            Serveur
+                            Server
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-active)]/10 text-[var(--color-active)] border border-[var(--color-active)]/20">
@@ -201,9 +202,9 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-sm mx-6 p-5 rounded-xl border border-border-card bg-surface-raised shadow-xl"
             >
-              <h2 className="text-sm font-semibold">Effacer tout l'historique ?</h2>
+              <h2 className="text-sm font-semibold">Clear the whole history?</h2>
               <p className="text-sm text-muted-foreground mt-1.5">
-                {transcriptions.length} transcription{transcriptions.length !== 1 ? "s" : ""} seront supprimées définitivement.
+                All {transcriptions.length} of them go, and they do not come back.
               </p>
               <div className="flex items-center justify-end gap-2 mt-5">
                 <Button
@@ -212,7 +213,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                   onClick={() => setConfirmClear(false)}
                   className="text-muted-foreground"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button
                   variant="ghost"
@@ -224,7 +225,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Confirmer
+                  Confirm
                 </Button>
               </div>
             </motion.div>

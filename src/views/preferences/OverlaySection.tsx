@@ -39,7 +39,7 @@ export default function OverlaySection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Taille de la fenêtre affichée pendant l'enregistrement.
+        Size of the window shown while recording.
       </p>
 
       <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border-subtle">
@@ -58,7 +58,7 @@ export default function OverlaySection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Thème de couleur de l'effet lumineux pendant l'enregistrement.
+        Colour of the glow around it while recording.
       </p>
 
       <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border-subtle">

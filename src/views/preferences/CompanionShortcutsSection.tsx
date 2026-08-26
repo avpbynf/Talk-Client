@@ -28,19 +28,19 @@ interface CompanionShortcutsSectionProps {
 
 const TRIGGER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
   start: {
-    label: "Démarrage",
+    label: "On start",
     color: "text-[var(--color-success)]",
     bg: "bg-[var(--color-success)]/12",
     border: "border-[var(--color-success)]/25",
   },
   stop: {
-    label: "Arrêt",
+    label: "On stop",
     color: "text-[var(--color-warning)]",
     bg: "bg-[var(--color-warning)]/12",
     border: "border-[var(--color-warning)]/25",
   },
   both: {
-    label: "Les deux",
+    label: "Both",
     color: "text-[var(--color-active)]",
     bg: "bg-[var(--color-active)]/12",
     border: "border-[var(--color-active)]/25",
@@ -114,9 +114,9 @@ function SortableRow({
           </span>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="start">Démarrage</SelectItem>
-          <SelectItem value="stop">Arrêt</SelectItem>
-          <SelectItem value="both">Les deux</SelectItem>
+          <SelectItem value="start">On start</SelectItem>
+          <SelectItem value="stop">On stop</SelectItem>
+          <SelectItem value="both">Both</SelectItem>
         </SelectContent>
       </Select>
 
@@ -130,7 +130,7 @@ function SortableRow({
       <button
         onClick={() => onDelete(companion.id)}
         className="cursor-pointer p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-        title="Supprimer"
+        title="Remove"
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -190,20 +190,20 @@ export default function CompanionShortcutsSection({
           className="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg border border-border-card text-muted-foreground hover:text-foreground hover:border-border-hover transition-colors"
         >
           <Plus size={14} className="inline mr-1" />
-          Ajouter
+          Add
         </button>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Envoyer des raccourcis clavier à d'autres applications au démarrage ou à
-        l'arrêt de l'enregistrement (ex: muter Discord, Teams).
+        Send a keystroke to another application when recording starts or stops,
+        to mute yourself in Discord or Teams without leaving what you are doing.
       </p>
 
       {companionShortcuts.length === 0 ? (
         <div className="py-8 rounded-lg border border-dashed border-border-card text-center">
           <Keyboard className="h-5 w-5 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
-            Aucun raccourci compagnon
+            No companion shortcuts yet
           </p>
         </div>
       ) : (

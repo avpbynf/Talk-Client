@@ -85,7 +85,7 @@ export default function ThemeSection({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Schema de couleurs de l'application.
+        The colour scheme the application is drawn in.
       </p>
 
       {/* Dark themes */}

@@ -15,8 +15,8 @@ const GPU_TOOLTIPS: Record<GpuVendor, string> = {
 };
 
 const ALL_GPU_OPTIONS: GpuInfo[] = [
-  { vendor: "cpu", name: "CPU", available: true, description: "Sans accélération" },
-  { vendor: "vulkan", name: "Vulkan", available: true, description: "GPU générique" },
+  { vendor: "cpu", name: "CPU", available: true, description: "No acceleration" },
+  { vendor: "vulkan", name: "Vulkan", available: true, description: "Any GPU, through Vulkan" },
 ];
 
 export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: GpuSelectorProps) {
@@ -32,7 +32,7 @@ export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: 
           <Zap className="h-4 w-4 text-warning" />
         </div>
         <div>
-          <h3 className="font-medium text-sm">Accélération</h3>
+          <h3 className="font-medium text-sm">Acceleration</h3>
           <p className="text-xs text-muted-foreground">Backend de calcul</p>
         </div>
       </div>
@@ -75,7 +75,7 @@ export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: 
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover border border-border-hover rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none z-50 w-56 text-center">
               <p className="text-xs text-popover-foreground">{GPU_TOOLTIPS[gpu.vendor]}</p>
               {!gpu.available && (
-                <p className="text-[10px] text-muted-foreground mt-1">Non disponible sur cette machine</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Not available on this machine</p>
               )}
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--color-border-hover)]" />
             </div>

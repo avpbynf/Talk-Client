@@ -66,7 +66,7 @@ export default function KeyCaptureField({
   value,
   onChange,
   accentColor = "var(--color-active)",
-  placeholder = "Non assigné",
+  placeholder = "Not set",
   className,
 }: KeyCaptureFieldProps) {
   const [capturing, setCapturing] = useState(false);

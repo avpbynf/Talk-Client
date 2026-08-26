@@ -363,13 +363,13 @@ function App() {
 
   const navItemsTop = [
     { id: "analytics" as View, icon: LayoutDashboard, label: "Dashboard" },
-    { id: "history" as View, icon: History, label: "Historique" },
-    { id: "vocabulary" as View, icon: BookA, label: "Vocabulaire" },
+    { id: "history" as View, icon: History, label: "History" },
+    { id: "vocabulary" as View, icon: BookA, label: "Vocabulary" },
   ];
   const navItemsBottom = [
-    { id: "appearance" as View, icon: Palette, label: "Apparence" },
+    { id: "appearance" as View, icon: Palette, label: "Appearance" },
     { id: "transcription" as View, icon: Cpu, label: "Transcription" },
-    { id: "preferences" as View, icon: Settings, label: "Préférences" },
+    { id: "preferences" as View, icon: Settings, label: "Preferences" },
   ];
 
   // Show loading state while checking setup status
@@ -402,11 +402,11 @@ function App() {
           const isServerMode = transcriptionMode === "server" && !serverFallback;
           const isHybridMode = transcriptionMode === "server" && serverFallback;
           if (isServerMode) {
-            return serverStatus === "online" ? "Serveur connecté" : serverStatus === "offline" ? "Serveur indisponible" : "Serveur";
+            return serverStatus === "online" ? "Server connected" : serverStatus === "offline" ? "Server unreachable" : "Server";
           } else if (isHybridMode) {
-            return serverStatus === "online" ? "Serveur connecté" : currentModel || "Non prêt";
+            return serverStatus === "online" ? "Server connected" : currentModel || "Not ready";
           }
-          return currentModel || "Aucun modèle";
+          return currentModel || "No model";
         })()}
       />
 

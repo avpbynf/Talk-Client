@@ -85,7 +85,7 @@ export function ModelCard({
               className="h-7 px-2.5 text-xs text-[var(--color-active)] hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
               <X className="h-3.5 w-3.5 mr-1" />
-              Décharger
+              Unload
             </Button>
           ) : (
             <>
@@ -96,7 +96,7 @@ export function ModelCard({
                 className="h-7 px-2.5 text-xs border-border hover:bg-surface-active"
                 variant="outline"
               >
-                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Charger"}
+                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Load"}
               </Button>
               <Button
                 size="sm"
@@ -127,7 +127,7 @@ export function ModelCard({
         <div className="mt-3 pt-3 border-t border-border-subtle space-y-1.5">
           <Progress value={downloadProgress.progress} className="h-1.5" />
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>Téléchargement...</span>
+            <span>Downloading...</span>
             <span>{downloadProgress.downloaded_mb} / {downloadProgress.total_mb} MB</span>
           </div>
         </div>

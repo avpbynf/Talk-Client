@@ -29,7 +29,7 @@ export default function AppearanceView({
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Page title */}
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Apparence</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Appearance</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Personnalisation visuelle
               </p>

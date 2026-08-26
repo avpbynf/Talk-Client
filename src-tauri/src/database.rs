@@ -117,13 +117,13 @@ pub fn default_db_path() -> PathBuf {
 
 fn weekday_label(weekday: i32) -> &'static str {
     match weekday {
-        0 => "dim.",
-        1 => "lun.",
-        2 => "mar.",
-        3 => "mer.",
-        4 => "jeu.",
-        5 => "ven.",
-        6 => "sam.",
+        0 => "Sun",
+        1 => "Mon",
+        2 => "Tue",
+        3 => "Wed",
+        4 => "Thu",
+        5 => "Fri",
+        6 => "Sat",
         _ => "?",
     }
 }

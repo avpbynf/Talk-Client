@@ -63,8 +63,8 @@ export function LocalTab({
               <HardDrive className="h-4 w-4 text-[var(--color-active)]" />
             </div>
             <div>
-              <h3 className="font-medium text-sm">Modèles Whisper</h3>
-              <p className="text-xs text-muted-foreground">{downloadedModels.length} téléchargé(s)</p>
+              <h3 className="font-medium text-sm">Whisper models</h3>
+              <p className="text-xs text-muted-foreground">{downloadedModels.length} downloaded</p>
             </div>
           </div>
 
@@ -79,7 +79,7 @@ export function LocalTab({
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Quantifiés
+              Quantised
             </button>
             <button
               onClick={() => setModelFamily("standard")}

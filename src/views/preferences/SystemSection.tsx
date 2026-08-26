@@ -28,15 +28,15 @@ export default function SystemSection({
       <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
           <Monitor className="h-4 w-4" />
-          Système
+          System
         </div>
 
         {/* Autostart */}
         <div className="flex items-center justify-between">
           <div>
-            <label className="text-sm font-medium">Lancer au démarrage</label>
+            <label className="text-sm font-medium">Start with Windows</label>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Démarrer automatiquement avec Windows
+              Launch when the session opens
             </p>
           </div>
           <Switch
@@ -48,9 +48,9 @@ export default function SystemSection({
         {/* Start Minimized */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
           <div>
-            <label className="text-sm font-medium">Démarrer minimisé</label>
+            <label className="text-sm font-medium">Start minimised</label>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Ouvrir directement dans la barre système
+              Open straight into the tray
             </p>
           </div>
           <Switch
@@ -76,9 +76,9 @@ export default function SystemSection({
         {/* Preserve Clipboard */}
         <div className="flex items-center justify-between border-t border-border-subtle pt-4">
           <div>
-            <label className="text-sm font-medium">Préserver le presse-papier</label>
+            <label className="text-sm font-medium">Preserve the clipboard</label>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Restaure le contenu du presse-papier après le collage
+              Puts back whatever was in it after pasting
             </p>
           </div>
           <Switch
