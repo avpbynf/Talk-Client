@@ -469,7 +469,16 @@ function App() {
         {/* Main content */}
         <div className="flex-1 min-h-0 min-w-0 view-enter" key={currentView}>
         {currentView === "analytics" && (
-          <AnalyticsView />
+          <AnalyticsView
+            transcriptionMode={transcriptionMode}
+            serverStatus={serverStatus}
+            serverUrl={serverUrl}
+            serverFallback={serverFallback}
+            currentModel={currentModel}
+            shortcut={shortcut}
+            transcriptions={transcriptions}
+            onOpenHistory={() => setCurrentView("history")}
+          />
         )}
         {currentView === "history" && (
           <HistoryView

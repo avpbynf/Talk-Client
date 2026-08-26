@@ -4,25 +4,57 @@ import { listen } from "@tauri-apps/api/event";
 import { Keyboard, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { loadUserWpm } from "@/lib/analytics";
-import type { AnalyticsSummary, YearlyDayActivity } from "@/lib/analytics";
+import { loadUserWpm, PERIOD_DAYS } from "@/lib/analytics";
+import type { AnalyticsSummary, Period, YearlyDayActivity } from "@/lib/analytics";
+import type { Transcription, TranscriptionMode } from "@/App";
+import type { ServerStatus } from "@/views/transcription/TranscriptionView";
+import { ReadyBand } from "@/views/analytics/ReadyBand";
+import { PeriodFilter } from "@/views/analytics/PeriodFilter";
 import { StatsCards } from "@/views/analytics/StatsCards";
 import { ActivityChart } from "@/views/analytics/ActivityChart";
 import { CostComparison } from "@/views/analytics/CostComparison";
+import { SubscriptionComparison } from "@/views/analytics/SubscriptionComparison";
 import { TimeSaved } from "@/views/analytics/TimeSaved";
 import { TypingGame } from "@/views/analytics/TypingGame";
 
-export default function AnalyticsView() {
+interface AnalyticsViewProps {
+  transcriptionMode: TranscriptionMode;
+  serverStatus: ServerStatus;
+  serverUrl: string;
+  serverFallback: boolean;
+  currentModel: string | null;
+  shortcut: string;
+  transcriptions: Transcription[];
+  onOpenHistory: () => void;
+}
+
+export default function AnalyticsView({
+  transcriptionMode,
+  serverStatus,
+  serverUrl,
+  serverFallback,
+  currentModel,
+  shortcut,
+  transcriptions,
+  onOpenHistory,
+}: AnalyticsViewProps) {
   const [userWpm, setUserWpm] = useState<number>(() => loadUserWpm());
   const [showGame, setShowGame] = useState(false);
+  const [period, setPeriod] = useState<Period>("all");
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [yearlyActivity, setYearlyActivity] = useState<YearlyDayActivity[]>([]);
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const fetchAnalytics = useCallback(async (wpm: number) => {
+  const fetchAnalytics = useCallback(async (wpm: number, selected: Period) => {
     try {
       const [data, yearly] = await Promise.all([
-        invoke<AnalyticsSummary>("db_get_analytics_summary", { userWpm: wpm }),
+        invoke<AnalyticsSummary>("db_get_analytics_summary", {
+          userWpm: wpm,
+          periodDays: PERIOD_DAYS[selected],
+        }),
+        // Deliberately not filtered: the graph is the whole year whatever the
+        // stats below are showing, which is what makes the two readable side by
+        // side rather than saying the same thing twice.
         invoke<YearlyDayActivity[]>("db_get_yearly_activity"),
       ]);
       setSummary(data);
@@ -36,48 +68,49 @@ export default function AnalyticsView() {
     try {
       await invoke("db_reset_stats");
       setConfirmReset(false);
-      fetchAnalytics(userWpm);
+      fetchAnalytics(userWpm, period);
     } catch (err) {
       console.error("Failed to reset stats:", err);
     }
-  }, [fetchAnalytics, userWpm]);
+  }, [fetchAnalytics, userWpm, period]);
 
-  // Fetch on mount
   useEffect(() => {
-    fetchAnalytics(userWpm);
-  }, [fetchAnalytics, userWpm]);
+    fetchAnalytics(userWpm, period);
+  }, [fetchAnalytics, userWpm, period]);
 
   // Refetch when a new transcription arrives
   useEffect(() => {
     const unlisten = listen("transcription-complete", () => {
-      fetchAnalytics(userWpm);
+      fetchAnalytics(userWpm, period);
     });
     return () => {
       unlisten.then((f) => f());
     };
-  }, [fetchAnalytics, userWpm]);
-
-  if (!summary) {
-    return (
-      <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-        Chargement...
-      </div>
-    );
-  }
+  }, [fetchAnalytics, userWpm, period]);
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
       <ScrollArea className="flex-1 min-h-0 w-full">
-        <div className="p-6">
-          <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Vue d'ensemble de votre utilisation
-                </p>
-              </div>
+        <div className="p-6 pt-5">
+          <div className="max-w-5xl mx-auto space-y-4">
+            <ReadyBand
+              transcriptionMode={transcriptionMode}
+              serverStatus={serverStatus}
+              serverUrl={serverUrl}
+              serverFallback={serverFallback}
+              currentModel={currentModel}
+              shortcut={shortcut}
+              lastTranscription={transcriptions[0]}
+              onOpenHistory={onOpenHistory}
+            />
+
+            <ActivityChart yearlyActivity={yearlyActivity} />
+
+            {/* The filter sits here rather than at the top of the page: it moves
+                everything below it and nothing above, and putting it over the
+                graph would promise a graph that changes. */}
+            <div className="flex items-center justify-between pt-1">
+              <PeriodFilter value={period} onChange={setPeriod} />
               {confirmReset ? (
                 <div className="flex items-center gap-2">
                   <Button
@@ -86,7 +119,7 @@ export default function AnalyticsView() {
                     onClick={() => setConfirmReset(false)}
                     className="text-muted-foreground"
                   >
-                    Annuler
+                    Cancel
                   </Button>
                   <Button
                     variant="ghost"
@@ -95,7 +128,7 @@ export default function AnalyticsView() {
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Confirmer
+                    Confirm
                   </Button>
                 </div>
               ) : (
@@ -106,53 +139,52 @@ export default function AnalyticsView() {
                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Réinitialiser
+                  Reset stats
                 </Button>
               )}
             </div>
 
-            <div className="h-px bg-border-subtle" />
+            {summary ? (
+              <>
+                <StatsCards summary={summary} />
 
-            {/* Stats grid */}
-            <StatsCards summary={summary} />
-
-            {/* Activity chart */}
-            <ActivityChart yearlyActivity={yearlyActivity} />
-
-            {/* Detail cards */}
-            <div className="grid grid-cols-2 gap-4">
-              <CostComparison summary={summary} />
-              <TimeSaved
-                summary={summary}
-                userWpm={userWpm}
-                onRecalibrate={() => setShowGame(true)}
-              />
-            </div>
-
-            {/* Typing game: compact bar or expanded game */}
-            {showGame ? (
-              <TypingGame
-                onWpmMeasured={(wpm) => {
-                  setUserWpm(wpm);
-                  setShowGame(false);
-                }}
-              />
-            ) : (
-              <button
-                onClick={() => setShowGame(true)}
-                className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl border border-border-card bg-surface-raised text-sm text-muted-foreground hover:bg-surface-active hover:text-foreground hover:border-border-hover transition-all duration-200 group"
-              >
-                <div className="flex items-center gap-3">
-                  <Keyboard
-                    size={16}
-                    className="text-muted-foreground/60 group-hover:text-[var(--color-active)] transition-colors"
+                <div className="grid grid-cols-3 gap-4">
+                  <CostComparison summary={summary} />
+                  <SubscriptionComparison summary={summary} />
+                  <TimeSaved
+                    summary={summary}
+                    userWpm={userWpm}
+                    onRecalibrate={() => setShowGame(true)}
                   />
-                  <span>Tester votre vitesse de frappe</span>
                 </div>
-                <span className="font-mono text-xs text-muted-foreground/80 bg-surface-active px-2.5 py-1 rounded-md">
-                  {userWpm} mots/min
-                </span>
-              </button>
+
+                {showGame ? (
+                  <TypingGame
+                    onWpmMeasured={(wpm) => {
+                      setUserWpm(wpm);
+                      setShowGame(false);
+                    }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setShowGame(true)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl border border-border-card bg-surface-raised text-sm text-muted-foreground hover:bg-surface-active hover:text-foreground hover:border-border-hover transition-all duration-200 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Keyboard
+                        size={16}
+                        className="text-muted-foreground/60 group-hover:text-[var(--color-active)] transition-colors"
+                      />
+                      <span>Test your typing speed</span>
+                    </div>
+                    <span className="font-mono text-xs text-muted-foreground/80 bg-surface-active px-2.5 py-1 rounded-md">
+                      {userWpm} wpm
+                    </span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="py-16 text-center text-muted-foreground">Loading...</div>
             )}
           </div>
         </div>
