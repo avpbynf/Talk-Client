@@ -26,3 +26,8 @@ nul
 !src-tauri/resources/**/*.exe
 *.msi
 build/
+
+# VB-Audio Virtual Cable payload. Redistributed by VB-Audio under its own terms, so
+# it is not vendored here: fetch it from vb-audio.com and unpack it there to build an
+# installer that sets the driver up automatically.
+src-tauri/resources/VBCABLE_Driver/
