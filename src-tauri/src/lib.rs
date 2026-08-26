@@ -76,7 +76,7 @@ impl Default for AppState {
             gpu_vendor: Mutex::new(GpuVendor::Cpu),
             vocabulary: Mutex::new(Vec::new()),
             transcription_mode: Mutex::new(TranscriptionMode::default()),
-            server_url: Mutex::new("https://stt.example.com".to_string()),
+            server_url: Mutex::new(String::new()),
             server_fallback: Mutex::new(true),
             server_timeout: Mutex::new(30000),
             pause_media_on_record: Mutex::new(false),
