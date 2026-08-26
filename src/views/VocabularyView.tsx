@@ -67,6 +67,7 @@ function SortableVocabularyItem({
       <button
         {...attributes}
         {...listeners}
+        aria-label={`Reorder ${word}`}
         className="cursor-grab active:cursor-grabbing p-0.5 opacity-30 group-hover:opacity-70 transition-opacity"
       >
         <GripVertical className="h-3 w-3" />
@@ -74,6 +75,7 @@ function SortableVocabularyItem({
       {word}
       <button
         onClick={onRemove}
+        aria-label={`Remove ${word}`}
         className="p-0.5 rounded-full hover:bg-surface-raised opacity-50 group-hover:opacity-100 transition-opacity"
       >
         <X className="h-3 w-3" />
@@ -181,7 +183,7 @@ export default function VocabularyView({
             <div className="pt-5 px-5 pb-3 rounded-xl border border-border-card bg-surface-raised space-y-3">
               <div className="flex items-center justify-between pb-2">
                 <label className="text-sm font-medium">
-                  Vos termes ({vocabulary.length})
+                  Your terms ({vocabulary.length})
                 </label>
                 {vocabulary.length > 0 && (
                   <Button
