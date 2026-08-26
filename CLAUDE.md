@@ -57,14 +57,18 @@ so a cold build takes a long while. `tauri:check` is the fast feedback loop.
   version of the other. `server_fallback` applies inside server mode only, so a
   machine dictating badly may be in server mode falling back silently, or in local
   mode with a bad model. Check which mode it is in before anything else.
-- **Two spellings of the old name are load-bearing.** The product is Talk, but
-  `com.avpbynf.t4lk` still names the config and data directories, through
-  `ProjectDirs::from("com", "avpbynf", "t4lk")` in four places and through the two
-  paths `nsis-hooks.nsh` hardcodes for the uninstaller, and `t4lk.db` still names the
-  history file. `AppTheme` keeps a `serde(alias)` on its two renamed variants for the
-  same reason: `load_settings()` drops the whole file on a parse error and returns the
-  defaults, so one stale value would take the server URL, the token and the shortcuts
-  with it. Renaming any of them needs a migration first, not a find and replace.
+- **The old name still points at real data, and not where you would guess.**
+  `ProjectDirs::from("com", "avpbynf", "t4lk")`, called in four places, resolves on
+  Windows to `%APPDATA%\avpbynf\t4lk`: the crate drops the qualifier, and only the
+  last argument carries the name. `settings.json`, `t4lk.db` and the downloaded
+  models all live there, better than a gigabyte of them. The bundle identifier
+  `com.avpbynf.t4lk` is a separate string that names the WebView2 profile under
+  `%LOCALAPPDATA%`, and nothing worth keeping is under it. Renaming either needs a
+  migration written first, not a find and replace.
+- **`AppTheme` carries a `serde(alias)` on each of its two renamed variants.**
+  `load_settings()` drops the whole file on a parse error and returns the defaults,
+  so a settings file still holding `t4lk-dark` would take the server URL, the token
+  and the shortcuts down with it.
 - **The installer bitmaps carry the wordmark.** `src-tauri/icons/nsis-header.bmp` and
   `nsis-sidebar.bmp` are 24-bit BMP at sizes NSIS fixes, so they cannot be produced by
   the build. `python scripts/make-installer-images.py` redraws both from the real icon
