@@ -58,78 +58,78 @@ pub fn get_available_models() -> Vec<ModelInfo> {
             id: "tiny".to_string(),
             name: "Tiny".to_string(),
             size_mb: 78,
-            description: "Le plus rapide, qualité basique".to_string(),
+            description: "The fastest, and it shows".to_string(),
         },
         ModelInfo {
             id: "tiny-q5_1".to_string(),
             name: "Tiny Q5".to_string(),
             size_mb: 32,
-            description: "Tiny quantifié, ultra léger".to_string(),
+            description: "Tiny, quantised. Barely there".to_string(),
         },
         // Base models
         ModelInfo {
             id: "base".to_string(),
             name: "Base".to_string(),
             size_mb: 148,
-            description: "Rapide, bonne qualité".to_string(),
+            description: "Fast, and good enough for most of it".to_string(),
         },
         ModelInfo {
             id: "base-q5_1".to_string(),
             name: "Base Q5".to_string(),
             size_mb: 60,
-            description: "Base quantifié, léger".to_string(),
+            description: "Base, quantised. Light".to_string(),
         },
         // Small models
         ModelInfo {
             id: "small".to_string(),
             name: "Small".to_string(),
             size_mb: 488,
-            description: "Équilibre vitesse/qualité".to_string(),
+            description: "An even trade of speed for accuracy".to_string(),
         },
         ModelInfo {
             id: "small-q5_1".to_string(),
             name: "Small Q5".to_string(),
             size_mb: 190,
-            description: "Small quantifié".to_string(),
+            description: "Small, quantised".to_string(),
         },
         // Medium models
         ModelInfo {
             id: "medium".to_string(),
             name: "Medium".to_string(),
             size_mb: 1530,
-            description: "Haute qualité".to_string(),
+            description: "Accurate, and slower for it".to_string(),
         },
         ModelInfo {
             id: "medium-q5_0".to_string(),
             name: "Medium Q5".to_string(),
             size_mb: 539,
-            description: "Medium quantifié, bon compromis".to_string(),
+            description: "Medium, quantised. A good middle".to_string(),
         },
         // Large v3 Turbo - great middle ground
         ModelInfo {
             id: "large-v3-turbo".to_string(),
             name: "Large v3 Turbo".to_string(),
             size_mb: 1620,
-            description: "Qualité Large, vitesse Medium".to_string(),
+            description: "Large accuracy at Medium speed".to_string(),
         },
         ModelInfo {
             id: "large-v3-turbo-q5_0".to_string(),
             name: "Large v3 Turbo Q5".to_string(),
             size_mb: 574,
-            description: "Turbo quantifié, excellent rapport qualité/taille".to_string(),
+            description: "Turbo, quantised. The best accuracy per megabyte".to_string(),
         },
         // Large v3 full
         ModelInfo {
             id: "large-v3".to_string(),
             name: "Large v3".to_string(),
             size_mb: 3100,
-            description: "Meilleure qualité, le plus lent".to_string(),
+            description: "The most accurate, and the slowest".to_string(),
         },
         ModelInfo {
             id: "large-v3-q5_0".to_string(),
             name: "Large v3 Q5".to_string(),
             size_mb: 1080,
-            description: "Large quantifié".to_string(),
+            description: "Large, quantised".to_string(),
         },
     ]
 }

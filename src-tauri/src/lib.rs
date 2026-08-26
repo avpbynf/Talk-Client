@@ -177,7 +177,7 @@ fn delete_model(
     let current = state.current_model.lock().clone();
     if current.as_deref() == Some(&model_id) {
         return Err(format!(
-            "Impossible de supprimer '{}' car il est actuellement charge",
+            "Cannot delete '{}' while it is loaded",
             model_id
         ));
     }

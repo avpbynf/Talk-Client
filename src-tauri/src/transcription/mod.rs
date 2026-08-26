@@ -98,7 +98,7 @@ pub fn detect_available_gpus() -> Vec<GpuInfo> {
             vendor: GpuVendor::Vulkan,
             name: "Vulkan".to_string(),
             available: true, // Vulkan is generally available if compiled
-            description: "AMD, Intel ou NVIDIA".to_string(),
+            description: "AMD, Intel or NVIDIA".to_string(),
         });
     }
 
@@ -108,7 +108,7 @@ pub fn detect_available_gpus() -> Vec<GpuInfo> {
             vendor: GpuVendor::Vulkan,
             name: "Vulkan".to_string(),
             available: false,
-            description: "Vulkan non compilé".to_string(),
+            description: "Built without Vulkan".to_string(),
         });
     }
 
@@ -117,7 +117,7 @@ pub fn detect_available_gpus() -> Vec<GpuInfo> {
         vendor: GpuVendor::Cpu,
         name: "CPU".to_string(),
         available: true,
-        description: "Plus lent, toujours disponible".to_string(),
+        description: "Slower, and always there".to_string(),
     });
 
     gpus
