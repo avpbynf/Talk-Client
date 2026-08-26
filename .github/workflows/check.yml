@@ -1,0 +1,27 @@
+name: Check
+
+# Fast feedback on every push: this is the `tsc` pass that the release build runs as
+# its beforeBuildCommand, pulled forward so type errors surface here rather than in
+# the middle of a tagged release. Linux, because tsc does not need Windows, and the
+# Rust side is not compiled here: whisper.cpp takes too long for a per-push check.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type-check and build the frontend
+        run: bun run build
