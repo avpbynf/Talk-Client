@@ -120,7 +120,7 @@ function App() {
   const [currentGpuVendor, setCurrentGpuVendor] = useState<GpuVendor>("cpu");
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("local");
-  const [serverUrl, setServerUrl] = useState("https://stt.example.com");
+  const [serverUrl, setServerUrl] = useState("");
   const [serverFallback, setServerFallback] = useState(true);
   const [serverTimeout, setServerTimeout] = useState(30000);
   const [serverToken, setServerToken] = useState("");
@@ -293,7 +293,7 @@ function App() {
     const savedSettings = await invoke<SavedSettings>("get_saved_settings");
     setVocabulary(savedSettings.vocabulary || []);
     setTranscriptionMode(savedSettings.transcription_mode || "local");
-    setServerUrl(savedSettings.server_url || "https://stt.example.com");
+    setServerUrl(savedSettings.server_url || "");
     setServerFallback(savedSettings.server_fallback !== false); // Default to true
     setServerTimeout(savedSettings.server_timeout || 30000);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
