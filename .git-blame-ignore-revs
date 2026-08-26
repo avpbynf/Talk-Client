@@ -1,0 +1,6 @@
+# Commits that touched every line without changing any behaviour.
+# GitHub skips these in blame automatically. Locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: normalize line endings to LF
+c59ed1e5ebe2b2860675cf492fcd8b12e29e2013
