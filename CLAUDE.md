@@ -37,8 +37,12 @@ so a cold build takes a long while; `tauri:check` is the fast feedback loop.
   backticks: escaping one breaks the quoted path and the probe silently finds
   nothing. `vcvarsall.bat` is itself noisy on stderr even on success, which is why the
   call is silenced and judged on its exit code.
-- **Path length.** `vulkan-shaders-gen` nests CMake paths deep enough to cross the 250
-  character limit. Keep the checkout short, well under 50 characters.
+- **Path length.** `vulkan-shaders-gen` nests its CMake scratch directories about 220
+  characters deep on their own, so the checkout has to stay short, well under 50
+  characters. The symptom is misleading: CMake reports that the C compiler cannot
+  build a trivial program, naming a `TryCompile-*` directory rather than the length.
+  A short checkout is not always enough either, since the target directory sits in
+  the middle of that path; CI sets `CARGO_TARGET_DIR` to a root-level directory.
 - **GPU is optional.** `vulkan` is a default feature; `--no-default-features` builds
   without the Vulkan SDK.
 - **The VB-Cable payload is absent.** `src-tauri/nsis-hooks.nsh` ships
