@@ -39,8 +39,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["French", "English"],
-        "displayLanguageSelector": true,
+        "languages": ["English"],
         "headerImage": "icons/nsis-header.bmp",
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "installerHooks": "nsis-hooks.nsh"
