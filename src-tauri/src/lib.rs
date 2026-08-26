@@ -234,9 +234,13 @@ fn db_clear_transcriptions(
 #[tauri::command]
 fn db_get_analytics_summary(
     user_wpm: f64,
+    period_days: Option<i64>,
     db: tauri::State<'_, database::Database>,
 ) -> Result<database::AnalyticsSummary, String> {
-    db.get_analytics_summary(user_wpm).map_err(|e| e.to_string())
+    // Clamped here rather than trusted: the value reaches a date modifier.
+    let period_days = period_days.filter(|d| *d > 0).map(|d| d.min(36_500));
+    db.get_analytics_summary(user_wpm, period_days)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

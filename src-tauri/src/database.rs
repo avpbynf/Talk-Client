@@ -94,6 +94,14 @@ pub struct AnalyticsSummary {
     pub server_count: i64,
     pub today_count: i64,
     pub week_count: i64,
+    /// Earliest day carrying any activity, over the whole history and not
+    /// the selected window, since that is where a subscription would have
+    /// started charging. None on a fresh install.
+    pub first_day: Option<String>,
+    /// First day of the selected window, or None when the window is the
+    /// whole history. What a subscription costs is counted from whichever
+    /// of the two comes later.
+    pub period_start: Option<String>,
     pub daily_stats: Vec<DailyStats>,
 }
 
@@ -286,23 +294,46 @@ impl Database {
 
     // -- Analytics ----------------------------------------------------------
 
+    /// Aggregate the stats over the last `period_days` days, today included,
+    /// or over everything when it is None.
     pub fn get_analytics_summary(
         &self,
         user_wpm: f64,
+        period_days: Option<i64>,
     ) -> Result<AnalyticsSummary> {
         let conn = self.conn.lock();
+
+        // SQLite has no placeholder for a modifier, so the offset is built
+        // here. It comes from an i64 the caller clamps, never from a string.
+        let period_start: Option<String> = match period_days {
+            Some(days) if days > 0 => conn
+                .query_row(
+                    "SELECT date('now', ?1, 'localtime')",
+                    [format!("-{} days", days - 1)],
+                    |row| row.get(0),
+                )
+                .ok(),
+            _ => None,
+        };
+        let window = match &period_start {
+            Some(start) => format!("WHERE date >= '{}'", start),
+            None => String::new(),
+        };
 
         // Global aggregates from daily_stats (permanent, survives history clear)
         let (total, total_words, total_chars, local_count, server_count): (
             i64, i64, i64, i64, i64,
         ) = conn.query_row(
-            "SELECT
+            &format!(
+                "SELECT
                 COALESCE(SUM(transcription_count), 0),
                 COALESCE(SUM(word_count), 0),
                 COALESCE(SUM(char_count), 0),
                 COALESCE(SUM(local_count), 0),
                 COALESCE(SUM(server_count), 0)
-             FROM daily_stats",
+             FROM daily_stats {}",
+                window
+            ),
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
         )?;
@@ -322,6 +353,13 @@ impl Database {
             [],
             |row| row.get(0),
         )?;
+
+        // The first day anything was dictated. daily_stats outlives a history
+        // clear, so this is the real start of use rather than the oldest
+        // transcription still kept.
+        let first_day: Option<String> = conn
+            .query_row("SELECT MIN(date) FROM daily_stats", [], |row| row.get(0))
+            .unwrap_or(None);
 
         // Daily chart for last 7 days (zero-filled via CTE, reads from daily_stats)
         let mut stmt = conn.prepare(
@@ -379,6 +417,8 @@ impl Database {
             server_count,
             today_count,
             week_count,
+            first_day,
+            period_start,
             daily_stats,
         })
     }
