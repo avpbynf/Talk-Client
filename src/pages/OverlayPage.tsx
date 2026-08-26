@@ -11,7 +11,7 @@ type OverlaySize = "small" | "medium" | "large";
 function OverlayPage() {
   const [state, setState] = useState<ProcessingState>("idle");
   const [progress, setProgress] = useState(0);
-  const [size, setSize] = useState<OverlaySize>("medium");
+  const [, setSize] = useState<OverlaySize>("medium");
   const [spectrum, setSpectrum] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
   const [elapsed, setElapsed] = useState(0);
   const [visible, setVisible] = useState(false);
