@@ -4,7 +4,15 @@ interface ActivityChartProps {
   yearlyActivity: YearlyDayActivity[];
 }
 
-const BASELINE_CEILING = 700;
+/**
+ * The top of the colour scale when the history has no busier day of its own.
+ *
+ * This was 700, a number of dictations nobody reaches in a day, so every real
+ * day fell in the faintest band and a whole year of work read as empty. Eight
+ * gives a first week visible contrast, and stops mattering the moment there is
+ * a real busiest day to scale against.
+ */
+const BASELINE_CEILING = 8;
 
 function intensityLevel(count: number, userMax: number): number {
   if (count === 0) return 0;
@@ -25,11 +33,11 @@ const LEVEL_BG: Record<number, string> = {
 };
 
 const MONTH_LABELS = [
-  "Jan", "Fev", "Mar", "Avr", "Mai", "Jun",
-  "Jul", "Aou", "Sep", "Oct", "Nov", "Dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const DAY_LABELS = ["", "Lun", "", "Mer", "", "Ven", ""];
+const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
 
 interface DayCell {
   date: string;
@@ -108,7 +116,7 @@ export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
   return (
     <div className="rounded-lg border border-border-card bg-surface-raised/50 px-4 py-3">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium">Activité</span>
+        <span className="text-sm font-medium">Activity</span>
         <div className="flex items-center gap-1">
           {[0, 1, 2, 3, 4].map((lvl) => (
             <div
