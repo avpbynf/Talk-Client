@@ -113,7 +113,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [recordingMode, setRecordingMode] = useState<RecordingMode>("push_to_talk");
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
+  const [, setIsRecording] = useState(false);
   const [shortcut, setShortcut] = useState("Ctrl+Space");
   const [cancelShortcut, setCancelShortcut] = useState("Ctrl+F1");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
