@@ -166,7 +166,7 @@ fn default_sound_none() -> String {
 }
 
 fn default_server_url() -> String {
-    "https://stt.example.com".to_string()
+    String::new()
 }
 
 fn default_server_timeout() -> u64 {
