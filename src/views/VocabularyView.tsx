@@ -26,6 +26,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { parseVocabularyInput } from "@/lib/vocabulary";
 
 interface VocabularyViewProps {
   vocabulary: string[];
@@ -105,11 +106,7 @@ export default function VocabularyView({
   };
 
   const addWord = async () => {
-    const existingSet = new Set(vocabulary.map((v) => v.toLowerCase()));
-    const words = newWord
-      .split(/[,\s]+/)
-      .map((w) => w.trim())
-      .filter((w) => w.length > 0 && !existingSet.has(w.toLowerCase()));
+    const words = parseVocabularyInput(newWord, vocabulary);
 
     if (words.length === 0) {
       setNewWord("");
