@@ -52,8 +52,9 @@ export function Titlebar({ title = "Talk", statusDot, statusLabel }: TitlebarPro
             )}
           />
         )}
-        <span className="text-xs font-medium text-muted-foreground select-none" data-tauri-drag-region>
-          {statusLabel && <>{statusLabel} — </>}{title}
+        <span className="text-xs font-medium text-foreground select-none" data-tauri-drag-region>
+          {title}
+          {statusLabel && <span className="text-muted-foreground"> ({statusLabel})</span>}
         </span>
       </div>
 
