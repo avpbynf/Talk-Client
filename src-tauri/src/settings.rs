@@ -34,7 +34,7 @@ pub enum OverlaySize {
 
 impl Default for OverlaySize {
     fn default() -> Self {
-        Self::Medium
+        Self::Small
     }
 }
 
