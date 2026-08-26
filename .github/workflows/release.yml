@@ -15,6 +15,13 @@ jobs:
   windows:
     runs-on: windows-latest
 
+    env:
+      # vulkan-shaders-gen nests its CMake scratch directories about 220 characters
+      # deep on their own. Added to the default target directory that crosses the
+      # Windows path limit, and CMake fails saying the C compiler cannot build a
+      # trivial program. Build into a short path on the workspace drive instead.
+      CARGO_TARGET_DIR: D:\t
+
     steps:
       - uses: actions/checkout@v4
 
