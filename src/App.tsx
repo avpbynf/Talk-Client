@@ -134,7 +134,7 @@ function App() {
   const [startSound, setStartSound] = useState("none");
   const [stopSound, setStopSound] = useState("none");
   const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
-  const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("aurora");
+  const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("frost");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("small");
   const [appTheme, setAppTheme] = useState<AppThemeId>("talk-dark");
 
@@ -299,7 +299,7 @@ function App() {
     setServerTimeout(savedSettings.server_timeout || 30000);
     setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
-    setOverlayTheme(savedSettings.overlay_theme || "aurora");
+    setOverlayTheme(savedSettings.overlay_theme || "frost");
     setOverlaySize(savedSettings.overlay_size || "small");
 
     const savedAppTheme = (savedSettings.app_theme || "talk-dark") as AppThemeId;

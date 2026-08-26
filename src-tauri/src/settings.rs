@@ -61,7 +61,7 @@ pub enum OverlayTheme {
 
 impl Default for OverlayTheme {
     fn default() -> Self {
-        Self::Aurora
+        Self::Frost
     }
 }
 
