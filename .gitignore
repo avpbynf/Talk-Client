@@ -5,6 +5,7 @@ src-tauri/gen/
 # Node
 node_modules/
 dist/
+coverage/
 
 # Lock files
 package-lock.json

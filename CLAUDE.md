@@ -11,10 +11,20 @@ bun run tauri:dev      # dev build, MSVC env loaded by scripts/vcenv.bat
 bun run tauri:build    # production installer
 bun run tauri:check    # cargo check, no full build
 bun run dev            # frontend alone, no Tauri shell
+bun run test           # frontend suite, vitest on jsdom
+bun run test:coverage  # same, with a coverage report
+bun run test:rust      # cargo test, MSVC env loaded the same way
 ```
 
 Run `bun run tauri:check` before committing. The native side compiles whisper.cpp,
 so a cold build takes a long while. `tauri:check` is the fast feedback loop.
+
+`bun run test` is the fast one: it never touches the native side, so it answers in
+seconds. `test:rust` pays the whisper.cpp build the first time in any fresh worktree.
+
+Call cargo through `test:rust` and not directly. `cargo test` on its own inherits
+whatever environment the shell has, and without the MSVC one loaded the native
+build fails in ways that read like a Rust error.
 
 ## Layout
 
