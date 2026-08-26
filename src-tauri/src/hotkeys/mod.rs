@@ -3,6 +3,7 @@ use crate::settings::TranscriptionMode;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, EventTarget, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use thiserror::Error;
@@ -295,6 +296,89 @@ fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, Box<dyn std::error::Er
     Ok(Shortcut::new(Some(modifiers), code))
 }
 
+/// Keeps the overlay alive as long as any dictation still needs it.
+///
+/// Recording and transcribing overlap: `is_recording` is cleared as soon as the
+/// audio is taken, so pressing the shortcut again starts a new capture while the
+/// previous transcription is still running. The overlay is one shared window,
+/// and before this the first transcription to finish hid it, pulling it out from
+/// under whatever had started since.
+///
+/// Releasing on drop rather than at the end of the happy path matters: the
+/// transcription has half a dozen early returns, and every one of them used to
+/// be a way to leave the overlay up or the count wrong.
+struct OverlayLease {
+    app: AppHandle,
+}
+
+impl OverlayLease {
+    fn take(app: &AppHandle) -> Self {
+        app.state::<AppState>()
+            .jobs_in_flight
+            .fetch_add(1, Ordering::SeqCst);
+        Self { app: app.clone() }
+    }
+}
+
+impl Drop for OverlayLease {
+    fn drop(&mut self) {
+        let state = self.app.state::<AppState>();
+        // fetch_sub returns the value before the subtraction, so 1 means this
+        // was the last one.
+        let was_last = state.jobs_in_flight.fetch_sub(1, Ordering::SeqCst) == 1;
+        if !was_last || *state.is_recording.lock() {
+            return;
+        }
+
+        let _ = self.app.emit_to(
+            EventTarget::webview_window("overlay"),
+            "processing-state",
+            "idle",
+        );
+        if let Some(overlay) = self.app.get_webview_window("overlay") {
+            let _ = overlay.hide();
+        }
+    }
+}
+
+/// Run the local engine without parking a runtime worker.
+///
+/// `transcribe_with_options` is synchronous and holds the engine mutex for its
+/// whole run, which is seconds on a long dictation. Awaiting that on a tokio
+/// worker blocks the worker, so a second dictation stopping in the meantime has
+/// nowhere to run. The blocking pool is where work like this belongs.
+///
+/// `Ok(None)` means no model is loaded, which each caller words differently.
+async fn transcribe_locally(
+    app: &AppHandle,
+    audio: Vec<f32>,
+    vocabulary: Option<String>,
+) -> Result<Option<String>, String> {
+    let app_for_job = app.clone();
+    let app_for_progress = app.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app_for_job.state::<AppState>();
+        let engine_lock = state.whisper_engine.lock();
+        let Some(engine) = engine_lock.as_ref() else {
+            return Ok(None);
+        };
+
+        engine
+            .transcribe_with_options(&audio, vocabulary.as_deref(), move |progress| {
+                let _ = app_for_progress.emit_to(
+                    EventTarget::webview_window("overlay"),
+                    "transcription-progress",
+                    progress,
+                );
+            })
+            .map(Some)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Local transcription did not run: {}", e))?
+}
+
 pub fn handle_shortcut_event(app: &AppHandle, state: ShortcutState) {
     let app_state = app.state::<AppState>();
     let mode = *app_state.recording_mode.lock();
@@ -510,7 +594,9 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         let _ = app.emit_to(EventTarget::webview_window("overlay"), "processing-state", processing_state);
     };
 
-    // Emit transcribing state
+    // Emit transcribing state. The lease keeps the overlay up for as long as
+    // this transcription runs, whichever way it ends.
+    let _overlay_lease = OverlayLease::take(app);
     emit_to_overlay(app, "transcribing");
 
     // Get transcription mode settings
@@ -561,56 +647,31 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                         eprintln!("Falling back to local Whisper transcription");
                         emit_to_overlay(app, "transcribing");
 
-                        let app_clone = app.clone();
-                        let engine_lock = state.whisper_engine.lock();
-                        if let Some(ref engine) = *engine_lock {
-                            engine
-                                .transcribe_with_options(&audio_data, vocabulary_prompt.as_deref(), move |progress| {
-                                    let _ = app_clone.emit_to(
-                                        EventTarget::webview_window("overlay"),
-                                        "transcription-progress",
-                                        progress,
-                                    );
-                                })
-                                .map_err(|e| e.to_string())?
-                        } else {
-                            emit_to_overlay(app, "idle");
-                            return Err(format!("Server failed: {}. No local model loaded for fallback.", e));
+                        match transcribe_locally(app, audio_data, vocabulary_prompt.clone()).await? {
+                            Some(text) => text,
+                            None => {
+                                return Err(format!(
+                                    "Server failed: {}. No local model loaded for fallback.",
+                                    e
+                                ))
+                            }
                         }
                     } else {
-                        emit_to_overlay(app, "idle");
                         return Err(format!("Server transcription failed: {}", e));
                     }
                 }
             }
         }
         TranscriptionMode::Local => {
-            // Local Whisper transcription
-            let app_clone = app.clone();
-            let engine_lock = state.whisper_engine.lock();
-            if let Some(ref engine) = *engine_lock {
-                engine
-                    .transcribe_with_options(&audio_data, vocabulary_prompt.as_deref(), move |progress| {
-                        let _ = app_clone.emit_to(
-                            EventTarget::webview_window("overlay"),
-                            "transcription-progress",
-                            progress,
-                        );
-                    })
-                    .map_err(|e| e.to_string())?
-            } else {
-                emit_to_overlay(app, "idle");
-                return Err("No model loaded".to_string());
+            match transcribe_locally(app, audio_data, vocabulary_prompt).await? {
+                Some(text) => text,
+                None => return Err("No model loaded".to_string()),
             }
         }
     };
 
-    emit_to_overlay(app, "idle");
-
-    // Hide overlay
-    if let Some(overlay) = app.get_webview_window("overlay") {
-        let _ = overlay.hide();
-    }
+    // The overlay goes down when the lease is dropped, and only if nothing else
+    // still wants it.
 
     // Copy to clipboard and simulate paste
     #[cfg(windows)]

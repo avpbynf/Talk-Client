@@ -14,6 +14,7 @@ mod virtual_mic;
 use audio::{AudioBuffer, AudioCaptureHandle};
 use parking_lot::Mutex;
 use settings::TranscriptionMode;
+use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -60,6 +61,13 @@ pub struct AppState {
     pub cancel_shortcut: Mutex<Option<Shortcut>>,
     /// Sound engine for instant audio feedback (pre-computed PCM buffers)
     pub sound_engine: Mutex<Option<sound::SoundEngine>>,
+    /// Transcriptions still running.
+    ///
+    /// A dictation can be started while the previous one is still being
+    /// transcribed, so several of these overlap. The overlay is a single
+    /// window shared by all of them, and this is what tells the last one out
+    /// to turn the light off.
+    pub jobs_in_flight: AtomicUsize,
 }
 
 impl Default for AppState {
@@ -87,6 +95,7 @@ impl Default for AppState {
             main_shortcut: Mutex::new(None),
             cancel_shortcut: Mutex::new(None),
             sound_engine: Mutex::new(None),
+            jobs_in_flight: AtomicUsize::new(0),
         }
     }
 }
@@ -363,83 +372,6 @@ fn get_recording_mode(state: tauri::State<'_, AppState>) -> RecordingMode {
 #[tauri::command]
 fn is_recording(state: tauri::State<'_, AppState>) -> bool {
     *state.is_recording.lock()
-}
-
-#[tauri::command]
-async fn start_recording(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
-    if *state.is_recording.lock() {
-        return Ok(());
-    }
-
-    let device_name = state.input_device_name.lock().clone();
-    let (buffer, handle) = audio::start_capture_device(device_name.as_deref()).map_err(|e| e.to_string())?;
-
-    *state.audio_buffer.lock() = Some(buffer);
-    *state.audio_capture_handle.lock() = Some(handle);
-    *state.is_recording.lock() = true;
-
-    // Show overlay (pre-created at startup, just show it)
-    if let Some(overlay) = app.get_webview_window("overlay") {
-        let _ = overlay.show();
-        let _ = overlay.set_always_on_top(true);
-    }
-
-    let _ = app.emit("recording-started", ());
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn stop_recording(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<String, String> {
-    if !*state.is_recording.lock() {
-        return Err("Not recording".to_string());
-    }
-
-    let audio_data = {
-        let buffer_lock = state.audio_buffer.lock();
-        if let Some(ref buffer) = *buffer_lock {
-            buffer.take()
-        } else {
-            return Err("No audio buffer found".to_string());
-        }
-    };
-
-    // Stop audio capture - dropping the handle signals the stream thread to exit
-    *state.audio_capture_handle.lock() = None;
-    *state.is_recording.lock() = false;
-
-    // Hide overlay
-    if let Some(overlay) = app.get_webview_window("overlay") {
-        let _ = overlay.hide();
-    }
-
-    let _ = app.emit("recording-stopped", ());
-
-    // Transcribe the audio
-    let transcription = {
-        let engine_lock = state.whisper_engine.lock();
-        if let Some(ref engine) = *engine_lock {
-            engine.transcribe(&audio_data).map_err(|e| e.to_string())?
-        } else {
-            return Err("No model loaded".to_string());
-        }
-    };
-
-    // Copy to clipboard and simulate paste
-    #[cfg(windows)]
-    {
-        let _ = clipboard::copy_and_paste(&transcription);
-    }
-
-    let _ = app.emit("transcription-complete", &transcription);
-
-    Ok(transcription)
 }
 
 #[tauri::command]
@@ -954,8 +886,6 @@ pub fn run() {
             set_recording_mode,
             get_recording_mode,
             is_recording,
-            start_recording,
-            stop_recording,
             get_hotkey_config,
             save_hotkey_config,
             update_shortcut,
