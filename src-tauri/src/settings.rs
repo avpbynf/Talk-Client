@@ -132,16 +132,16 @@ pub struct AppSettings {
     #[serde(default)]
     pub pause_media_on_record: bool,
     /// Preserve clipboard content after pasting transcription
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub preserve_clipboard: bool,
     /// Sound feedback enabled
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub sound_feedback: bool,
     /// Start sound preset (none, beep, click, chime)
-    #[serde(default = "default_sound_none")]
+    #[serde(default = "default_sound_beep")]
     pub start_sound: String,
     /// Stop sound preset (none, beep, click, chime)
-    #[serde(default = "default_sound_none")]
+    #[serde(default = "default_sound_beep")]
     pub stop_sound: String,
     /// API token for server (OpenAI-compatible)
     #[serde(default)]
@@ -161,8 +161,8 @@ fn default_true() -> bool {
     true
 }
 
-fn default_sound_none() -> String {
-    "none".to_string()
+fn default_sound_beep() -> String {
+    "beep".to_string()
 }
 
 fn default_server_url() -> String {
@@ -200,10 +200,10 @@ impl Default for AppSettings {
             autostart_enabled: false,
             start_minimized: false,
             pause_media_on_record: false,
-            preserve_clipboard: false,
-            sound_feedback: false,
-            start_sound: default_sound_none(),
-            stop_sound: default_sound_none(),
+            preserve_clipboard: true,
+            sound_feedback: true,
+            start_sound: default_sound_beep(),
+            stop_sound: default_sound_beep(),
             server_token: String::new(),
             companion_shortcuts: Vec::new(),
             meeting_mode_enabled: false,
