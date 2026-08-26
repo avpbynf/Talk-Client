@@ -130,9 +130,9 @@ function App() {
   const [preserveClipboard, setPreserveClipboard] = useState(false);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("unknown");
   const isCheckingServerRef = useRef(false);
-  const [soundFeedback, setSoundFeedback] = useState(false);
-  const [startSound, setStartSound] = useState("none");
-  const [stopSound, setStopSound] = useState("none");
+  const [soundFeedback, setSoundFeedback] = useState(true);
+  const [startSound, setStartSound] = useState("beep");
+  const [stopSound, setStopSound] = useState("beep");
   const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
   const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("frost");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("small");
@@ -310,9 +310,9 @@ function App() {
     setServerToken(savedToken);
 
     const [sf, ss, es, companions] = await Promise.all([
-      invoke<boolean>("get_sound_feedback").catch(() => false),
-      invoke<string>("get_start_sound").catch(() => "none"),
-      invoke<string>("get_stop_sound").catch(() => "none"),
+      invoke<boolean>("get_sound_feedback").catch(() => true),
+      invoke<string>("get_start_sound").catch(() => "beep"),
+      invoke<string>("get_stop_sound").catch(() => "beep"),
       invoke<CompanionShortcut[]>("get_companion_shortcuts").catch(() => []),
     ]);
     setSoundFeedback(sf);
