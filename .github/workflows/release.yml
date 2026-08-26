@@ -1,0 +1,76 @@
+name: Release
+
+# Build the Windows installer and publish it on the release for the pushed tag.
+# Run it by hand first (workflow_dispatch) to check a build before tagging.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # cl.exe and the Windows SDK are installed on the runner but are not on PATH.
+      # This is what scripts/vcenv.bat does locally.
+      - name: Load the MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # whisper.cpp is built by CMake, and .cargo/config.toml forces the Ninja
+      # generator. CMake ships with the runner, Ninja does not.
+      - name: Install Ninja
+        run: choco install ninja --no-progress -y
+
+      # Needed by the default `vulkan` feature of whisper-rs.
+      - name: Install the Vulkan SDK
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP "vulkan_sdk.exe"
+          Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe" -OutFile $installer
+          & $installer --root C:\VulkanSDK --accept-licenses --default-answer --confirm-command install
+          if (-not (Test-Path "C:\VulkanSDK\Include\vulkan\vulkan.h")) {
+            throw "the Vulkan SDK did not land in C:\VulkanSDK"
+          }
+          "VULKAN_SDK=C:\VulkanSDK" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "C:\VulkanSDK\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      # rust-toolchain.toml pins the version; rustup installs it on first use.
+      - name: Install the pinned Rust toolchain
+        working-directory: src-tauri
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - uses: oven-sh/setup-bun@v2
+
+      # No lockfile is committed, so this resolves fresh.
+      - name: Install frontend dependencies
+        run: bun install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: T4lk ${{ github.ref_name }}
+          releaseBody: |
+            Windows installer. Download the `.exe` under Assets and run it.
+
+            Transcription is server first: set your server URL and token on the
+            Transcription page, or leave them empty to transcribe locally.
+
+            Meeting mode needs VB-Audio Virtual Cable installed separately;
+            this build does not ship the driver.
+          releaseDraft: false
+          prerelease: false
