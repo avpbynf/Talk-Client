@@ -250,3 +250,108 @@ pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
 }
 
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // load_settings and save_settings are deliberately left out. They resolve
+    // through ProjectDirs to the real %APPDATA%\avpbynf\t4lk, so exercising them
+    // would read and overwrite the settings of whoever runs the suite. What is
+    // testable without that is the part that actually breaks: the defaults, and
+    // what serde does with a file written by an older version.
+
+    fn parse(json: &str) -> AppSettings {
+        serde_json::from_str(json).expect("should deserialise")
+    }
+
+    #[test]
+    fn defaults_match_what_the_frontend_starts_from() {
+        // App.tsx initialises its state from these values before the settings
+        // load. When the two drift apart, the interface shows one thing and the
+        // backend does another until the first invoke answers, and keeps showing
+        // it when that invoke fails.
+        let s = AppSettings::default();
+
+        assert_eq!(s.overlay_theme, OverlayTheme::Frost);
+        assert_eq!(s.overlay_size, OverlaySize::Small);
+        assert!(s.sound_feedback);
+        assert_eq!(s.start_sound, "beep");
+        assert_eq!(s.stop_sound, "beep");
+        assert_eq!(s.transcription_mode, TranscriptionMode::Local);
+        assert!(s.server_fallback);
+        assert!(s.preserve_clipboard);
+    }
+
+    #[test]
+    fn an_empty_object_deserialises_to_the_defaults() {
+        // Every field carries a serde default, so a settings file written before
+        // a field existed still parses. Without that, the whole file fails and
+        // load_settings silently replaces it.
+        assert_eq!(parse("{}").overlay_theme, AppSettings::default().overlay_theme);
+        assert_eq!(parse("{}").start_sound, AppSettings::default().start_sound);
+        assert_eq!(parse("{}").server_timeout, 30000);
+    }
+
+    #[test]
+    fn a_full_round_trip_keeps_every_value() {
+        let mut original = AppSettings::default();
+        original.server_url = "http://localhost:4060".to_string();
+        original.server_token = "sk-test".to_string();
+        original.vocabulary = vec!["NeoForge".to_string(), "Tauri".to_string()];
+        original.overlay_theme = OverlayTheme::Neon;
+        original.overlay_size = OverlaySize::Large;
+        original.transcription_mode = TranscriptionMode::Server;
+        original.setup_completed = true;
+        original.companion_shortcuts = vec![CompanionShortcut {
+            id: "mute".to_string(),
+            label: "Mute Teams".to_string(),
+            keys: "Ctrl+Shift+M".to_string(),
+            trigger: "both".to_string(),
+        }];
+
+        let restored = parse(&serde_json::to_string(&original).expect("should serialise"));
+
+        assert_eq!(restored.server_url, original.server_url);
+        assert_eq!(restored.server_token, original.server_token);
+        assert_eq!(restored.vocabulary, original.vocabulary);
+        assert_eq!(restored.overlay_theme, OverlayTheme::Neon);
+        assert_eq!(restored.overlay_size, OverlaySize::Large);
+        assert_eq!(restored.transcription_mode, TranscriptionMode::Server);
+        assert!(restored.setup_completed);
+        assert_eq!(restored.companion_shortcuts.len(), 1);
+        assert_eq!(restored.companion_shortcuts[0].keys, "Ctrl+Shift+M");
+    }
+
+    #[test]
+    fn the_theme_names_from_before_the_rename_still_parse() {
+        // Settings written while the product was called T4lk carry t4lk-dark and
+        // t4lk-light. The aliases are what stop the whole file from failing to
+        // parse, which would take the server URL and the shortcuts down with it.
+        assert_eq!(parse(r#"{"app_theme": "t4lk-dark"}"#).app_theme, AppTheme::TalkDark);
+        assert_eq!(parse(r#"{"app_theme": "t4lk-light"}"#).app_theme, AppTheme::TalkLight);
+        assert_eq!(parse(r#"{"app_theme": "talk-dark"}"#).app_theme, AppTheme::TalkDark);
+    }
+
+    #[test]
+    fn an_unknown_field_is_ignored_rather_than_fatal() {
+        // Downgrading to an older build must not wipe the settings file.
+        let s = parse(r#"{"server_url": "http://localhost:4060", "a_field_from_the_future": 42}"#);
+        assert_eq!(s.server_url, "http://localhost:4060");
+    }
+
+    #[test]
+    fn each_overlay_size_has_its_own_dimensions() {
+        // show_overlay() used to hardcode 200x80, a size matching no variant, so
+        // a recreated overlay came back ignoring the setting.
+        let sizes = [OverlaySize::Small, OverlaySize::Medium, OverlaySize::Large];
+        let mut seen = Vec::new();
+        for size in sizes {
+            let (w, h) = size.dimensions();
+            assert!(w > 0.0 && h > 0.0, "{:?} has a degenerate size", size);
+            assert!(!seen.contains(&(w as u32, h as u32)), "{:?} duplicates another size", size);
+            seen.push((w as u32, h as u32));
+        }
+        assert_eq!(OverlaySize::default().dimensions(), (160.0, 44.0));
+    }
+}
