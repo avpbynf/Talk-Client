@@ -71,7 +71,7 @@ export default function TranscriptionView({
   return (
     <div className="h-full flex flex-col overflow-hidden view-enter">
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6 slide-enter">
+        <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Page title */}
             <div>
