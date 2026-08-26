@@ -110,9 +110,18 @@ cargo build --manifest-path src-tauri/Cargo.toml --no-default-features
   looks. Install it, or point `LIBCLANG_PATH` at the directory holding `libclang.dll`.
   The panic names no file of this project, which makes it read like a broken dependency;
   it is not one.
-- **CMake dies on a path that is too long.** `vulkan-shaders-gen` nests deep enough that
-  the checkout path plus the build tree can cross the 250 character limit. Move the repo
-  somewhere short, such as `C:\src\Talk-Client`, and rebuild.
+- **A path that is too long.** `vulkan-shaders-gen` nests its own build tree around 220
+  characters deep, and the default target directory sits under the checkout, so the two
+  together cross the Windows limit. MSBuild says so plainly, as `MSB4184` naming a path
+  it cannot normalise; CMake, reached the same way, instead claims the C compiler cannot
+  build a trivial program. Point the build somewhere short, which is what CI does:
+
+  ```bash
+  CARGO_TARGET_DIR=C:\t bun run tauri:build
+  ```
+
+  Moving the checkout itself works too, but the target directory is the half that
+  actually grows.
 - **Meeting mode reports VB-Cable missing.** The app detects
   [VB-Audio Virtual Cable](https://vb-audio.com/Cable/) by enumerating audio devices,
   and the NSIS installer is what installs the driver. A source build, or a declined
