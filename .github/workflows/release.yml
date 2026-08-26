@@ -54,9 +54,10 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      # No lockfile is committed, so this resolves fresh.
+      # From the lockfile, never resolving fresh: tauri refuses to build when the npm
+      # packages and the Rust crate land on different minors.
       - name: Install frontend dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - uses: tauri-apps/tauri-action@v0
         env:
