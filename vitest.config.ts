@@ -16,8 +16,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // Anchored at src so a git worktree under .claude/worktrees, which carries
+    // its own copy of the tree, does not get its tests collected a second time.
+    include: ["src/**/*.test.{ts,tsx}"],
     // src-tauri holds the Rust suite, which cargo test runs.
-    exclude: ["node_modules/**", "src-tauri/**", "dist/**"],
+    exclude: ["node_modules/**", "src-tauri/**", "dist/**", ".claude/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
