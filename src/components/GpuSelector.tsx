@@ -10,8 +10,8 @@ interface GpuSelectorProps {
 }
 
 const GPU_TOOLTIPS: Record<GpuVendor, string> = {
-  vulkan: "Compatible AMD, NVIDIA et Intel. API graphique universelle multi-plateforme.",
-  cpu: "Fonctionne partout, sans carte graphique. Plus lent mais universel.",
+  vulkan: "Works with AMD, NVIDIA and Intel. One graphics API across every platform.",
+  cpu: "Runs anywhere, no graphics card needed. Slower, but it always works.",
 };
 
 const ALL_GPU_OPTIONS: GpuInfo[] = [

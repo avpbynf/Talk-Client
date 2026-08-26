@@ -139,7 +139,7 @@ export default function KeyCaptureField({
             stopCapture(false);
           }}
           className="cursor-pointer p-0.5 rounded-md text-muted-foreground/40 hover:text-foreground transition-colors"
-          title="Annuler"
+          title="Cancel"
         >
           <X className="h-3.5 w-3.5" />
         </button>

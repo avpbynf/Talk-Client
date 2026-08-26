@@ -85,7 +85,7 @@ export default function ShortcutsSection({
 
   const saveShortcut = async () => {
     if (pendingShortcut.length < 2) {
-      setShortcutError("Utilisez au moins un modificateur + une touche");
+      setShortcutError("Use at least one modifier plus a key");
       return;
     }
 
@@ -93,7 +93,7 @@ export default function ShortcutsSection({
     const hasKey = pendingShortcut.some((k) => !["Ctrl", "Shift", "Alt", "Win"].includes(k));
 
     if (!hasModifier || !hasKey) {
-      setShortcutError("Utilisez au moins un modificateur + une touche");
+      setShortcutError("Use at least one modifier plus a key");
       return;
     }
 
@@ -170,7 +170,7 @@ export default function ShortcutsSection({
                   <kbd key={i}>{key}</kbd>
                 ))
               ) : (
-                <span className="text-sm text-muted-foreground">Appuyez sur les touches...</span>
+                <span className="text-sm text-muted-foreground">Press the keys...</span>
               )}
             </div>
 
@@ -188,14 +188,14 @@ export default function ShortcutsSection({
                 )}
               >
                 <Check className="h-4 w-4" />
-                Enregistrer
+                Save
               </button>
               <button
                 onClick={cancelEdit}
                 className="cursor-pointer flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-surface-active transition-colors"
               >
                 <X className="h-4 w-4" />
-                Annuler
+                Cancel
               </button>
             </div>
           </div>
@@ -226,8 +226,8 @@ export default function ShortcutsSection({
       {renderShortcutCard(
         "cancel",
         cancelShortcut,
-        "Annulation",
-        "Annule l'enregistrement"
+        "Cancel",
+        "Stops the recording and throws it away"
       )}
       </div>
     </div>

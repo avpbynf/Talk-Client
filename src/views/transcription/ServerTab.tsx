@@ -82,15 +82,15 @@ export function ServerTab({
             <Server className="h-4 w-4 text-server" />
           </div>
           <div>
-            <h3 className="font-medium text-sm">Connexion</h3>
-            <p className="text-xs text-muted-foreground">Endpoint du serveur Whisper</p>
+            <h3 className="font-medium text-sm">Connection</h3>
+            <p className="text-xs text-muted-foreground">Whisper server endpoint</p>
           </div>
         </div>
 
         <div className="space-y-4">
           {/* URL + Test */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">URL du serveur</label>
+            <label className="text-xs font-medium text-muted-foreground">Server URL</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -142,10 +142,10 @@ export function ServerTab({
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
               onBlur={() => { if (tokenInput !== serverToken) onServerTokenChange(tokenInput); }}
-              placeholder="sk-... ou laisser vide"
+              placeholder="sk-... or leave empty"
               className="w-full px-3 py-2 rounded-lg bg-surface-inset border border-border-card text-sm font-mono input-glow placeholder:text-muted-foreground"
             />
-            <p className="text-xs text-muted-foreground">Compatible OpenAI API. Requis pour les services tiers.</p>
+            <p className="text-xs text-muted-foreground">OpenAI-compatible. Required by third-party services.</p>
           </div>
         </div>
       </div>

@@ -64,7 +64,7 @@ export default function SystemSection({
           <div>
             <label className="text-sm font-medium">Pause media</label>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Met en pause la musique pendant l'enregistrement
+              Pauses whatever is playing while you record
             </p>
           </div>
           <Switch

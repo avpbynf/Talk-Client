@@ -376,7 +376,7 @@ function App() {
   if (setupCompleted === null) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Chargement...</div>
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
   }

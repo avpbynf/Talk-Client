@@ -70,10 +70,10 @@ export default function MeetingModeSection() {
             <label
               className={`text-sm font-medium ${!vbCableStatus.installed ? "opacity-50" : ""}`}
             >
-              Mode reunion
+              Meeting mode
             </label>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Route le micro via VB-Cable pour couper le son en reunion
+              Routes the mic through VB-Cable so a meeting hears nothing
             </p>
           </div>
           <Switch
@@ -85,9 +85,8 @@ export default function MeetingModeSection() {
 
         {vbCableStatus.installed && (
           <p className="text-xs text-muted-foreground border-t border-border-subtle pt-3">
-            Configurez Teams/Discord pour utiliser &laquo;&nbsp;CABLE
-            Output&nbsp;&raquo; comme micro. Pendant la dictee, les participants
-            n'entendront rien.
+            Set Teams or Discord to use "CABLE Output" as their microphone.
+            While you dictate, the other participants hear nothing.
           </p>
         )}
       </div>

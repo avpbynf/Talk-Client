@@ -191,7 +191,7 @@ export default function VocabularyView({
                     className="cursor-pointer text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Tout supprimer
+                    Clear all
                   </Button>
                 )}
               </div>
