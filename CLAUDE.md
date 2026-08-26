@@ -51,3 +51,9 @@ so a cold build takes a long while; `tauri:check` is the fast feedback loop.
   VB-Cable from vb-audio.com and unpack it there before building an installer.
 - **Transcription is server-first.** A failing local model is not the whole story;
   check the server URL and token on the Transcription page first.
+- **Feedback loops are not symmetric.** The frontend checks in seconds with
+  `bun run build`, which is the same `tsc` pass the release runs. The Rust side cannot
+  be checked at all without CMake, Ninja and the Vulkan SDK, because `whisper-rs-sys`
+  compiles whisper.cpp from its build script; even `cargo check` runs it. On a machine
+  without them, CI is the only verification and the loop is roughly twenty minutes, so
+  read Rust changes carefully before pushing rather than iterating on the runner.
