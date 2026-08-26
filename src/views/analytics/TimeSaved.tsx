@@ -28,10 +28,9 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
   return (
     <Card className="bg-surface-raised border-border-card">
       <CardHeader className="pb-0">
-        <CardTitle className="text-sm font-medium">Temps économisé</CardTitle>
+        <CardTitle className="text-sm font-medium">Time won</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Hero number */}
         <div className="text-center py-4">
           <div
             className="text-4xl font-bold font-mono tracking-tight text-[var(--color-warning)]"
@@ -39,27 +38,28 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
           >
             {formatTime(summary.timeSavedMinutes)}
           </div>
-          <p className="text-xs text-muted-foreground/60 mt-1.5">vs frappe manuelle</p>
+          <p className="text-xs text-muted-foreground/60 mt-1.5">against typing it yourself</p>
         </div>
 
         <div className="h-px bg-border-subtle" />
 
-        {/* Breakdown */}
-        <Row label="Vitesse de frappe">
+        <Row label="Your typing speed">
           <div className="flex items-center gap-2">
-            <span>{userWpm} mots/min</span>
+            <span>{userWpm} wpm</span>
             <button
               onClick={onRecalibrate}
               className="text-[10px] text-[var(--color-active)] hover:underline"
             >
-              Modifier
+              Retest
             </button>
           </div>
         </Row>
-        <Row label="Mots transcrits">{summary.totalWords.toLocaleString()}</Row>
-        <Row label="Frappe équivalente">{summary.timeSavedMinutes.toFixed(1)} min</Row>
-        <Row label="Transcription réelle">
-          <span className="text-muted-foreground/60">~quelques sec.</span>
+        <Row label="Words dictated">{summary.totalWords.toLocaleString()}</Row>
+        <Row label="Typing that out">{Math.round(summary.timeSavedMinutes)} min</Row>
+        <Row label="Saying it instead">
+          <span className="text-muted-foreground/60">
+            ~{summary.estimatedAudioMinutes.toFixed(0)} min
+          </span>
         </Row>
       </CardContent>
     </Card>

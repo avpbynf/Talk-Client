@@ -81,7 +81,7 @@ export function TypingGame({ onWpmMeasured }: TypingGameProps) {
                 {finished ? finalWpm : liveWpm}
               </div>
               <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
-                mots/min
+                words per minute
               </span>
             </div>
           )}
@@ -143,7 +143,7 @@ export function TypingGame({ onWpmMeasured }: TypingGameProps) {
         <input
           ref={inputRef}
           className="w-full px-4 py-3 rounded-xl bg-surface-inset border border-border-card text-sm font-mono focus:outline-none input-glow disabled:opacity-40 disabled:cursor-not-allowed"
-          placeholder="Commencez a taper..."
+          placeholder="Start typing..."
           value={input}
           onChange={handleInput}
           disabled={finished}
@@ -159,13 +159,13 @@ export function TypingGame({ onWpmMeasured }: TypingGameProps) {
             <div className="inline-flex items-center gap-2 bg-[var(--color-success)]/10 border border-[var(--color-success)]/20 rounded-lg px-3 py-1.5">
               <Check size={14} className="text-[var(--color-success)]" />
               <span className="text-sm font-mono font-semibold text-[var(--color-success)]">
-                {finalWpm} mots/min
+                {finalWpm} words per minute
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={reset} className="text-xs gap-1.5">
                 <RotateCcw size={12} />
-                Recommencer
+                Try again
               </Button>
               <Button
                 size="sm"

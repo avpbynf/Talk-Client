@@ -12,17 +12,17 @@ function formatTime(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-interface StatCellProps {
+interface StatCardProps {
   label: string;
   value: string;
   detail: string;
   colorVar: string;
 }
 
-function StatCell({ label, value, detail, colorVar }: StatCellProps) {
+function StatCard({ label, value, detail, colorVar }: StatCardProps) {
   return (
-    <div className="flex-1 min-w-0 px-4 py-3">
-      <div className="flex items-center gap-1.5 mb-1">
+    <div className="min-w-0 px-4 py-3 rounded-xl border border-border-card bg-surface-raised">
+      <div className="flex items-center gap-1.5 mb-1.5">
         <span
           className="h-1.5 w-1.5 rounded-full shrink-0"
           style={{ backgroundColor: `var(${colorVar})` }}
@@ -32,12 +32,12 @@ function StatCell({ label, value, detail, colorVar }: StatCellProps) {
         </span>
       </div>
       <div
-        className="text-lg font-semibold font-mono tracking-tight leading-none"
+        className="text-[22px] font-semibold font-mono tracking-tight leading-none"
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
         {value}
       </div>
-      <p className="text-[10px] text-muted-foreground/50 mt-1 truncate leading-tight">
+      <p className="text-[10px] text-muted-foreground/50 mt-1.5 truncate leading-tight">
         {detail}
       </p>
     </div>
@@ -46,29 +46,29 @@ function StatCell({ label, value, detail, colorVar }: StatCellProps) {
 
 export function StatsCards({ summary }: StatsCardsProps) {
   return (
-    <div className="flex items-stretch divide-x divide-border-subtle/50 rounded-lg border border-border-card bg-surface-raised/50 overflow-hidden">
-      <StatCell
-        label="Transcriptions"
-        value={String(summary.todayCount)}
-        detail={`${summary.weekCount} sem. \u00b7 ${summary.totalTranscriptions} total`}
+    <div className="grid grid-cols-4 gap-3">
+      <StatCard
+        label="Dictations"
+        value={summary.totalTranscriptions.toLocaleString()}
+        detail={`${summary.todayCount} today, ${summary.weekCount} this week`}
         colorVar="--color-active"
       />
-      <StatCell
-        label="Mots"
+      <StatCard
+        label="Words"
         value={summary.totalWords.toLocaleString()}
-        detail={`${summary.totalCharacters.toLocaleString()} car.`}
+        detail={`${summary.totalCharacters.toLocaleString()} characters`}
         colorVar="--color-hybrid"
       />
-      <StatCell
-        label="Économie"
+      <StatCard
+        label="Not spent"
         value={`$${summary.costSavedUsd.toFixed(2)}`}
-        detail={`~${summary.estimatedAudioMinutes.toFixed(1)} min audio`}
+        detail={`${summary.estimatedAudioMinutes.toFixed(0)} min of audio`}
         colorVar="--color-success"
       />
-      <StatCell
-        label="Temps gagné"
+      <StatCard
+        label="Time won"
         value={formatTime(summary.timeSavedMinutes)}
-        detail="vs frappe manuelle"
+        detail="against typing it"
         colorVar="--color-warning"
       />
     </div>
