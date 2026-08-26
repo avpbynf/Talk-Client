@@ -10,8 +10,8 @@
     "tauri": "tauri",
     "tauri:dev": "cmd /c \"scripts\\vcenv.bat tauri dev\"",
     "tauri:build": "cmd /c \"scripts\\vcenv.bat tauri build\"",
-    "tauri:check": "cmd /c \"scripts\\vcenv.bat cargo check --manifest-path src-tauri\\Cargo.toml\"",
-    "tauri:clean": "cargo clean --manifest-path src-tauri/Cargo.toml"
+    "tauri:check": "cmd /c \"cd src-tauri && ..\\scripts\\vcenv.bat cargo check\"",
+    "tauri:clean": "cmd /c \"cd src-tauri && cargo clean\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
