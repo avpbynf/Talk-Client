@@ -73,7 +73,6 @@ function SortableRow({
   };
 
   const meta = TRIGGER_META[companion.trigger];
-  const keyParts = companion.keys ? companion.keys.split("+") : [];
 
   return (
     <div
