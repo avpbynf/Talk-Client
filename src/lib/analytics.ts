@@ -84,8 +84,45 @@ export const COMPETITORS: readonly Competitor[] = [
  */
 export const UI_LOCALE = "en-US";
 
-/** Whisper API list price, which is what costSavedUsd is computed against. */
-export const API_RATE_USD_PER_MIN = 0.006;
+export interface HostedApi {
+  name: string;
+  /** List price in USD per minute of audio. */
+  usdPerMin: number;
+  note: string;
+}
+
+/**
+ * The hosted transcription APIs the audio could have been sent to instead.
+ *
+ * Deliberately a spread rather than the three cheapest: a comparison that only
+ * ever picks flattering numbers is not worth showing. The cheap end, the one
+ * everybody knows, and a major cloud.
+ *
+ * These rot like the subscription prices do, and they are read straight off
+ * this table by both the card and the headline figure. There is no second copy
+ * to drift from, which there used to be.
+ */
+export const HOSTED_APIS: readonly HostedApi[] = [
+  { name: "Deepgram Nova", usdPerMin: 0.0043, note: "pay as you go" },
+  { name: "OpenAI Whisper", usdPerMin: 0.006, note: "list price" },
+  { name: "Azure Speech to Text", usdPerMin: 0.0167, note: "standard, per hour billed" },
+];
+
+/** What a run of audio would have cost at one provider's rate. */
+export function apiCost(minutes: number, api: HostedApi): number {
+  return minutes * api.usdPerMin;
+}
+
+/**
+ * The headline "not spent" figure.
+ *
+ * The cheapest of the three on purpose. Claiming the saving against the most
+ * expensive provider would be picking the number that flatters, and the point
+ * of the figure is that it holds however the reader would have done it.
+ */
+export function cheapestApiCost(minutes: number): number {
+  return Math.min(...HOSTED_APIS.map((api) => apiCost(minutes, api)));
+}
 
 /**
  * Whole months between a date and today, floored at one.

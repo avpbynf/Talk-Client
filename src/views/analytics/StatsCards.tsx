@@ -1,4 +1,4 @@
-import { UI_LOCALE } from "@/lib/analytics";
+import { UI_LOCALE, cheapestApiCost } from "@/lib/analytics";
 import type { AnalyticsSummary } from "@/lib/analytics";
 
 interface StatsCardsProps {
@@ -62,7 +62,7 @@ export function StatsCards({ summary }: StatsCardsProps) {
       />
       <StatCard
         label="Not spent"
-        value={`$${summary.costSavedUsd.toFixed(2)}`}
+        value={`$${cheapestApiCost(summary.estimatedAudioMinutes).toFixed(2)}`}
         detail={`${summary.estimatedAudioMinutes.toFixed(0)} min of audio`}
         colorVar="--color-success"
       />

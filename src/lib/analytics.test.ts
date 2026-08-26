@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  API_RATE_USD_PER_MIN,
+  HOSTED_APIS,
+  apiCost,
+  cheapestApiCost,
   COMPETITORS,
   PERIOD_DAYS,
   PERIOD_LABELS,
@@ -141,8 +143,36 @@ describe("the figures the comparison card rests on", () => {
     }
   });
 
-  it("keeps the Whisper rate the savings are computed against", () => {
-    expect(API_RATE_USD_PER_MIN).toBeGreaterThan(0);
+  it("prices every hosted API above zero", () => {
+    // A missing rate would read as a free API and quietly zero the saving.
+    expect(HOSTED_APIS.length).toBeGreaterThan(0);
+    for (const api of HOSTED_APIS) {
+      expect(api.usdPerMin).toBeGreaterThan(0);
+      expect(api.name).toBeTruthy();
+    }
+  });
+});
+
+describe("what a hosted API would have cost", () => {
+  const api = { name: "Test", usdPerMin: 0.01, note: "" };
+
+  it("is the audio length times the rate", () => {
+    expect(apiCost(100, api)).toBeCloseTo(1.0);
+  });
+
+  it("is nothing when nothing was dictated", () => {
+    expect(apiCost(0, api)).toBe(0);
+  });
+
+  it("takes the cheapest of them for the headline, not the most flattering", () => {
+    // The figure has to hold whichever provider the reader would have picked,
+    // so it is the cheapest one that sets it.
+    const cheapest = Math.min(...HOSTED_APIS.map((a) => a.usdPerMin));
+    expect(cheapestApiCost(100)).toBeCloseTo(cheapest * 100);
+
+    for (const a of HOSTED_APIS) {
+      expect(cheapestApiCost(100)).toBeLessThanOrEqual(apiCost(100, a) + 1e-9);
+    }
   });
 });
 
