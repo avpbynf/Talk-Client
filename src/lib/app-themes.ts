@@ -1,6 +1,6 @@
 export type AppThemeId =
-  | "t4lk-dark"
-  | "t4lk-light"
+  | "talk-dark"
+  | "talk-light"
   | "zed"
   | "vscode-dark"
   | "vscode-light"
@@ -17,8 +17,8 @@ interface AppThemeConfig {
 }
 
 const THEMES: Record<AppThemeId, AppThemeConfig> = {
-  "t4lk-dark": {
-    label: "T4lk Dark",
+  "talk-dark": {
+    label: "Talk Dark",
     category: "dark",
     preview: [
       "oklch(0.13 0.01 260)",
@@ -26,8 +26,8 @@ const THEMES: Record<AppThemeId, AppThemeConfig> = {
       "oklch(0.15 0.01 260)",
     ],
   },
-  "t4lk-light": {
-    label: "T4lk Light",
+  "talk-light": {
+    label: "Talk Light",
     category: "light",
     preview: [
       "oklch(0.97 0.005 260)",
@@ -101,7 +101,7 @@ export function getAppThemePreview(
 }
 
 export function applyAppTheme(id: AppThemeId): void {
-  if (id === "t4lk-dark") {
+  if (id === "talk-dark") {
     delete document.documentElement.dataset.theme;
   } else {
     document.documentElement.dataset.theme = id;

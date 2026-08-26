@@ -268,7 +268,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">T4lk</h1>
+            <h1 className="text-xl font-semibold text-foreground">Talk</h1>
             <p className="text-sm text-muted-foreground">Configuration initiale</p>
           </div>
         </div>
@@ -615,7 +615,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <div>
               <h2 className="text-2xl font-semibold mb-2">Configuration terminée !</h2>
               <p className="text-muted-foreground">
-                T4lk est prêt à être utilisé
+                Talk est prêt à être utilisé
               </p>
             </div>
 

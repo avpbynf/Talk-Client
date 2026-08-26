@@ -1,4 +1,4 @@
-; T4lk NSIS uninstall hooks
+; Talk NSIS uninstall hooks
 ; Removes user data (settings, models) on uninstall
 
 !macro NSIS_HOOK_PREINSTALL

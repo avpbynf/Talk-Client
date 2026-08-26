@@ -68,8 +68,13 @@ impl Default for OverlayTheme {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AppTheme {
-    T4lkDark,
-    T4lkLight,
+    // The two aliases carry settings written before the rename to Talk.
+    // Without them the whole file fails to parse and is silently replaced
+    // by the defaults, taking the server URL and the shortcuts with it.
+    #[serde(alias = "t4lk-dark")]
+    TalkDark,
+    #[serde(alias = "t4lk-light")]
+    TalkLight,
     Zed,
     VscodeDark,
     VscodeLight,
@@ -79,7 +84,7 @@ pub enum AppTheme {
 
 impl Default for AppTheme {
     fn default() -> Self {
-        Self::T4lkDark
+        Self::TalkDark
     }
 }
 

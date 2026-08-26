@@ -34,7 +34,7 @@ export function CostComparison({ summary }: CostComparisonProps) {
 
         <div className="h-px bg-border-subtle my-1" />
 
-        <Row label="Coût T4lk">
+        <Row label="Coût Talk">
           <span className="text-[var(--color-success)] font-semibold">$0.00</span>
         </Row>
 

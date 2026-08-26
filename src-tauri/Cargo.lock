@@ -4492,7 +4492,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "t4lk"
+name = "talk"
 version = "0.6.0"
 dependencies = [
  "clipboard-win",

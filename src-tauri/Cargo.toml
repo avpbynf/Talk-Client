@@ -1,12 +1,12 @@
 [package]
-name = "t4lk"
+name = "talk"
 version = "0.6.0"
-description = "T4lk — Speech-to-Text desktop client"
+description = "Talk, a Speech-to-Text desktop client"
 authors = ["avpbynf"]
 edition = "2021"
 
 [lib]
-name = "t4lk_lib"
+name = "talk_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

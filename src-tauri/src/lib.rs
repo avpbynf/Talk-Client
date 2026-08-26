@@ -1086,7 +1086,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().expect("window icon missing from bundle").clone())
-                .tooltip("T4lk")
+                .tooltip("Talk")
                 .menu(&menu)
                 .on_menu_event(move |_app, event| {
                     match event.id().as_ref() {

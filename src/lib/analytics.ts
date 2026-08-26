@@ -45,7 +45,7 @@ export function calculateWpm(charCount: number, elapsedMs: number): number {
   return minutes > 0 ? Math.round(words / minutes) : 0;
 }
 
-const WPM_STORAGE_KEY = "t4lk-user-wpm";
+const WPM_STORAGE_KEY = "talk-user-wpm";
 
 export function loadUserWpm(): number {
   try {

@@ -11,7 +11,7 @@ interface TitlebarProps {
   statusLabel?: string;
 }
 
-export function Titlebar({ title = "T4lk", statusDot, statusLabel }: TitlebarProps) {
+export function Titlebar({ title = "Talk", statusDot, statusLabel }: TitlebarProps) {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
 

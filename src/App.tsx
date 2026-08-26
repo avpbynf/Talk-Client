@@ -42,7 +42,7 @@ export type AcceleratorBackend = "cpu" | "vulkan";
 export type GpuVendor = "vulkan" | "cpu";
 export type OverlaySize = "small" | "medium" | "large";
 export type OverlayTheme = "aurora" | "sunset" | "ocean" | "neon" | "frost" | "neutral";
-export type AppTheme = "t4lk-dark" | "t4lk-light" | "zed" | "vscode-dark" | "vscode-light" | "dracula" | "nord";
+export type AppTheme = "talk-dark" | "talk-light" | "zed" | "vscode-dark" | "vscode-light" | "dracula" | "nord";
 export type TranscriptionMode = "local" | "server";
 
 export type CompanionShortcut = {
@@ -135,7 +135,7 @@ function App() {
   const [stopSound, setStopSound] = useState("none");
   const [companionShortcuts, setCompanionShortcuts] = useState<CompanionShortcut[]>([]);
   const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("aurora");
-  const [appTheme, setAppTheme] = useState<AppThemeId>("t4lk-dark");
+  const [appTheme, setAppTheme] = useState<AppThemeId>("talk-dark");
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
@@ -300,7 +300,7 @@ function App() {
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
     setOverlayTheme(savedSettings.overlay_theme || "aurora");
 
-    const savedAppTheme = (savedSettings.app_theme || "t4lk-dark") as AppThemeId;
+    const savedAppTheme = (savedSettings.app_theme || "talk-dark") as AppThemeId;
     setAppTheme(savedAppTheme);
     applyAppTheme(savedAppTheme);
 
