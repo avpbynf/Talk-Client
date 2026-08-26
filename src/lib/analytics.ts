@@ -75,6 +75,15 @@ export const COMPETITORS: readonly Competitor[] = [
   { name: "superwhisper", monthlyUsd: 8.49, note: "monthly" },
 ];
 
+/**
+ * The locale every figure on the page is formatted in.
+ *
+ * Not the system one: on a French Windows that printed "2 733" with a narrow
+ * space and "août 2026" inside an English page. This follows the interface,
+ * so translating it later means changing one line.
+ */
+export const UI_LOCALE = "en-US";
+
 /** Whisper API list price, which is what costSavedUsd is computed against. */
 export const API_RATE_USD_PER_MIN = 0.006;
 
@@ -118,7 +127,7 @@ export function formatMonth(isoDate: string | null): string {
   if (!isoDate) return "";
   const d = new Date(isoDate + "T00:00:00");
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return d.toLocaleDateString(UI_LOCALE, { month: "long", year: "numeric" });
 }
 
 export const TYPING_SENTENCES = [

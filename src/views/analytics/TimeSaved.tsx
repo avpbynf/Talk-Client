@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UI_LOCALE } from "@/lib/analytics";
 import type { AnalyticsSummary } from "@/lib/analytics";
 
 interface TimeSavedProps {
@@ -11,7 +12,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="flex items-center justify-between py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-mono">{children}</span>
+      <span className="text-sm">{children}</span>
     </div>
   );
 }
@@ -33,7 +34,7 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
       <CardContent>
         <div className="text-center py-4">
           <div
-            className="text-4xl font-bold font-mono tracking-tight text-[var(--color-warning)]"
+            className="text-4xl font-bold tracking-tight text-[var(--color-warning)]"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {formatTime(summary.timeSavedMinutes)}
@@ -54,7 +55,7 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
             </button>
           </div>
         </Row>
-        <Row label="Words dictated">{summary.totalWords.toLocaleString()}</Row>
+        <Row label="Words dictated">{summary.totalWords.toLocaleString(UI_LOCALE)}</Row>
         <Row label="Typing that out">{Math.round(summary.timeSavedMinutes)} min</Row>
         <Row label="Saying it instead">
           <span className="text-muted-foreground/60">

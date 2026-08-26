@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { YearlyDayActivity } from "@/lib/analytics";
 
 interface ActivityChartProps {
@@ -103,6 +106,9 @@ function buildGrid(yearlyActivity: YearlyDayActivity[]): {
 }
 
 export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
+  // Shut by default. A young history is a year of empty squares, and the
+  // graph answers a question nobody has on opening the app.
+  const [open, setOpen] = useState(false);
   const { cells, weekCount, monthPositions } = buildGrid(yearlyActivity);
   const maxCount = Math.max(...cells.map((c) => c.count), 1);
   const cellSize = 11;
@@ -115,8 +121,20 @@ export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
 
   return (
     <div className="rounded-lg border border-border-card bg-surface-raised/50 px-4 py-3">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium">Activity</span>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between cursor-pointer group"
+      >
+        <span className="flex items-center gap-1.5">
+          <ChevronRight
+            size={14}
+            className={cn(
+              "text-muted-foreground/60 transition-transform duration-200 group-hover:text-foreground",
+              open && "rotate-90"
+            )}
+          />
+          <span className="text-sm font-medium">Activity</span>
+        </span>
         <div className="flex items-center gap-1">
           {[0, 1, 2, 3, 4].map((lvl) => (
             <div
@@ -126,11 +144,12 @@ export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
             />
           ))}
         </div>
-      </div>
+      </button>
 
+      {open && (
       <svg
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        className="w-full h-auto block"
+        className="w-full h-auto block mt-3"
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Month labels */}
@@ -186,7 +205,7 @@ export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
           );
         })}
       </svg>
-
+      )}
     </div>
   );
 }

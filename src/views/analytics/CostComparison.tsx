@@ -10,7 +10,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="flex items-center justify-between py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-mono">{children}</span>
+      <span className="text-sm">{children}</span>
     </div>
   );
 }

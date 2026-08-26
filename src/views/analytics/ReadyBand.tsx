@@ -1,4 +1,4 @@
-import type { Transcription, TranscriptionMode } from "@/App";
+import type { TranscriptionMode } from "@/App";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { cn } from "@/lib/utils";
 
@@ -9,8 +9,6 @@ interface ReadyBandProps {
   serverFallback: boolean;
   currentModel: string | null;
   shortcut: string;
-  lastTranscription: Transcription | undefined;
-  onOpenHistory: () => void;
 }
 
 type Readiness = { tone: "success" | "warning" | "destructive"; label: string };
@@ -58,7 +56,7 @@ const TEXT_CLASS: Record<Readiness["tone"], string> = {
 
 function Key({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-active border border-border-hover border-b-2 font-mono text-xs font-semibold">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-active border border-border-hover border-b-2 text-xs font-semibold">
       {children}
     </span>
   );
@@ -81,15 +79,12 @@ export function ReadyBand({
   serverFallback,
   currentModel,
   shortcut,
-  lastTranscription,
-  onOpenHistory,
 }: ReadyBandProps) {
   const state = readiness(transcriptionMode, serverStatus, serverFallback, currentModel);
   const keys = shortcut.split("+");
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-4 px-[18px] py-3 rounded-xl border border-border-card bg-surface-raised">
+    <div className="flex items-center gap-4 px-[18px] py-3 rounded-xl border border-border-card bg-surface-raised">
         <div className="flex items-center gap-2 shrink-0">
           <span className={cn("h-[7px] w-[7px] rounded-full", DOT_CLASS[state.tone])} />
           <span className={cn("text-[13px] font-semibold", TEXT_CLASS[state.tone])}>
@@ -117,7 +112,7 @@ export function ReadyBand({
               <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-[var(--color-server)]/15 text-[var(--color-server)]">
                 Server
               </span>
-              <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground">
                 {shortUrl(serverUrl)}
               </span>
               {serverFallback && (
@@ -131,36 +126,12 @@ export function ReadyBand({
               <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-[var(--color-active)]/15 text-[var(--color-active)]">
                 Local
               </span>
-              <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground">
                 {currentModel ?? "no model"}
               </span>
             </>
           )}
-        </div>
       </div>
-
-      {lastTranscription && (
-        <div className="flex items-center gap-3 px-[18px] py-2.5 rounded-lg border border-border-subtle bg-surface-raised/60">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium shrink-0">
-            Last
-          </span>
-          <span className="font-mono text-[11px] text-muted-foreground shrink-0">
-            {lastTranscription.timestamp.toLocaleTimeString(undefined, {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-          <span className="flex-1 min-w-0 truncate text-[13px]">
-            {lastTranscription.text}
-          </span>
-          <button
-            onClick={onOpenHistory}
-            className="text-xs text-[var(--color-active)] hover:underline shrink-0 cursor-pointer"
-          >
-            History
-          </button>
-        </div>
-      )}
     </div>
   );
 }

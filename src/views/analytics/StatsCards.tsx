@@ -1,3 +1,4 @@
+import { UI_LOCALE } from "@/lib/analytics";
 import type { AnalyticsSummary } from "@/lib/analytics";
 
 interface StatsCardsProps {
@@ -32,7 +33,7 @@ function StatCard({ label, value, detail, colorVar }: StatCardProps) {
         </span>
       </div>
       <div
-        className="text-[22px] font-semibold font-mono tracking-tight leading-none"
+        className="text-[22px] font-semibold tracking-tight leading-none"
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
         {value}
@@ -49,14 +50,14 @@ export function StatsCards({ summary }: StatsCardsProps) {
     <div className="grid grid-cols-4 gap-3">
       <StatCard
         label="Dictations"
-        value={summary.totalTranscriptions.toLocaleString()}
+        value={summary.totalTranscriptions.toLocaleString(UI_LOCALE)}
         detail={`${summary.todayCount} today, ${summary.weekCount} this week`}
         colorVar="--color-active"
       />
       <StatCard
         label="Words"
-        value={summary.totalWords.toLocaleString()}
-        detail={`${summary.totalCharacters.toLocaleString()} characters`}
+        value={summary.totalWords.toLocaleString(UI_LOCALE)}
+        detail={`${summary.totalCharacters.toLocaleString(UI_LOCALE)} characters`}
         colorVar="--color-hybrid"
       />
       <StatCard

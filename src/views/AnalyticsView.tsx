@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { loadUserWpm, PERIOD_DAYS } from "@/lib/analytics";
 import type { AnalyticsSummary, Period, YearlyDayActivity } from "@/lib/analytics";
-import type { Transcription, TranscriptionMode } from "@/App";
+import type { TranscriptionMode } from "@/App";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { ReadyBand } from "@/views/analytics/ReadyBand";
 import { PeriodFilter } from "@/views/analytics/PeriodFilter";
@@ -24,8 +24,6 @@ interface AnalyticsViewProps {
   serverFallback: boolean;
   currentModel: string | null;
   shortcut: string;
-  transcriptions: Transcription[];
-  onOpenHistory: () => void;
 }
 
 export default function AnalyticsView({
@@ -35,8 +33,6 @@ export default function AnalyticsView({
   serverFallback,
   currentModel,
   shortcut,
-  transcriptions,
-  onOpenHistory,
 }: AnalyticsViewProps) {
   const [userWpm, setUserWpm] = useState<number>(() => loadUserWpm());
   const [showGame, setShowGame] = useState(false);
@@ -100,15 +96,9 @@ export default function AnalyticsView({
               serverFallback={serverFallback}
               currentModel={currentModel}
               shortcut={shortcut}
-              lastTranscription={transcriptions[0]}
-              onOpenHistory={onOpenHistory}
             />
 
-            <ActivityChart yearlyActivity={yearlyActivity} />
-
-            {/* The filter sits here rather than at the top of the page: it moves
-                everything below it and nothing above, and putting it over the
-                graph would promise a graph that changes. */}
+            {/* The filter moves everything below it and nothing above. */}
             <div className="flex items-center justify-between pt-1">
               <PeriodFilter value={period} onChange={setPeriod} />
               {confirmReset ? (
@@ -158,6 +148,11 @@ export default function AnalyticsView({
                   />
                 </div>
 
+                {/* Last, and folded shut: it is the whole year whatever the
+                    period above says, so it answers a different question and
+                    does not need to be in the way to do it. */}
+                <ActivityChart yearlyActivity={yearlyActivity} />
+
                 {showGame ? (
                   <TypingGame
                     onWpmMeasured={(wpm) => {
@@ -177,7 +172,7 @@ export default function AnalyticsView({
                       />
                       <span>Test your typing speed</span>
                     </div>
-                    <span className="font-mono text-xs text-muted-foreground/80 bg-surface-active px-2.5 py-1 rounded-md">
+                    <span className="text-xs text-muted-foreground/80 bg-surface-active px-2.5 py-1 rounded-md">
                       {userWpm} wpm
                     </span>
                   </button>

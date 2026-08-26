@@ -398,18 +398,6 @@ function App() {
     <div className="h-full flex flex-col bg-background overflow-hidden noise-overlay">
       {/* Titlebar */}
       <Titlebar
-        statusDot={(() => {
-          const isServerMode = transcriptionMode === "server" && !serverFallback;
-          const isHybridMode = transcriptionMode === "server" && serverFallback;
-          if (isServerMode) {
-            return serverStatus === "online" ? "success" : serverStatus === "offline" ? "destructive" : "warning";
-          } else if (isHybridMode) {
-            const serverOk = serverStatus === "online";
-            const localOk = currentModel !== null;
-            return serverOk || localOk ? "success" : serverStatus === "offline" && !localOk ? "destructive" : "warning";
-          }
-          return currentModel ? "success" : "warning";
-        })()}
         statusLabel={(() => {
           const isServerMode = transcriptionMode === "server" && !serverFallback;
           const isHybridMode = transcriptionMode === "server" && serverFallback;
@@ -476,8 +464,6 @@ function App() {
             serverFallback={serverFallback}
             currentModel={currentModel}
             shortcut={shortcut}
-            transcriptions={transcriptions}
-            onOpenHistory={() => setCurrentView("history")}
           />
         )}
         {currentView === "history" && (

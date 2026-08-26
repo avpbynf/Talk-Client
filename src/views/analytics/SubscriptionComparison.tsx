@@ -33,19 +33,17 @@ export function SubscriptionComparison({ summary }: SubscriptionComparisonProps)
             </p>
 
             {COMPETITORS.map((c) => (
-              <div key={c.name} className="flex items-baseline justify-between gap-3 py-2">
-                <span className="min-w-0 truncate">
-                  <span className="text-sm">{c.name}</span>
-                  <span className="text-xs text-muted-foreground/60 ml-2">{c.note}</span>
-                </span>
-                <span className="text-sm font-mono shrink-0">
-                  <span className="text-muted-foreground/50 text-xs mr-2">
-                    ${c.monthlyUsd.toFixed(2)}/mo
-                  </span>
-                  <span className="line-through text-[var(--color-destructive)] decoration-2">
+              <div key={c.name} className="py-1.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm min-w-0 truncate">{c.name}</span>
+                  <span className="text-sm shrink-0 line-through text-[var(--color-destructive)] decoration-2">
                     ${(c.monthlyUsd * months).toFixed(2)}
                   </span>
-                </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 text-[11px] text-muted-foreground/50">
+                  <span className="min-w-0 truncate">{c.note}</span>
+                  <span className="shrink-0">${c.monthlyUsd.toFixed(2)}/mo</span>
+                </div>
               </div>
             ))}
 
@@ -53,7 +51,7 @@ export function SubscriptionComparison({ summary }: SubscriptionComparisonProps)
 
             <div className="flex items-center justify-between py-2">
               <span className="text-sm">Talk</span>
-              <span className="text-sm font-mono text-[var(--color-success)] font-semibold">
+              <span className="text-sm text-[var(--color-success)] font-semibold">
                 $0.00
               </span>
             </div>
