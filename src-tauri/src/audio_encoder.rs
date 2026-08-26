@@ -61,4 +61,60 @@ mod tests {
         let wav_data = encode_wav(&[], 16000, 1).expect("Should encode empty WAV");
         assert!(!wav_data.is_empty());
     }
+
+    /// Read back the 16-bit samples a WAV carries, past its 44 byte header.
+    fn samples_of(wav: &[u8]) -> Vec<i16> {
+        wav[44..]
+            .chunks_exact(2)
+            .map(|b| i16::from_le_bytes([b[0], b[1]]))
+            .collect()
+    }
+
+    #[test]
+    fn full_scale_samples_land_on_the_ends_of_the_range() {
+        let wav = encode_wav(&[1.0, -1.0], 16000, 1).expect("should encode");
+        assert_eq!(samples_of(&wav), vec![32767, -32767]);
+    }
+
+    #[test]
+    fn samples_past_full_scale_clamp_instead_of_wrapping() {
+        // A wrap turns the loudest part of a word into the quietest, which reads
+        // as a crack in the audio and as nonsense to Whisper.
+        let wav = encode_wav(&[2.0, -2.0, 100.0, -100.0], 16000, 1).expect("should encode");
+        assert_eq!(samples_of(&wav), vec![32767, -32768, 32767, -32768]);
+    }
+
+    #[test]
+    fn silence_stays_silent() {
+        let wav = encode_wav(&[0.0, 0.0, 0.0], 16000, 1).expect("should encode");
+        assert_eq!(samples_of(&wav), vec![0, 0, 0]);
+    }
+
+    #[test]
+    fn a_non_finite_sample_does_not_take_the_encoder_down() {
+        // cpal can hand over a NaN from a device that misbehaves. Whatever the
+        // conversion makes of it, the recording must still come out.
+        let wav = encode_wav(&[f32::NAN, f32::INFINITY, f32::NEG_INFINITY], 16000, 1)
+            .expect("should encode");
+        assert_eq!(samples_of(&wav).len(), 3);
+    }
+
+    #[test]
+    fn the_header_carries_the_rate_and_the_channel_count() {
+        // Whisper resamples from what the header says. A wrong rate here plays
+        // the audio at the wrong speed and transcribes to nothing.
+        let wav = encode_wav(&[0.0; 10], 16000, 1).expect("should encode");
+        assert_eq!(u16::from_le_bytes([wav[22], wav[23]]), 1);
+        assert_eq!(
+            u32::from_le_bytes([wav[24], wav[25], wav[26], wav[27]]),
+            16000
+        );
+
+        let stereo = encode_wav(&[0.0; 10], 44100, 2).expect("should encode");
+        assert_eq!(u16::from_le_bytes([stereo[22], stereo[23]]), 2);
+        assert_eq!(
+            u32::from_le_bytes([stereo[24], stereo[25], stereo[26], stereo[27]]),
+            44100
+        );
+    }
 }

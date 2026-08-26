@@ -127,3 +127,78 @@ fn gen_sweep(
 
     samples
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // SoundEngine::new() opens an output device, which a machine running tests
+    // may not have. What is testable without one is the generation, which is
+    // where a wrong number turns into a click or a burst of noise.
+
+    fn peak(samples: &[f32]) -> f32 {
+        samples.iter().fold(0.0_f32, |acc, s| acc.max(s.abs()))
+    }
+
+    #[test]
+    fn a_tone_lasts_as_long_as_it_was_asked_to() {
+        let samples = gen_tone(880.0, 0.1, 0.1, 0.01, Waveform::Sine);
+        assert_eq!(samples.len(), (SAMPLE_RATE as f32 * 0.1) as usize);
+    }
+
+    #[test]
+    fn a_tone_never_exceeds_its_starting_gain() {
+        // Anything above 1.0 clips on the way out, and the gain only ever decays.
+        let samples = gen_tone(880.0, 0.1, 0.10, 0.01, Waveform::Sine);
+        assert!(peak(&samples) <= 0.10 + 1e-6, "peak was {}", peak(&samples));
+    }
+
+    #[test]
+    fn a_tone_fades_rather_than_cutting_off() {
+        // A buffer that stops at full amplitude is heard as a click.
+        let samples = gen_tone(880.0, 0.1, 0.10, 0.01, Waveform::Sine);
+        let tail = &samples[samples.len() - 100..];
+        assert!(peak(tail) < 0.02, "the tail was still at {}", peak(tail));
+    }
+
+    #[test]
+    fn a_square_wave_only_ever_sits_at_the_gain_or_its_negative() {
+        let samples = gen_tone(1000.0, 0.05, 0.08, 0.001, Waveform::Square);
+        for s in &samples {
+            let magnitude = s.abs();
+            assert!(magnitude <= 0.08 + 1e-6, "{} is above the gain", s);
+        }
+        // And it does swing both ways, rather than sitting on one rail.
+        assert!(samples.iter().any(|&s| s > 0.0));
+        assert!(samples.iter().any(|&s| s < 0.0));
+    }
+
+    #[test]
+    fn a_sweep_lasts_as_long_as_it_was_asked_to() {
+        let samples = gen_sweep(523.25, 659.25, 0.3, 0.12, 0.01);
+        assert_eq!(samples.len(), (SAMPLE_RATE as f32 * 0.3) as usize);
+    }
+
+    #[test]
+    fn a_sweep_stays_finite_in_both_directions() {
+        // The phase is integrated rather than stepped, so a descending sweep has
+        // a negative term in it. Getting that wrong gives NaN, which rodio plays
+        // as a burst of noise.
+        for (start, end) in [(523.25, 659.25), (659.25, 523.25)] {
+            let samples = gen_sweep(start, end, 0.3, 0.12, 0.01);
+            assert!(
+                samples.iter().all(|s| s.is_finite()),
+                "{} to {} produced a non-finite sample",
+                start,
+                end
+            );
+            assert!(peak(&samples) <= 0.12 + 1e-6);
+        }
+    }
+
+    #[test]
+    fn a_sweep_starts_from_silence_rather_than_a_step() {
+        let samples = gen_sweep(523.25, 659.25, 0.3, 0.12, 0.01);
+        assert!(samples[0].abs() < 1e-3, "it opened at {}", samples[0]);
+    }
+}
