@@ -41,6 +41,12 @@ Transcription page and the server URL on it are the first place to look.
 Take the installer from the [releases](https://github.com/avpbynf/Talk-Client/releases)
 page and run it. It asks for no elevation and installs for the current user only.
 
+Coming from a version called T4lk, install straight over it. Windows keys its
+uninstall entry on the product name, so a rename would otherwise leave two
+applications listed instead of one, and the installer retires the old entry itself.
+Settings, history and downloaded models carry over untouched, because the directory
+holding them never changed name.
+
 The first launch opens a wizard. It asks for the mode first: local detects the GPU and
 downloads a model, server asks for a URL and a token and checks the connection before
 moving on. The GGML model is not bundled, so local mode fetches it from HuggingFace on
@@ -147,6 +153,9 @@ unpack it there before building an installer. Everything else builds without the
 
 The two bitmaps the wizard displays are committed next to the icons, and rebuilt by
 `python scripts/make-installer-images.py` whenever the mark or the wordmark changes.
+
+Uninstalling reclaims the model cache, which is the only part worth a gigabyte, and
+leaves `settings.json` and the history where they are so a reinstall finds them.
 
 ## Licence
 

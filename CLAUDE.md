@@ -69,6 +69,12 @@ so a cold build takes a long while. `tauri:check` is the fast feedback loop.
   `load_settings()` drops the whole file on a parse error and returns the defaults,
   so a settings file still holding `t4lk-dark` would take the server URL, the token
   and the shortcuts down with it.
+- **The uninstall key is the product name, not the identifier.** Tauri builds it as
+  `Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCTNAME}`, so renaming
+  the product makes every earlier install invisible to the new one and Windows lists
+  two applications. `NSIS_HOOK_PREINSTALL` retires the `T4lk` entry by deleting its
+  keys and its directory. It must never do that by running the old uninstaller, whose
+  own hook reaches into the data directory. Any future rename needs the same treatment.
 - **The installer bitmaps carry the wordmark.** `src-tauri/icons/nsis-header.bmp` and
   `nsis-sidebar.bmp` are 24-bit BMP at sizes NSIS fixes, so they cannot be produced by
   the build. `python scripts/make-installer-images.py` redraws both from the real icon
