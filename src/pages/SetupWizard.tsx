@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_SERVER_URL = "https://stt.example.com";
+const DEFAULT_SERVER_URL = "";
 
 interface ModelInfo {
   id: string;
