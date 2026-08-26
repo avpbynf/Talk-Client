@@ -2,7 +2,7 @@ import { Transcription } from "@/App";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Sparkles, Clock, Globe, HardDrive, ClipboardCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface HistoryViewProps {
@@ -13,6 +13,16 @@ interface HistoryViewProps {
 
 export default function HistoryView({ transcriptions, onClear, shortcut }: HistoryViewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  useEffect(() => {
+    if (!confirmClear) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setConfirmClear(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmClear]);
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -43,7 +53,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
   const isEmpty = transcriptions.length === 0;
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden">
+    <div className="relative h-full w-full flex flex-col overflow-hidden">
       <ScrollArea className="flex-1 min-h-0 w-full">
         <div className="p-6">
           <div className="max-w-2xl mx-auto space-y-6">
@@ -60,7 +70,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onClear}
+                onClick={() => setConfirmClear(true)}
                 disabled={isEmpty}
                 className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               >
@@ -172,6 +182,55 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
           </div>
         </div>
       </ScrollArea>
+
+      <AnimatePresence>
+        {confirmClear && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => setConfirmClear(false)}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm mx-6 p-5 rounded-xl border border-border-card bg-surface-raised shadow-xl"
+            >
+              <h2 className="text-sm font-semibold">Effacer tout l'historique ?</h2>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                {transcriptions.length} transcription{transcriptions.length !== 1 ? "s" : ""} seront supprimées définitivement.
+              </p>
+              <div className="flex items-center justify-end gap-2 mt-5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmClear(false)}
+                  className="text-muted-foreground"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmClear(false);
+                    onClear();
+                  }}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Confirmer
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
