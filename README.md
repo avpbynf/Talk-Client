@@ -22,6 +22,13 @@ about. Talk is the third option: your own machine records, your own GPU transcri
 the text lands in the window that already had focus. No account, no upload, no tab to
 switch to.
 
+<p align="center">
+  <img src="docs/images/home.png" alt="The Talk home page: a ready indicator, the shortcut to hold, and what dictating has cost and saved" width="900">
+</p>
+<p align="center">
+  <sub>What it opens on: whether the shortcut will work right now, and what it has saved you so far.</sub>
+</p>
+
 **Two ways to run it, and the wizard asks on its first screen.** Local loads a Whisper
 model on this machine, through whisper.cpp on Vulkan, and needs nothing else: no
 network, no server, no account. Server points the app at a
