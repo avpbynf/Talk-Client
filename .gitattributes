@@ -1,3 +1,9 @@
-src-tauri/resources/**/*.exe filter=lfs diff=lfs merge=lfs -text
-src-tauri/resources/**/*.sys filter=lfs diff=lfs merge=lfs -text
-src-tauri/resources/**/*.cat filter=lfs diff=lfs merge=lfs -text
+# Everything is stored and checked out with LF, whatever the contributor's platform
+# or their core.autocrlf setting. A CRLF appearing in a diff is a tooling regression.
+* text=auto eol=lf
+
+# Binary assets: never touch their bytes.
+*.png binary
+*.ico binary
+*.bmp binary
+*.icns binary
