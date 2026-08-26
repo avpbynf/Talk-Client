@@ -14,7 +14,7 @@ export default function InputDeviceSection() {
   const [selected, setSelected] = useState<string | null>(null);
   const [defaultName, setDefaultName] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const refreshTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     invoke<string[]>("list_input_devices").then(setDevices);
