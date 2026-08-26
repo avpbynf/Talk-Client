@@ -36,7 +36,7 @@ export function SubscriptionComparison({ summary }: SubscriptionComparisonProps)
               <div key={c.name} className="py-1.5">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-sm min-w-0 truncate">{c.name}</span>
-                  <span className="text-sm shrink-0 line-through text-[var(--color-destructive)] decoration-2">
+                  <span className="text-sm shrink-0 line-through decoration-1 decoration-[var(--color-destructive)]/40 text-[var(--color-destructive)]">
                     ${(c.monthlyUsd * months).toFixed(2)}
                   </span>
                 </div>

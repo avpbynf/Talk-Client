@@ -29,7 +29,7 @@ export function CostComparison({ summary }: CostComparisonProps) {
         <Row label="Audio sent">~{summary.estimatedAudioMinutes.toFixed(0)} min</Row>
         <Row label="Their rate">${API_RATE_USD_PER_MIN.toFixed(3)} / min</Row>
         <Row label="What that comes to">
-          <span className="line-through text-[var(--color-destructive)] decoration-2">
+          <span className="line-through decoration-1 decoration-[var(--color-destructive)]/40 text-[var(--color-destructive)]">
             ${summary.costSavedUsd.toFixed(2)}
           </span>
         </Row>
