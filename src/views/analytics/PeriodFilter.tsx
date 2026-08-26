@@ -20,7 +20,7 @@ export function PeriodFilter({ value, onChange }: PeriodFilterProps) {
             key={id}
             onClick={() => onChange(id)}
             className={cn(
-              "px-3 py-1 rounded-md text-xs transition-colors duration-150 cursor-pointer",
+              "px-3 py-1 rounded-md text-xs transition-colors duration-150",
               isActive
                 ? "bg-surface-active text-[var(--color-active)] font-medium"
                 : "text-muted-foreground hover:text-foreground"

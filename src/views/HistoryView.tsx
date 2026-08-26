@@ -132,7 +132,7 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                   </AnimatePresence>
 
                   {/* Text content */}
-                  <p className="text-sm break-words leading-relaxed text-foreground/90">
+                  <p className="selectable text-sm break-words leading-relaxed text-foreground/90">
                     {t.text}
                   </p>
 

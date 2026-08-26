@@ -93,6 +93,37 @@
     font-family: 'Outfit', system-ui, sans-serif;
   }
 
+  /*
+   * Tailwind 4 dropped the pointer cursor on buttons, which is a browser
+   * default nobody wants in a window: every control in the sidebar and every
+   * toggle looked inert under the arrow.
+   */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+
+  /*
+   * A window is not a page. Dragging across it should not paint the labels,
+   * the numbers and the headings blue. Selection is handed back only where
+   * there is something worth copying: the fields you type into, and anything
+   * marked .selectable.
+   */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
   /* Monospace for technical elements */
   code, kbd, .font-mono {
     font-family: 'JetBrains Mono', monospace;

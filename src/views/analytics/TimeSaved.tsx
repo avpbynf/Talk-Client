@@ -49,7 +49,7 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
             <span>{userWpm} wpm</span>
             <button
               onClick={onRecalibrate}
-              className="text-[11px] text-[var(--color-active)] hover:underline cursor-pointer"
+              className="text-[11px] text-[var(--color-active)] hover:underline"
             >
               Retest
             </button>

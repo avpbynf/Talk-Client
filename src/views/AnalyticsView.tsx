@@ -163,7 +163,7 @@ export default function AnalyticsView({
                 ) : (
                   <button
                     onClick={() => setShowGame(true)}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl border border-border-card bg-surface-raised text-sm text-muted-foreground hover:bg-surface-active hover:text-foreground hover:border-border-hover transition-all duration-200 group cursor-pointer"
+                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl border border-border-card bg-surface-raised text-sm text-muted-foreground hover:bg-surface-active hover:text-foreground hover:border-border-hover transition-all duration-200 group"
                   >
                     <div className="flex items-center gap-3">
                       <Keyboard

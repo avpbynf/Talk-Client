@@ -123,7 +123,7 @@ export function ActivityChart({ yearlyActivity }: ActivityChartProps) {
     <div className="rounded-lg border border-border-card bg-surface-raised/50 px-4 py-3">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between cursor-pointer group"
+        className="w-full flex items-center justify-between group"
       >
         <span className="flex items-center gap-1.5">
           <ChevronRight
