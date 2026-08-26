@@ -45,15 +45,15 @@ export function TimeSaved({ summary, userWpm, onRecalibrate }: TimeSavedProps) {
         <div className="h-px bg-border-subtle" />
 
         <Row label="Your typing speed">
-          <div className="flex items-center gap-2">
+          <span className="inline-flex items-baseline gap-2.5">
             <span>{userWpm} wpm</span>
             <button
               onClick={onRecalibrate}
-              className="text-[10px] text-[var(--color-active)] hover:underline"
+              className="text-[11px] text-[var(--color-active)] hover:underline cursor-pointer"
             >
               Retest
             </button>
-          </div>
+          </span>
         </Row>
         <Row label="Words dictated">{summary.totalWords.toLocaleString(UI_LOCALE)}</Row>
         <Row label="Typing that out">{Math.round(summary.timeSavedMinutes)} min</Row>
