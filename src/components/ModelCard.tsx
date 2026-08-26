@@ -47,7 +47,7 @@ export function ModelCard({
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">{model.name}</span>
             {isLoaded && (
-              <span className="badge-active text-[10px] px-1.5 py-0.5 rounded">Actif</span>
+              <span className="badge-active text-[10px] px-1.5 py-0.5 rounded">Active</span>
             )}
             {isDownloaded && !isLoaded && (
               <Check className="h-3.5 w-3.5 text-success" />

@@ -172,7 +172,7 @@ export function TypingGame({ onWpmMeasured }: TypingGameProps) {
                 onClick={() => onWpmMeasured(finalWpm)}
                 className="text-xs"
               >
-                Utiliser ce resultat
+                Use this result
               </Button>
             </div>
           </div>

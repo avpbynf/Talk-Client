@@ -151,7 +151,7 @@ export default function TranscriptionView({
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-px bg-border-subtle" />
                       <span className="text-xs text-muted-foreground font-medium">
-                        Configuration fallback local
+                        Local fallback settings
                       </span>
                       <div className="flex-1 h-px bg-border-subtle" />
                     </div>

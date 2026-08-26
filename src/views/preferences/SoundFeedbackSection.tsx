@@ -25,7 +25,7 @@ export default function SoundFeedbackSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
           <Volume2 className="h-4 w-4" />
-          Sons de feedback
+          Feedback sounds
         </div>
         <Switch checked={soundFeedback} onCheckedChange={onSoundFeedbackChange} />
       </div>

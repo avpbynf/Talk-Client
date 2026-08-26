@@ -132,10 +132,10 @@ export function ServerTab({
             <span className="text-sm">{statusText(serverStatus)}</span>
           </div>
 
-          {/* Token API */}
+          {/* API token */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Token API <span className="text-xs font-normal">(optionnel)</span>
+              API token <span className="text-xs font-normal">(optional)</span>
             </label>
             <input
               type="password"
@@ -180,10 +180,10 @@ export function ServerTab({
         </div>
       </div>
 
-      {/* Fallback local */}
+      {/* Local fallback */}
       <div className="flex items-center justify-between p-4 rounded-xl bg-surface-raised border border-border-card">
         <div className="space-y-0.5">
-          <p className="text-sm font-medium text-foreground">Fallback local</p>
+          <p className="text-sm font-medium text-foreground">Local fallback</p>
           <p className="text-xs text-muted-foreground">Fall back to the local model when the server does not answer</p>
         </div>
         <Switch checked={serverFallback} onCheckedChange={onServerFallbackChange} />

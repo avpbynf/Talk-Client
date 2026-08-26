@@ -31,7 +31,7 @@ export default function AppearanceView({
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Appearance</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Personnalisation visuelle
+                How the application looks
               </p>
             </div>
 

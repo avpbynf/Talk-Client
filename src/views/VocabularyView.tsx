@@ -162,7 +162,7 @@ export default function VocabularyView({
                     value={newWord}
                     onChange={(e) => setNewWord(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addWord())}
-                    placeholder="Ex: MonProjet, ACME Corp..."
+                    placeholder="e.g. MyProject, ACME Corp..."
                     className="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border-card bg-surface-inset focus:outline-none focus:ring-2 focus:ring-[var(--color-active)]/30 focus:border-[var(--color-active)]"
                   />
                   <Button

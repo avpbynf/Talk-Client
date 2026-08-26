@@ -33,7 +33,7 @@ export default function RecordingModeSection({
             recordingMode === "push_to_talk" ? "text-[var(--color-active)]" : "text-muted-foreground"
           )} />
           <div>
-            <div className="font-medium text-sm">Maintenir</div>
+            <div className="font-medium text-sm">Hold</div>
             <div className="text-xs text-muted-foreground">Push-to-talk</div>
           </div>
         </button>
@@ -53,7 +53,7 @@ export default function RecordingModeSection({
           )} />
           <div>
             <div className="font-medium text-sm">Toggle</div>
-            <div className="text-xs text-muted-foreground">Clic on/off</div>
+            <div className="text-xs text-muted-foreground">Click on, click off</div>
           </div>
         </button>
       </div>

@@ -129,7 +129,7 @@ export default function KeyCaptureField({
             ))
           ) : (
             <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
-              Appuyez...
+              Press...
             </span>
           )}
         </div>

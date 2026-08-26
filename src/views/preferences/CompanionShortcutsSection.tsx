@@ -97,7 +97,7 @@ function SortableRow({
         type="text"
         value={companion.label}
         onChange={(e) => onUpdate(companion.id, { label: e.target.value })}
-        placeholder="Nom"
+        placeholder="Name"
         className="flex-1 px-2 py-0.5 rounded-md bg-transparent border border-transparent hover:border-border-card focus:border-border-card focus:bg-surface-deep text-sm text-foreground/80 placeholder:text-muted-foreground min-w-0 transition-colors focus:outline-none"
       />
 
@@ -173,7 +173,7 @@ export default function CompanionShortcutsSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
           <Keyboard className="h-4 w-4" />
-          Raccourcis compagnons
+          Companion shortcuts
         </div>
         <button
           onClick={() => {

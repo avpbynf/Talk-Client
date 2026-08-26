@@ -33,7 +33,7 @@ export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: 
         </div>
         <div>
           <h3 className="font-medium text-sm">Acceleration</h3>
-          <p className="text-xs text-muted-foreground">Backend de calcul</p>
+          <p className="text-xs text-muted-foreground">Compute backend</p>
         </div>
       </div>
 

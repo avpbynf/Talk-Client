@@ -12,9 +12,9 @@ interface OverlaySectionProps {
 
 /** Mirrors OverlaySize::dimensions() on the Rust side, which does the resizing. */
 const SIZES: { id: OverlaySize; label: string; dimensions: string }[] = [
-  { id: "small", label: "Petit", dimensions: "160 x 44" },
-  { id: "medium", label: "Moyen", dimensions: "220 x 60" },
-  { id: "large", label: "Grand", dimensions: "280 x 76" },
+  { id: "small", label: "Small", dimensions: "160 x 44" },
+  { id: "medium", label: "Medium", dimensions: "220 x 60" },
+  { id: "large", label: "Large", dimensions: "280 x 76" },
 ];
 
 const optionClasses = (isActive: boolean) =>

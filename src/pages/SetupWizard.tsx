@@ -269,7 +269,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-foreground">Talk</h1>
-            <p className="text-sm text-muted-foreground">Configuration initiale</p>
+            <p className="text-sm text-muted-foreground">First-time setup</p>
           </div>
         </div>
 
@@ -373,7 +373,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
             {gpus.length > 1 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Autres options disponibles:</label>
+                <label className="text-sm font-medium">Other options available:</label>
                 {gpus
                   .filter((g) => g.available && g.vendor !== detectedGpu)
                   .map((gpu) => (
