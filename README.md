@@ -117,11 +117,12 @@ cargo build --manifest-path src-tauri/Cargo.toml --no-default-features
   build a trivial program. Point the build somewhere short, which is what CI does:
 
   ```bash
-  CARGO_TARGET_DIR=C:\t bun run tauri:build
+  CARGO_TARGET_DIR=C:\rust-target bun run tauri:build
   ```
 
-  Moving the checkout itself works too, but the target directory is the half that
-  actually grows.
+  The deepest file the build writes sits 219 characters below that directory, so
+  anything up to about 40 characters works and a path under `Documents` does not.
+  Moving the checkout helps too, but the target directory is the half that grows.
 - **Meeting mode reports VB-Cable missing.** The app detects
   [VB-Audio Virtual Cable](https://vb-audio.com/Cable/) by enumerating audio devices,
   and the NSIS installer is what installs the driver. A source build, or a declined
