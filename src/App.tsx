@@ -157,9 +157,11 @@ function App() {
   // Refs to avoid re-registering listeners
   const hasInitialized = useRef(false);
   const companionShortcutsRef = useRef(companionShortcuts);
+  const historyLimitRef = useRef(historyLimit);
 
   // Keep refs in sync with state
   useEffect(() => { companionShortcutsRef.current = companionShortcuts; }, [companionShortcuts]);
+  useEffect(() => { historyLimitRef.current = historyLimit; }, [historyLimit]);
 
   // Check setup status first
   useEffect(() => {
@@ -209,17 +211,26 @@ function App() {
       "transcription-complete",
       (event) => {
         const saved = event.payload;
-        setTranscriptions((prev) => [
-          {
-            id: saved.id,
-            text: saved.text,
-            timestamp: new Date(saved.timestamp),
-            model: saved.model,
-            enhanced: saved.enhanced,
-            source: (saved.source === "server" ? "server" : "local") as "local" | "server",
-          },
-          ...prev,
-        ]);
+        setTranscriptions((prev) => {
+          const next: Transcription[] = [
+            {
+              id: saved.id,
+              text: saved.text,
+              timestamp: new Date(saved.timestamp),
+              model: saved.model,
+              enhanced: saved.enhanced,
+              source: (saved.source === "server" ? "server" : "local") as "local" | "server",
+            },
+            ...prev,
+          ];
+
+          // Rust prunes the database as it saves, so the list on screen drops the
+          // same rows. Without this it grows past the limit for as long as the
+          // window stays open, and the history reads "104 of 100 kept" while the
+          // database holds a hundred. Zero means keep everything.
+          const limit = historyLimitRef.current;
+          return limit === 0 ? next : next.slice(0, limit);
+        });
       }
     );
 
