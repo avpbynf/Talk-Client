@@ -70,6 +70,11 @@ jobs:
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The installed application only accepts an update signed by the key whose
+          # public half is in tauri.conf.json. An unsigned build still installs by
+          # hand, but no client will ever take it as an update.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           # Empty on a manual run, which builds without publishing anything. Without
           # this guard a dispatch from main would create a release tagged "main".
@@ -85,6 +90,10 @@ jobs:
             this build does not ship the driver.
           releaseDraft: false
           prerelease: false
+          # latest.json is the feed the installed application polls. It is published
+          # as a release asset, which is why the endpoint points at
+          # releases/latest/download and follows the newest release on its own.
+          includeUpdaterJson: true
 
       # A manual run publishes nothing, so keep the installer reachable for testing.
       - name: Upload the installer as a build artifact

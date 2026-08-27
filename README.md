@@ -91,6 +91,14 @@ while Talk captures the same input. Everything the machine plays can be turned d
 the length of a recording, to a share of where it already was, and put back at the stop
 rather than after the transcription.
 
+**It updates itself from the releases page.** Shortly after launch, then once an hour
+for a window left open, it asks GitHub what the newest release is. A strip under the
+titlebar offers to install it, and installing runs the same installer you would have
+downloaded by hand, closes the window and opens it again. The Preferences page carries
+the version that is running and a button that asks straight away. Nothing installs
+unless it was signed by the key the release was built with, and a version installed
+before any of this existed has to be replaced by hand once.
+
 It starts with Windows and lives in the tray, if you want it to.
 
 ## Building
@@ -170,6 +178,18 @@ The two bitmaps the wizard displays are committed next to the icons, and rebuilt
 
 Uninstalling reclaims the model cache, which is the only part worth a gigabyte, and
 leaves `settings.json` and the history where they are so a reinstall finds them.
+
+### The signing key
+
+Every installer is signed, since an installation only accepts an update signed by the
+private half of the key whose public half is in `tauri.conf.json`. `tauri build` reads
+that key from `TAURI_SIGNING_PRIVATE_KEY`, either the key itself or the path to the
+file holding it, and its password from `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Both are
+repository secrets on CI; a local build needs them in the environment, and fails
+without them rather than producing an installer nobody could update to.
+
+Keep the key: signing with a new one strands every installation out there, since none
+of them would accept it and every user would have to install by hand again.
 
 ## Licence
 

@@ -8,6 +8,8 @@ import CompanionShortcutsSection from "./preferences/CompanionShortcutsSection";
 import MeetingModeSection from "./preferences/MeetingModeSection";
 import SoundFeedbackSection from "./preferences/SoundFeedbackSection";
 import SystemSection from "./preferences/SystemSection";
+import UpdatesSection from "./preferences/UpdatesSection";
+import type { Updater } from "@/lib/use-updater";
 
 interface PreferencesViewProps {
   recordingMode: RecordingMode;
@@ -34,6 +36,7 @@ interface PreferencesViewProps {
   onStartSoundChange: (preset: string) => void;
   stopSound: string;
   onStopSoundChange: (preset: string) => void;
+  updater: Updater;
 }
 
 export default function PreferencesView({
@@ -61,6 +64,7 @@ export default function PreferencesView({
   onStartSoundChange,
   stopSound,
   onStopSoundChange,
+  updater,
 }: PreferencesViewProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -111,6 +115,7 @@ export default function PreferencesView({
               preserveClipboard={preserveClipboard}
               onPreserveClipboardChange={onPreserveClipboardChange}
             />
+            <UpdatesSection updater={updater} />
             <CompanionShortcutsSection
               companionShortcuts={companionShortcuts}
               onCompanionShortcutsChange={onCompanionShortcutsChange}

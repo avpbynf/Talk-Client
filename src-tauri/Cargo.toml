@@ -19,6 +19,10 @@ tauri-plugin-opener = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+# The updater reads the release feed and runs the installer it downloads; process
+# restarts the application in the case where the installer has not done it itself.
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 # Whisper transcription (with optional GPU/NPU acceleration)
 # raw-api re-exports whisper-rs-sys, which is how the GPU list is read: the ggml
