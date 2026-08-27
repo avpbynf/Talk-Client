@@ -93,28 +93,29 @@ fn run_output(commands: Receiver<Command>) {
                 output = None;
             }
             Command::Play(samples) => {
-                let Some((device, device_name)) = audio::find_output_device(preferred.as_deref())
-                else {
-                    output = None;
-                    continue;
-                };
-
                 // Asking for the name costs a call on every sound, and it is the only
                 // thing that notices a headset arriving: Windows moves the default, the
                 // name stops matching, and the stream is opened again on the new one.
-                let same_device = output
-                    .as_ref()
-                    .map(|output| output.device_name == device_name)
-                    .unwrap_or(false);
+                // An enumeration that answers nothing, which happens for a moment while
+                // Windows moves devices around, leaves the open stream alone: playing on
+                // it beats dropping one that works, and the next sound asks again.
+                if let Some((device, device_name)) =
+                    audio::find_output_device(preferred.as_deref())
+                {
+                    let same_device = output
+                        .as_ref()
+                        .map(|output| output.device_name == device_name)
+                        .unwrap_or(false);
 
-                if !same_device {
-                    output = OutputStream::try_from_device(&device).ok().map(
-                        |(stream, handle)| Output {
-                            _stream: stream,
-                            handle,
-                            device_name,
-                        },
-                    );
+                    if !same_device {
+                        output = OutputStream::try_from_device(&device).ok().map(
+                            |(stream, handle)| Output {
+                                _stream: stream,
+                                handle,
+                                device_name,
+                            },
+                        );
+                    }
                 }
 
                 if let Some(output) = &output {
