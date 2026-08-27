@@ -36,42 +36,15 @@ build fails in ways that read like a Rust error.
 
 ## Branches
 
-`dev` is what accumulates, `main` is what ships. Both are protected on the remote: no
-direct push, no force push, no deletion, linear history, and the `frontend` check green
-before anything merges. The remote protection lets an administrator through, which is
-the hand that has to be stopped, so `.claude/hooks/branch-gate.sh` refuses a push at
-either of them before it is ever attempted. `.claude/skills/` carries the two gestures
-in full, one for a pull request and one for a release.
+`dev` is where work lands, `main` is what has been released, and `main` is an exact prefix of
+`dev`. A batch takes its own branch off `dev`, named `<type>/what-it-does`, and comes back by
+pull request merged with the rebase button. `dev` reaches `main` by a fast-forward and by no
+button, at a release, and the tag is what publishes.
 
-- **A feature or a fix takes its own branch off `dev`**, and comes back into `dev`
-  through a pull request. Several pile up there, which is what makes a beta possible
-  without having decided anything about a release.
-- **`main` only ever receives `dev`**, through a single pull request carrying everything
-  ready to ship. That pull request is the deployment, and the version is tagged on `main`
-  afterwards. The tag is what publishes: `release.yml` runs on tags and on nothing else,
-  so the request itself builds no installer.
-- **The version bump is the last thing to land on `dev`** before that request, on its own
-  commit, so the tip of `main` at a release names the version it is. A batch landing on top
-  of a bump has undone it, and needs a fresh one before anything is tagged.
-- **Nothing is pushed to `dev` or `main`, the release included.** Both arrive by pull
-  request and by the button. The price is that the deployment replays the commits under
-  new identities, so `main` holds its own rather than the ones on `dev`; the contents are
-  the same, and the next deployment skips what is already applied.
-- **`main` stays the default branch**, since it is what the repository page shows and
-  what a clone lands on, and it is where the releases hang. The cost is that a new pull
-  request opens against `main` unless it is told otherwise, so naming `dev` as the base
-  is part of opening one.
-- **A pull request title is a Conventional Commit like any other.** It is what the
-  repository shows for that branch forever, and what a squash would write into the
-  history. A branch spanning several scopes takes the type of what it mainly delivers and
-  drops the scope rather than inventing one.
-- **Branches come back by rebase**, which keeps the commits as they were written and
-  keeps the history linear, as the protection demands. Squashing would throw away the
-  reasons written into each message and leave one line for a batch of unrelated work.
-- **`.github/pull_request_template.md` is not optional.** It is read before the body is
-  written, and every section gets an answer. The body speaks to a stranger and names the
-  defect, never the process that found it: no dates, no "the review found", no internal
-  file. Two to three thousand characters, template included.
+**All of it is in [CONTRIBUTING.md](CONTRIBUTING.md)**, which is the only home for it: the
+branch names, the commit subjects, the labels, the changelog, where the version lives and the
+order a release goes out in. `.githooks/commit-msg` refuses what does not match, and the
+workflows run that same file.
 
 ## Conventions
 

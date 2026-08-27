@@ -1,0 +1,43 @@
+# What every batch owes before it enters dev: the tsc pass the release build runs as its
+# beforeBuildCommand, and the frontend suite. Linux, because neither needs Windows.
+#
+# The Rust side is deliberately not compiled here. whisper-rs builds whisper.cpp from its build
+# script, so even `cargo check` pays a compile measured in tens of minutes, which is what the
+# release workflow is for. What that costs is written down rather than hidden: a Rust change is
+# read carefully and checked locally with `bun run tauri:check`, and CI answers for the frontend
+# alone.
+
+name: build
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type-check and build the frontend
+        run: bun run build
+
+      - name: The frontend suite
+        run: bun run test
