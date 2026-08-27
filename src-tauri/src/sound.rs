@@ -155,7 +155,44 @@ fn gen_tone(freq: f32, duration: f32, gain_start: f32, gain_end: f32, waveform: 
         samples.push(wave * gain);
     }
 
+    shape_edges(&mut samples, duration);
     samples
+}
+
+/// Fade both ends of a buffer so the sound starts and stops on silence.
+///
+/// The decay alone is not enough. A wave that opens at full amplitude, which a
+/// square one does by definition, puts a step in the signal, and a buffer that
+/// stops mid-cycle puts another one at the end. A speaker reproduces each as a
+/// click, which is what makes a short tone sound mechanical rather than played.
+///
+/// The attack stays short so the sound still feels immediate, the release is
+/// longer since that is the end nobody is waiting on, and both are capped for a
+/// long sound and taken as a share of a short one, so a fifty millisecond click
+/// is shaped rather than swallowed.
+fn shape_edges(samples: &mut [f32], duration: f32) {
+    let attack = (duration * 0.15).min(0.012);
+    let release = (duration * 0.35).min(0.040);
+
+    let len = samples.len();
+    if len == 0 {
+        return;
+    }
+
+    let attack_samples = ((SAMPLE_RATE as f32 * attack) as usize).min(len / 2);
+    let release_samples = ((SAMPLE_RATE as f32 * release) as usize).min(len / 2);
+
+    // A raised cosine rather than a straight line: the corner where a linear
+    // ramp meets the note is itself audible on a sound this short.
+    for i in 0..attack_samples {
+        let progress = (i as f32 + 0.5) / attack_samples as f32;
+        samples[i] *= 0.5 - 0.5 * (PI * progress).cos();
+    }
+
+    for i in 0..release_samples {
+        let progress = (i as f32 + 0.5) / release_samples as f32;
+        samples[len - 1 - i] *= 0.5 - 0.5 * (PI * progress).cos();
+    }
 }
 
 fn gen_sweep(
@@ -180,6 +217,7 @@ fn gen_sweep(
         samples.push(wave * gain);
     }
 
+    shape_edges(&mut samples, duration);
     samples
 }
 
@@ -255,5 +293,31 @@ mod tests {
     fn a_sweep_starts_from_silence_rather_than_a_step() {
         let samples = gen_sweep(523.25, 659.25, 0.3, 0.12, 0.01);
         assert!(samples[0].abs() < 1e-3, "it opened at {}", samples[0]);
+    }
+
+    #[test]
+    fn every_preset_opens_and_closes_on_silence() {
+        // The square wave is the one that made this audible: it opens at full
+        // amplitude by construction, which is heard as a click over the note.
+        let presets = [
+            gen_tone(880.0, 0.1, 0.10, 0.01, Waveform::Sine),
+            gen_tone(1000.0, 0.05, 0.08, 0.001, Waveform::Square),
+            gen_sweep(523.25, 659.25, 0.3, 0.12, 0.01),
+        ];
+
+        for samples in presets {
+            assert!(samples[0].abs() < 1e-4, "it opened at {}", samples[0]);
+            let last = samples[samples.len() - 1];
+            assert!(last.abs() < 1e-4, "it closed at {}", last);
+        }
+    }
+
+    #[test]
+    fn the_shaping_leaves_the_middle_of_a_sound_alone() {
+        // Fading the ends is not the same as turning the sound down: what is
+        // between them has to come out at the gain it was asked for.
+        let samples = gen_tone(880.0, 0.1, 0.10, 0.01, Waveform::Sine);
+        let middle = &samples[samples.len() / 4..samples.len() / 2];
+        assert!(peak(middle) > 0.03, "the middle peaked at {}", peak(middle));
     }
 }
