@@ -577,9 +577,18 @@ function App() {
               try {
                 await invoke("download_model", { modelId });
               } catch (error) {
+                // A cancellation comes back here too, since the command stops by
+                // failing. Either way the download is over and the card has to
+                // stop showing a bar.
                 console.error("Download failed:", error);
                 setIsDownloading(false);
+                setDownloadProgress(null);
               }
+            }}
+            onCancelDownload={() => {
+              invoke("cancel_model_download").catch((error) => {
+                console.error("Failed to stop the download:", error);
+              });
             }}
             onLoad={async (modelId) => {
               setIsLoading(true);

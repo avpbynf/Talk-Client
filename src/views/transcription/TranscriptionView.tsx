@@ -25,6 +25,7 @@ interface TranscriptionViewProps {
   onLoad: (modelId: string) => void;
   onUnload: () => void;
   onDelete: (modelId: string) => Promise<void>;
+  onCancelDownload: () => void;
   gpus: GpuInfo[];
   currentGpuVendor: GpuVendor;
   onGpuVendorChange: (vendor: GpuVendor) => void;
@@ -57,6 +58,7 @@ export default function TranscriptionView({
   onLoad,
   onUnload,
   onDelete,
+  onCancelDownload,
   gpus,
   currentGpuVendor,
   onGpuVendorChange,
@@ -136,6 +138,7 @@ export default function TranscriptionView({
                 onLoad={onLoad}
                 onUnload={onUnload}
                 onDelete={onDelete}
+                onCancelDownload={onCancelDownload}
                 onGpuVendorChange={onGpuVendorChange}
                 gpuDevices={gpuDevices}
                 currentGpuDevice={currentGpuDevice}
@@ -182,6 +185,7 @@ export default function TranscriptionView({
                       onLoad={onLoad}
                       onUnload={onUnload}
                       onDelete={onDelete}
+                      onCancelDownload={onCancelDownload}
                       onGpuVendorChange={onGpuVendorChange}
                       gpuDevices={gpuDevices}
                       currentGpuDevice={currentGpuDevice}

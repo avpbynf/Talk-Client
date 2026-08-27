@@ -3,6 +3,7 @@ use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
 use thiserror::Error;
 
@@ -16,6 +17,8 @@ pub enum ModelError {
     NotFound(String),
     #[error("Invalid model ID: {0}")]
     InvalidModelId(String),
+    #[error("Download cancelled")]
+    Cancelled,
 }
 
 fn sanitize_model_id(model_id: &str) -> Result<&str, ModelError> {
@@ -137,6 +140,12 @@ pub fn get_available_models() -> Vec<ModelInfo> {
 pub struct ModelManager {
     models_dir: PathBuf,
     client: Client,
+    /// Raised by the reader while a download runs, and read at every chunk.
+    ///
+    /// A model is around a gigabyte, so a download started by mistake on a slow
+    /// line holds the page for a quarter of an hour. Nothing was watching for a
+    /// change of mind.
+    cancel_requested: AtomicBool,
 }
 
 impl ModelManager {
@@ -150,7 +159,16 @@ impl ModelManager {
         Self {
             models_dir,
             client: Client::new(),
+            cancel_requested: AtomicBool::new(false),
         }
+    }
+
+    /// Ask the download in flight to stop at its next chunk.
+    ///
+    /// Nothing happens when none is running: the flag is cleared by the next
+    /// download rather than left standing for it to walk into.
+    pub fn cancel_download(&self) {
+        self.cancel_requested.store(true, Ordering::SeqCst);
     }
 
     pub fn get_models_dir(&self) -> &PathBuf {
@@ -216,6 +234,10 @@ impl ModelManager {
         let dest_path = self.models_dir.join(format!("ggml-{}.bin", model_id));
         let temp_path = self.models_dir.join(format!("ggml-{}.bin.tmp", model_id));
 
+        // A cancellation raised before this one started belongs to a download
+        // that is already over.
+        self.cancel_requested.store(false, Ordering::SeqCst);
+
         // Start download
         let response = self.client.get(&url).send().await?;
 
@@ -229,6 +251,10 @@ impl ModelManager {
 
         let download_result: Result<(), ModelError> = async {
             while let Some(chunk) = stream.next().await {
+                if self.cancel_requested.swap(false, Ordering::SeqCst) {
+                    return Err(ModelError::Cancelled);
+                }
+
                 let chunk = chunk?;
                 file.write_all(&chunk)?;
                 downloaded += chunk.len() as u64;
@@ -256,6 +282,8 @@ impl ModelManager {
         .await;
 
         if let Err(e) = download_result {
+            // The partial file goes either way. Half a model on disk would be
+            // counted as downloaded by its name alone and fail at load time.
             let _ = std::fs::remove_file(&temp_path);
             return Err(e);
         }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { HardDrive } from "lucide-react";
+import { HardDrive, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { GpuSelector } from "@/components/GpuSelector";
 import { ModelCard } from "@/components/ModelCard";
@@ -23,6 +24,7 @@ interface LocalTabProps {
   onLoad: (modelId: string) => void;
   onUnload: () => void;
   onDelete: (modelId: string) => Promise<void>;
+  onCancelDownload: () => void;
   onGpuVendorChange: (vendor: GpuVendor) => void;
   onGpuDeviceChange: (index: number) => void;
 }
@@ -43,10 +45,15 @@ export function LocalTab({
   onLoad,
   onUnload,
   onDelete,
+  onCancelDownload,
   onGpuVendorChange,
   onGpuDeviceChange,
 }: LocalTabProps) {
   const [modelFamily, setModelFamily] = useState<ModelFamily>("quantized");
+  // A model is around a gigabyte and comes back over the network, so this asks
+  // the same way the history and the statistics ask before they throw anything
+  // away.
+  const [pendingDelete, setPendingDelete] = useState<ModelInfo | null>(null);
 
   const filteredModels = models.filter((m) => {
     const isQuantized = m.id.includes("-q5") || m.id.includes("-q5_0") || m.id.includes("-q5_1");
@@ -54,7 +61,7 @@ export function LocalTab({
   });
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5">
       {/* GPU Selection */}
       <GpuSelector
         gpus={gpus}
@@ -120,11 +127,31 @@ export function LocalTab({
               onDownload={() => onDownload(model.id)}
               onLoad={() => onLoad(model.id)}
               onUnload={onUnload}
-              onDelete={() => onDelete(model.id)}
+              onDelete={async () => setPendingDelete(model)}
+              onCancelDownload={onCancelDownload}
             />
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete ${pendingDelete?.name ?? ""}?`}
+        description={
+          <>
+            The file goes from the disk, {pendingDelete?.size_mb ?? 0} MB of it, and downloading
+            it again is the only way back. The transcriptions it produced stay where they are.
+          </>
+        }
+        confirmLabel="Delete"
+        confirmIcon={<Trash2 className="h-4 w-4 mr-2" />}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          const model = pendingDelete;
+          setPendingDelete(null);
+          if (model) await onDelete(model.id);
+        }}
+      />
     </div>
   );
 }

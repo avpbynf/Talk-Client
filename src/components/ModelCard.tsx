@@ -16,6 +16,7 @@ interface ModelCardProps {
   onLoad: () => void;
   onUnload: () => void;
   onDelete: () => Promise<void>;
+  onCancelDownload: () => void;
 }
 
 export function ModelCard({
@@ -29,6 +30,7 @@ export function ModelCard({
   onLoad,
   onUnload,
   onDelete,
+  onCancelDownload,
 }: ModelCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const isCurrentlyDownloading = isDownloading && downloadProgress?.model_id === model.id;
@@ -125,7 +127,17 @@ export function ModelCard({
 
       {isCurrentlyDownloading && downloadProgress && (
         <div className="mt-3 pt-3 border-t border-border-subtle space-y-1.5">
-          <Progress value={downloadProgress.progress} className="h-1.5" />
+          <div className="flex items-center gap-2">
+            <Progress value={downloadProgress.progress} className="h-1.5 flex-1" />
+            <button
+              onClick={onCancelDownload}
+              aria-label="Stop the download"
+              title="Stop the download"
+              className="cursor-pointer h-5 w-5 shrink-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
             <span>Downloading...</span>
             <span>{downloadProgress.downloaded_mb} / {downloadProgress.total_mb} MB</span>
