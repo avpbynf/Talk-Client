@@ -41,9 +41,13 @@ impl Default for OverlaySize {
 impl OverlaySize {
     pub fn dimensions(&self) -> (f64, f64) {
         match self {
+            // In the proportions the overlay is drawn at, since what is inside
+            // is scaled to the window rather than laid out again for it. Large
+            // is a real step up, for a reader who picked it to be able to see
+            // the thing from where they sit.
             Self::Small => (160.0, 44.0),
             Self::Medium => (220.0, 60.0),
-            Self::Large => (280.0, 76.0),
+            Self::Large => (341.0, 93.0),
         }
     }
 }
@@ -391,5 +395,26 @@ mod tests {
             seen.push((w as u32, h as u32));
         }
         assert_eq!(OverlaySize::default().dimensions(), (160.0, 44.0));
+    }
+
+    #[test]
+    fn every_overlay_size_keeps_the_shape_the_overlay_is_drawn_at() {
+        // What is inside is scaled to the window rather than laid out again for
+        // it, so a size of another shape would leave a band of desktop along one
+        // edge of the pill. The reference is the medium size.
+        let (base_w, base_h) = OverlaySize::Medium.dimensions();
+        let reference = base_w / base_h;
+
+        for size in [OverlaySize::Small, OverlaySize::Medium, OverlaySize::Large] {
+            let (w, h) = size.dimensions();
+            let ratio = w / h;
+            assert!(
+                (ratio - reference).abs() / reference < 0.02,
+                "{:?} is {:.3} wide for its height against {:.3}",
+                size,
+                ratio,
+                reference
+            );
+        }
     }
 }
