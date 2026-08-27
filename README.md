@@ -79,6 +79,11 @@ plain list, typed once.
 statistics page reads from it: how much you dictated, how much time that saved against
 typing it, and where it went.
 
+**On a machine with two graphics cards, you say which one works.** Vulkan lists the
+integrated chip first often enough that the default would be the wrong card, so Talk
+takes the one carrying the most memory and the Transcription page lists them by name to
+change that. The model reloads on the card you pick, without restarting the app.
+
 **Meeting mode routes the microphone through VB-Cable**, so a call keeps hearing you
 while Talk captures the same input. Media playing on the machine is paused for the
 length of a recording, and only when something is actually audible, which is what keeps
