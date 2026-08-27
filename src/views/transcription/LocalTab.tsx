@@ -3,7 +3,7 @@ import { HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GpuSelector } from "@/components/GpuSelector";
 import { ModelCard } from "@/components/ModelCard";
-import type { ModelInfo, DownloadProgress, GpuInfo, GpuVendor } from "@/App";
+import type { ModelInfo, DownloadProgress, GpuDevice, GpuInfo, GpuVendor } from "@/App";
 
 type ModelFamily = "standard" | "quantized";
 
@@ -16,11 +16,14 @@ interface LocalTabProps {
   isLoading: boolean;
   gpus: GpuInfo[];
   currentGpuVendor: GpuVendor;
+  gpuDevices: GpuDevice[];
+  currentGpuDevice: number;
   onDownload: (modelId: string) => void;
   onLoad: (modelId: string) => void;
   onUnload: () => void;
   onDelete: (modelId: string) => Promise<void>;
   onGpuVendorChange: (vendor: GpuVendor) => void;
+  onGpuDeviceChange: (index: number) => void;
 }
 
 export function LocalTab({
@@ -32,11 +35,14 @@ export function LocalTab({
   isLoading,
   gpus,
   currentGpuVendor,
+  gpuDevices,
+  currentGpuDevice,
   onDownload,
   onLoad,
   onUnload,
   onDelete,
   onGpuVendorChange,
+  onGpuDeviceChange,
 }: LocalTabProps) {
   const [modelFamily, setModelFamily] = useState<ModelFamily>("quantized");
 
@@ -53,6 +59,9 @@ export function LocalTab({
         currentVendor={currentGpuVendor}
         isLoading={isLoading}
         onVendorChange={onGpuVendorChange}
+        devices={gpuDevices}
+        currentDevice={currentGpuDevice}
+        onDeviceChange={onGpuDeviceChange}
       />
 
       {/* Models Selection */}

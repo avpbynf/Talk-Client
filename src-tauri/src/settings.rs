@@ -1,4 +1,4 @@
-use crate::transcription::{AcceleratorBackend, GpuVendor};
+use crate::transcription::{AcceleratorBackend, GpuDevicePreference, GpuVendor};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -101,6 +101,9 @@ pub struct AppSettings {
     pub accelerator_backend: AcceleratorBackend,
     #[serde(default)]
     pub gpu_vendor: GpuVendor,
+    /// Which GPU the local engine runs on, when the machine carries several
+    #[serde(default)]
+    pub gpu_device: Option<GpuDevicePreference>,
     #[serde(default)]
     pub overlay_position: Option<OverlayPosition>,
     #[serde(default)]
@@ -219,6 +222,7 @@ impl Default for AppSettings {
             last_model: None,
             accelerator_backend: default_accelerator(),
             gpu_vendor: GpuVendor::default(),
+            gpu_device: None,
             overlay_position: None,
             overlay_size: OverlaySize::default(),
             overlay_theme: OverlayTheme::default(),

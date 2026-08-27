@@ -20,7 +20,9 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 
 # Whisper transcription (with optional GPU/NPU acceleration)
-whisper-rs = "0.16"
+# raw-api re-exports whisper-rs-sys, which is how the GPU list is read: the ggml
+# device registry names the cards in the order gpu_device indexes them.
+whisper-rs = { version = "0.16", features = ["raw-api"] }
 
 # Audio capture & playback
 cpal = "0.15"

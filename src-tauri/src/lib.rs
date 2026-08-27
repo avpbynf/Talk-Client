@@ -23,7 +23,7 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
 pub use models::ModelManager;
-pub use transcription::{WhisperEngine, AcceleratorBackend, AcceleratorInfo, GpuVendor, GpuInfo};
+pub use transcription::{WhisperEngine, AcceleratorBackend, AcceleratorInfo, GpuVendor, GpuInfo, GpuDevice, GpuDevicePreference};
 
 /// Application state shared across all components
 pub struct AppState {
@@ -36,6 +36,8 @@ pub struct AppState {
     pub whisper_engine: Mutex<Option<WhisperEngine>>,
     pub accelerator_backend: Mutex<AcceleratorBackend>,
     pub gpu_vendor: Mutex<GpuVendor>,
+    /// GPU picked by the user, resolved against the cards present at load time
+    pub gpu_device: Mutex<Option<GpuDevicePreference>>,
     /// Custom vocabulary words to help Whisper recognize specific terms
     pub vocabulary: Mutex<Vec<String>>,
     /// Transcription mode: local or server
@@ -85,6 +87,7 @@ impl Default for AppState {
             whisper_engine: Mutex::new(None),
             accelerator_backend: Mutex::new(AcceleratorBackend::Cpu),
             gpu_vendor: Mutex::new(GpuVendor::Cpu),
+            gpu_device: Mutex::new(None),
             vocabulary: Mutex::new(Vec::new()),
             transcription_mode: Mutex::new(TranscriptionMode::default()),
             server_url: Mutex::new(String::new()),
@@ -157,8 +160,10 @@ async fn load_model(model_id: String, state: tauri::State<'_, AppState>) -> Resu
 
     // Get the selected accelerator backend
     let backend = *state.accelerator_backend.lock();
+    let device = current_gpu_device_index(&state, backend);
 
-    let engine = WhisperEngine::new_with_backend(&model_path, backend).map_err(|e| e.to_string())?;
+    let engine = WhisperEngine::new_with_backend(&model_path, backend, device)
+        .map_err(|e| e.to_string())?;
 
     *state.whisper_engine.lock() = Some(engine);
     *state.current_model.lock() = Some(model_id.clone());
@@ -293,6 +298,38 @@ fn db_reset_stats(
     db.reset_stats().map_err(|e| e.to_string())
 }
 
+/// The device index to hand whisper, resolved against the cards actually present.
+///
+/// Only asked for in Vulkan mode: enumerating brings the Vulkan instance up, and a
+/// machine running on the CPU has no reason to pay for that.
+fn current_gpu_device_index(state: &AppState, backend: AcceleratorBackend) -> u32 {
+    match backend {
+        AcceleratorBackend::Vulkan => {
+            let preference = state.gpu_device.lock().clone();
+            transcription::resolve_gpu_device(preference.as_ref(), &transcription::list_gpu_devices())
+        }
+        AcceleratorBackend::Cpu => 0,
+    }
+}
+
+/// Rebuild the engine on the model already loaded, if there is one.
+fn reload_engine(state: &AppState, backend: AcceleratorBackend) -> Result<(), String> {
+    let current_model = state.current_model.lock().clone();
+    if let Some(model_id) = current_model {
+        if let Some(model_path) = state.model_manager.get_model_path(&model_id) {
+            // Unload current model
+            *state.whisper_engine.lock() = None;
+
+            let device = current_gpu_device_index(state, backend);
+            let engine = WhisperEngine::new_with_backend(&model_path, backend, device)
+                .map_err(|e| e.to_string())?;
+            *state.whisper_engine.lock() = Some(engine);
+        }
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 fn get_available_accelerators() -> Vec<AcceleratorInfo> {
     transcription::detect_available_accelerators()
@@ -333,20 +370,48 @@ fn set_gpu_vendor(vendor: GpuVendor, state: tauri::State<'_, AppState>) -> Resul
     }
 
     // Reload model with new backend if one is loaded
-    let current_model = state.current_model.lock().clone();
-    if let Some(model_id) = current_model {
-        if let Some(model_path) = state.model_manager.get_model_path(&model_id) {
-            // Unload current model
-            *state.whisper_engine.lock() = None;
+    reload_engine(&state, backend)
+}
 
-            // Reload with new backend
-            let engine = WhisperEngine::new_with_backend(&model_path, backend)
-                .map_err(|e| e.to_string())?;
-            *state.whisper_engine.lock() = Some(engine);
-        }
+/// The GPUs the local engine can run on, and the one it uses right now.
+#[derive(serde::Serialize)]
+struct GpuDeviceList {
+    devices: Vec<GpuDevice>,
+    current: u32,
+}
+
+#[tauri::command]
+fn get_gpu_devices(state: tauri::State<'_, AppState>) -> GpuDeviceList {
+    let devices = transcription::list_gpu_devices();
+    let preference = state.gpu_device.lock().clone();
+    let current = transcription::resolve_gpu_device(preference.as_ref(), &devices);
+
+    GpuDeviceList { devices, current }
+}
+
+#[tauri::command]
+fn set_gpu_device(index: u32, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let devices = transcription::list_gpu_devices();
+    let device = devices
+        .iter()
+        .find(|device| device.index == index)
+        .ok_or_else(|| format!("GPU {} is not available", index))?;
+
+    let preference = GpuDevicePreference {
+        index: device.index,
+        name: device.name.clone(),
+    };
+    *state.gpu_device.lock() = Some(preference.clone());
+
+    let mut app_settings = settings::load_settings();
+    app_settings.gpu_device = Some(preference);
+    if let Err(e) = settings::save_settings(&app_settings) {
+        eprintln!("Failed to save settings: {}", e);
     }
 
-    Ok(())
+    // Reload model on the new card if one is loaded
+    let backend = *state.accelerator_backend.lock();
+    reload_engine(&state, backend)
 }
 
 #[tauri::command]
@@ -361,20 +426,7 @@ fn set_accelerator_backend(backend: AcceleratorBackend, state: tauri::State<'_, 
     }
 
     // Reload model with new backend if one is loaded
-    let current_model = state.current_model.lock().clone();
-    if let Some(model_id) = current_model {
-        if let Some(model_path) = state.model_manager.get_model_path(&model_id) {
-            // Unload current model
-            *state.whisper_engine.lock() = None;
-
-            // Reload with new backend
-            let engine = WhisperEngine::new_with_backend(&model_path, backend)
-                .map_err(|e| e.to_string())?;
-            *state.whisper_engine.lock() = Some(engine);
-        }
-    }
-
-    Ok(())
+    reload_engine(&state, backend)
 }
 
 #[tauri::command]
@@ -950,6 +1002,8 @@ pub fn run() {
             get_current_accelerator,
             get_current_gpu_vendor,
             set_gpu_vendor,
+            get_gpu_devices,
+            set_gpu_device,
             set_accelerator_backend,
             save_overlay_position,
             get_overlay_position,
@@ -1023,6 +1077,7 @@ pub fn run() {
                 *state.recording_mode.lock() = hotkey_config.mode;
                 *state.accelerator_backend.lock() = app_settings.accelerator_backend;
                 *state.gpu_vendor.lock() = app_settings.gpu_vendor;
+                *state.gpu_device.lock() = app_settings.gpu_device.clone();
                 *state.vocabulary.lock() = app_settings.vocabulary.clone();
                 *state.transcription_mode.lock() = app_settings.transcription_mode;
                 *state.server_url.lock() = app_settings.server_url.clone();

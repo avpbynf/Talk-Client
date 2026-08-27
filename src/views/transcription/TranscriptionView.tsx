@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type {
   ModelInfo,
   DownloadProgress,
+  GpuDevice,
   GpuInfo,
   GpuVendor,
   TranscriptionMode,
@@ -27,6 +28,9 @@ interface TranscriptionViewProps {
   gpus: GpuInfo[];
   currentGpuVendor: GpuVendor;
   onGpuVendorChange: (vendor: GpuVendor) => void;
+  gpuDevices: GpuDevice[];
+  currentGpuDevice: number;
+  onGpuDeviceChange: (index: number) => void;
   transcriptionMode: TranscriptionMode;
   onTranscriptionModeChange: (mode: TranscriptionMode) => void;
   serverUrl: string;
@@ -55,6 +59,9 @@ export default function TranscriptionView({
   gpus,
   currentGpuVendor,
   onGpuVendorChange,
+  gpuDevices,
+  currentGpuDevice,
+  onGpuDeviceChange,
   transcriptionMode,
   onTranscriptionModeChange,
   serverUrl,
@@ -128,6 +135,9 @@ export default function TranscriptionView({
                 onUnload={onUnload}
                 onDelete={onDelete}
                 onGpuVendorChange={onGpuVendorChange}
+                gpuDevices={gpuDevices}
+                currentGpuDevice={currentGpuDevice}
+                onGpuDeviceChange={onGpuDeviceChange}
               />
             )}
 
@@ -170,6 +180,9 @@ export default function TranscriptionView({
                       onUnload={onUnload}
                       onDelete={onDelete}
                       onGpuVendorChange={onGpuVendorChange}
+                      gpuDevices={gpuDevices}
+                      currentGpuDevice={currentGpuDevice}
+                      onGpuDeviceChange={onGpuDeviceChange}
                     />
                   </>
                 )}

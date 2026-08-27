@@ -145,6 +145,119 @@ pub fn get_best_accelerator() -> AcceleratorBackend {
     { AcceleratorBackend::Cpu }
 }
 
+/// A GPU the local engine can be pointed at.
+///
+/// `index` is what whisper.cpp calls `gpu_device`: it walks the ggml device registry
+/// counting the GPUs it finds, so the number is a position among the GPUs and not a
+/// position in the registry.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct GpuDevice {
+    pub index: u32,
+    pub name: String,
+    pub vram_mb: u64,
+    /// An integrated chip shares system memory, and reports it as if it were its own
+    pub integrated: bool,
+}
+
+/// The GPU picked in the settings file. An index on its own would drift the day a card
+/// is added or a driver stops reporting one, so the name travels with it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct GpuDevicePreference {
+    pub index: u32,
+    pub name: String,
+}
+
+/// Enumerate the GPUs in the order whisper indexes them.
+#[cfg(feature = "vulkan")]
+pub fn list_gpu_devices() -> Vec<GpuDevice> {
+    use std::ffi::CStr;
+    use whisper_rs::whisper_rs_sys as sys;
+
+    let mut devices: Vec<GpuDevice> = Vec::new();
+
+    // Going through the registry rather than the Vulkan entry points is what keeps a
+    // driver that cannot start from taking the process down: the registry builds the
+    // Vulkan backend inside a catch and reports no device when it throws.
+    unsafe {
+        for i in 0..sys::ggml_backend_dev_count() {
+            let device = sys::ggml_backend_dev_get(i);
+            if device.is_null() {
+                continue;
+            }
+
+            let device_type = sys::ggml_backend_dev_type(device);
+            if device_type != sys::ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_GPU
+                && device_type != sys::ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_IGPU
+            {
+                continue;
+            }
+
+            let index = devices.len() as u32;
+            let integrated = device_type == sys::ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_IGPU;
+            let description = sys::ggml_backend_dev_description(device);
+            let name = if description.is_null() {
+                String::new()
+            } else {
+                CStr::from_ptr(description).to_string_lossy().trim().to_string()
+            };
+
+            let mut free = 0usize;
+            let mut total = 0usize;
+            sys::ggml_backend_dev_memory(device, &mut free, &mut total);
+
+            devices.push(GpuDevice {
+                index,
+                name: if name.is_empty() {
+                    format!("GPU {}", index)
+                } else {
+                    name
+                },
+                vram_mb: (total / (1024 * 1024)) as u64,
+                integrated,
+            });
+        }
+    }
+
+    devices
+}
+
+#[cfg(not(feature = "vulkan"))]
+pub fn list_gpu_devices() -> Vec<GpuDevice> {
+    Vec::new()
+}
+
+/// Turn a saved preference into the index to hand whisper.
+pub fn resolve_gpu_device(preference: Option<&GpuDevicePreference>, devices: &[GpuDevice]) -> u32 {
+    if devices.is_empty() {
+        return 0;
+    }
+
+    if let Some(preference) = preference {
+        if let Some(device) = devices
+            .iter()
+            .find(|device| device.index == preference.index && device.name == preference.name)
+            .or_else(|| devices.iter().find(|device| device.name == preference.name))
+        {
+            return device.index;
+        }
+    }
+
+    // Nothing saved, or the card is gone. Which card Vulkan lists first depends on the
+    // driver and on what Windows was told to prefer, so position says nothing: take the
+    // discrete card, and the roomiest one when there are several. Memory alone would not
+    // do, since an integrated chip reports the shared system memory as its own and comes
+    // out ahead of a discrete card carrying half as much of its own.
+    let mut best = &devices[0];
+    for device in &devices[1..] {
+        let better_class = !device.integrated && best.integrated;
+        let same_class_and_roomier = device.integrated == best.integrated && device.vram_mb > best.vram_mb;
+        if better_class || same_class_and_roomier {
+            best = device;
+        }
+    }
+    best.index
+}
+
 
 pub struct WhisperEngine {
     ctx: WhisperContext,
@@ -152,7 +265,11 @@ pub struct WhisperEngine {
 }
 
 impl WhisperEngine {
-    pub fn new_with_backend(model_path: &Path, backend: AcceleratorBackend) -> Result<Self, TranscriptionError> {
+    pub fn new_with_backend(
+        model_path: &Path,
+        backend: AcceleratorBackend,
+        gpu_device: u32,
+    ) -> Result<Self, TranscriptionError> {
         let mut params = WhisperContextParameters::default();
 
         // Configure backend-specific settings
@@ -161,14 +278,17 @@ impl WhisperEngine {
                 #[cfg(feature = "vulkan")]
                 {
                     params.use_gpu(true);
+                    params.gpu_device(gpu_device as std::os::raw::c_int);
                 }
                 #[cfg(not(feature = "vulkan"))]
                 {
                     // Vulkan not compiled - CPU fallback will be used
+                    let _ = gpu_device;
                 }
             }
             AcceleratorBackend::Cpu => {
                 params.use_gpu(false);
+                let _ = gpu_device;
             }
         }
 
@@ -265,5 +385,104 @@ impl WhisperEngine {
 
     pub fn transcribe(&self, audio_data: &[f32]) -> Result<String, TranscriptionError> {
         self.transcribe_with_progress(audio_data, |_| {})
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn device(index: u32, name: &str, vram_mb: u64) -> GpuDevice {
+        GpuDevice {
+            index,
+            name: name.to_string(),
+            vram_mb,
+            integrated: false,
+        }
+    }
+
+    fn integrated_device(index: u32, name: &str, vram_mb: u64) -> GpuDevice {
+        GpuDevice {
+            integrated: true,
+            ..device(index, name, vram_mb)
+        }
+    }
+
+    fn preference(index: u32, name: &str) -> GpuDevicePreference {
+        GpuDevicePreference {
+            index,
+            name: name.to_string(),
+        }
+    }
+
+    #[test]
+    fn picks_the_largest_card_when_nothing_is_saved() {
+        let devices = vec![
+            device(0, "Radeon RX 7600", 8192),
+            device(1, "Radeon RX 7800 XT", 16384),
+        ];
+        assert_eq!(resolve_gpu_device(None, &devices), 1);
+    }
+
+    #[test]
+    fn leaves_the_integrated_chip_alone_however_much_memory_it_claims() {
+        // What this machine reports: the shared memory of the integrated chip is twice
+        // what the discrete card carries, and it is still the slower of the two.
+        let devices = vec![
+            device(0, "NVIDIA GeForce RTX 4060 Laptop GPU", 7956),
+            integrated_device(1, "Intel(R) Iris(R) Xe Graphics", 16197),
+        ];
+        assert_eq!(resolve_gpu_device(None, &devices), 0);
+    }
+
+    #[test]
+    fn takes_the_integrated_chip_when_it_is_all_there_is() {
+        let devices = vec![integrated_device(0, "Intel(R) Iris(R) Xe Graphics", 16197)];
+        assert_eq!(resolve_gpu_device(None, &devices), 0);
+    }
+
+    #[test]
+    fn keeps_the_first_of_two_cards_of_equal_size() {
+        let devices = vec![
+            device(0, "Radeon RX 7800 XT", 16384),
+            device(1, "Radeon RX 7800 XT", 16384),
+        ];
+        assert_eq!(resolve_gpu_device(None, &devices), 0);
+    }
+
+    #[test]
+    fn follows_the_name_when_the_index_moved() {
+        let devices = vec![
+            integrated_device(0, "Intel(R) Iris(R) Xe Graphics", 16197),
+            device(1, "Radeon RX 7800 XT", 16384),
+        ];
+        let saved = preference(0, "Radeon RX 7800 XT");
+        assert_eq!(resolve_gpu_device(Some(&saved), &devices), 1);
+    }
+
+    #[test]
+    fn keeps_the_saved_index_when_two_cards_share_a_name() {
+        let devices = vec![
+            device(0, "Radeon RX 7800 XT", 16384),
+            device(1, "Radeon RX 7800 XT", 16384),
+        ];
+        let saved = preference(1, "Radeon RX 7800 XT");
+        assert_eq!(resolve_gpu_device(Some(&saved), &devices), 1);
+    }
+
+    #[test]
+    fn falls_back_when_the_saved_card_is_gone() {
+        let devices = vec![
+            integrated_device(0, "Intel(R) Iris(R) Xe Graphics", 16197),
+            device(1, "Radeon RX 7800 XT", 16384),
+        ];
+        let saved = preference(0, "GeForce RTX 4070");
+        assert_eq!(resolve_gpu_device(Some(&saved), &devices), 1);
+    }
+
+    #[test]
+    fn answers_zero_when_there_is_no_gpu() {
+        let saved = preference(1, "Radeon RX 7800 XT");
+        assert_eq!(resolve_gpu_device(Some(&saved), &[]), 0);
     }
 }

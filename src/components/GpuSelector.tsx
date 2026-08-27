@@ -1,12 +1,15 @@
 import { Check, Cpu, Zap, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GpuInfo, GpuVendor } from "@/App";
+import type { GpuDevice, GpuInfo, GpuVendor } from "@/App";
 
 interface GpuSelectorProps {
   gpus: GpuInfo[];
   currentVendor: GpuVendor;
   isLoading: boolean;
   onVendorChange: (vendor: GpuVendor) => void;
+  devices: GpuDevice[];
+  currentDevice: number;
+  onDeviceChange: (index: number) => void;
 }
 
 const GPU_TOOLTIPS: Record<GpuVendor, string> = {
@@ -19,11 +22,33 @@ const ALL_GPU_OPTIONS: GpuInfo[] = [
   { vendor: "vulkan", name: "Vulkan", available: true, description: "Any GPU, through Vulkan" },
 ];
 
-export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: GpuSelectorProps) {
+// An integrated chip reports the shared system memory as its own, so the figure would
+// read as if it were the roomier card. Say what it is instead.
+function describeDevice(device: GpuDevice) {
+  if (device.integrated) {
+    return "Integrated";
+  }
+  if (device.vram_mb >= 1024) {
+    return `${Math.round(device.vram_mb / 1024)} GB`;
+  }
+  return `${device.vram_mb} MB`;
+}
+
+export function GpuSelector({
+  gpus,
+  currentVendor,
+  isLoading,
+  onVendorChange,
+  devices,
+  currentDevice,
+  onDeviceChange,
+}: GpuSelectorProps) {
   const mergedGpus = ALL_GPU_OPTIONS.map((defaultGpu) => {
     const backendGpu = gpus.find((g) => g.vendor === defaultGpu.vendor);
     return backendGpu || defaultGpu;
   });
+
+  const showDevices = currentVendor === "vulkan" && devices.length > 0;
 
   return (
     <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
@@ -82,6 +107,51 @@ export function GpuSelector({ gpus, currentVendor, isLoading, onVendorChange }: 
           </div>
         ))}
       </div>
+
+      {/* Which card, on a machine carrying more than one */}
+      {showDevices && (
+        <div className="mt-4 pt-4 border-t border-border-subtle">
+          {devices.length > 1 ? (
+            <>
+              <p className="text-xs text-muted-foreground mb-2">Graphics card</p>
+              <div className="space-y-1.5">
+                {devices.map((device) => (
+                  <button
+                    key={device.index}
+                    onClick={() =>
+                      !isLoading && device.index !== currentDevice && onDeviceChange(device.index)
+                    }
+                    disabled={isLoading}
+                    className={cn(
+                      "w-full px-3 py-2 rounded-lg border text-left transition-all duration-200",
+                      "flex items-center gap-2",
+                      device.index === currentDevice
+                        ? "border-[var(--color-warning)] bg-[var(--color-warning)]/10"
+                        : isLoading
+                        ? "opacity-40 cursor-not-allowed border-border-subtle bg-surface-deep"
+                        : "border-border-card bg-surface-inset hover:bg-card"
+                    )}
+                  >
+                    <span className="flex-1 min-w-0 text-sm truncate">{device.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {describeDevice(device)}
+                    </span>
+                    {device.index === currentDevice && (
+                      isLoading
+                        ? <Loader2 className="h-4 w-4 text-warning animate-spin shrink-0" />
+                        : <Check className="h-4 w-4 text-warning shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Running on {devices[0].name} ({describeDevice(devices[0])})
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

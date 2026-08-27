@@ -66,6 +66,13 @@ export interface GpuInfo {
   description: string;
 }
 
+export interface GpuDevice {
+  index: number;
+  name: string;
+  vram_mb: number;
+  integrated: boolean;
+}
+
 interface SavedSettings {
   last_model: string | null;
   accelerator_backend: AcceleratorBackend;
@@ -119,6 +126,8 @@ function App() {
   const [cancelShortcut, setCancelShortcut] = useState("Ctrl+F1");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
   const [currentGpuVendor, setCurrentGpuVendor] = useState<GpuVendor>("cpu");
+  const [gpuDevices, setGpuDevices] = useState<GpuDevice[]>([]);
+  const [currentGpuDevice, setCurrentGpuDevice] = useState(0);
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("local");
   const [serverUrl, setServerUrl] = useState("");
@@ -245,6 +254,24 @@ function App() {
     };
   }, []);
 
+  // Listing the cards brings the Vulkan instance up, so a machine running on the CPU
+  // is never asked for it.
+  async function loadGpuDevices(vendor: GpuVendor) {
+    if (vendor !== "vulkan") {
+      setGpuDevices([]);
+      return;
+    }
+
+    try {
+      const list = await invoke<{ devices: GpuDevice[]; current: number }>("get_gpu_devices");
+      setGpuDevices(list.devices);
+      setCurrentGpuDevice(list.current);
+    } catch (error) {
+      console.error("Failed to list GPUs:", error);
+      setGpuDevices([]);
+    }
+  }
+
   async function initializeApp() {
     // Read before the batch: the history fetch below needs it to size its query.
     const savedLimit = await invoke<number>("get_history_limit").catch(() => 100);
@@ -273,6 +300,7 @@ function App() {
     setCancelShortcut(hotkeyConfig.cancel_shortcut || "Ctrl+F1");
     setGpus(availableGpus);
     setCurrentGpuVendor(currentVendor);
+    void loadGpuDevices(currentVendor);
     setAutostartEnabled(autostart);
     setStartMinimized(startMin);
 
@@ -553,8 +581,24 @@ function App() {
               setIsLoading(true);
               try {
                 await invoke("set_gpu_vendor", { vendor });
+                await loadGpuDevices(vendor);
               } catch (error) {
                 console.error("Failed to change GPU:", error);
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+            gpuDevices={gpuDevices}
+            currentGpuDevice={currentGpuDevice}
+            onGpuDeviceChange={async (index) => {
+              const previous = currentGpuDevice;
+              setCurrentGpuDevice(index);
+              setIsLoading(true);
+              try {
+                await invoke("set_gpu_device", { index });
+              } catch (error) {
+                console.error("Failed to change graphics card:", error);
+                setCurrentGpuDevice(previous);
               } finally {
                 setIsLoading(false);
               }

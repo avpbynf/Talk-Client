@@ -58,6 +58,14 @@ build fails in ways that read like a Rust error.
   message that comes back is MSBuild's `MSB4184` rather than anything about CMake.
 - **GPU is optional.** `vulkan` is a default feature, and `--no-default-features` builds
   without the Vulkan SDK.
+- **`gpu_device` is a rank among the GPUs, not a device id.** whisper walks the ggml
+  device registry, keeps what calls itself a GPU or an integrated GPU, and the parameter
+  is a position in that filtered list. `list_gpu_devices()` walks the same registry the
+  same way, which is what makes the index it hands the frontend mean anything. Going
+  through the Vulkan entry points instead would read the same cards but skip the catch
+  the registry puts around a driver that fails to come up, and a C++ exception crossing
+  back into Rust takes the process with it. Reading the registry is also why `whisper-rs`
+  carries the `raw-api` feature: that is what re-exports the sys crate.
 - **The VB-Cable payload is absent.** `src-tauri/nsis-hooks.nsh` ships
   `src-tauri/resources/VBCABLE_Driver/` and runs its setup at install time, but those
   binaries were Git LFS objects and the objects are gone from the remote. Fetch
