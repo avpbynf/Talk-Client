@@ -47,6 +47,10 @@ before anything merges.
   ready to ship. That pull request is the deployment, and the version is tagged on `main`
   afterwards, which is what `release.yml` builds the installer from.
 - Nothing is committed on `dev` or `main` directly, this session included.
+- **`main` stays the default branch**, since it is what the repository page shows and
+  what a clone lands on, and it is where the releases hang. The cost is that a new pull
+  request opens against `main` unless it is told otherwise, so naming `dev` as the base
+  is part of opening one.
 - **A pull request title is a Conventional Commit like any other.** It is what the
   repository shows for that branch forever, and what a squash would write into the
   history. A branch spanning several scopes takes the type of what it mainly delivers and
