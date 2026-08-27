@@ -1,5 +1,6 @@
+import { useState } from "react";
 import type { CompanionShortcut } from "@/App";
-import { Keyboard, Plus, X, GripVertical } from "lucide-react";
+import { ChevronRight, Keyboard, Plus, X, GripVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import KeyCaptureField from "@/components/KeyCaptureField";
 import { cn } from "@/lib/utils";
@@ -162,6 +163,10 @@ export default function CompanionShortcutsSection({
     );
   };
 
+  // Shut by default: a page nobody scrolls past should not open on a list most
+  // installations never fill.
+  const [open, setOpen] = useState(false);
+
   const deleteShortcut = (id: string) => {
     onCompanionShortcutsChange(
       companionShortcuts.filter((c) => c.id !== id)
@@ -169,14 +174,30 @@ export default function CompanionShortcutsSection({
   };
 
   return (
-    <div className="p-5 rounded-xl border border-border-card bg-surface-raised space-y-4">
+    <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+        <button
+          onClick={() => setOpen(!open)}
+          className="cursor-pointer flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide group"
+        >
+          <ChevronRight
+            size={14}
+            className={cn(
+              "text-muted-foreground/60 transition-transform duration-200 group-hover:text-foreground",
+              open && "rotate-90"
+            )}
+          />
           <Keyboard className="h-4 w-4" />
           Companion shortcuts
-        </div>
+          {companionShortcuts.length > 0 && (
+            <span className="text-[11px] font-mono normal-case text-muted-foreground/60">
+              {companionShortcuts.length}
+            </span>
+          )}
+        </button>
         <button
           onClick={() => {
+            setOpen(true);
             onCompanionShortcutsChange([
               ...companionShortcuts,
               {
@@ -194,40 +215,44 @@ export default function CompanionShortcutsSection({
         </button>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Send a keystroke to another application when recording starts or stops,
-        to mute yourself in Discord or Teams without leaving what you are doing.
-      </p>
-
-      {companionShortcuts.length === 0 ? (
-        <div className="py-8 rounded-lg border border-dashed border-border-card text-center">
-          <Keyboard className="h-5 w-5 text-muted-foreground/40 mx-auto mb-2" />
+      {open && (
+        <div className="mt-4 space-y-4 slide-enter">
           <p className="text-sm text-muted-foreground">
-            No companion shortcuts yet
+            Send a keystroke to another application when recording starts or stops,
+            to mute yourself in Discord or Teams without leaving what you are doing.
           </p>
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={companionShortcuts.map((c) => c.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-1.5">
-              {companionShortcuts.map((companion) => (
-                <SortableRow
-                  key={companion.id}
-                  companion={companion}
-                  onUpdate={updateShortcut}
-                  onDelete={deleteShortcut}
-                />
-              ))}
+
+          {companionShortcuts.length === 0 ? (
+            <div className="py-8 rounded-lg border border-dashed border-border-card text-center">
+              <Keyboard className="h-5 w-5 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No companion shortcuts yet
+              </p>
             </div>
-          </SortableContext>
-        </DndContext>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={companionShortcuts.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-1.5">
+                  {companionShortcuts.map((companion) => (
+                    <SortableRow
+                      key={companion.id}
+                      companion={companion}
+                      onUpdate={updateShortcut}
+                      onDelete={deleteShortcut}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
       )}
     </div>
   );
