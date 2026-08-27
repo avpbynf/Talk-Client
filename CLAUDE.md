@@ -38,7 +38,10 @@ build fails in ways that read like a Rust error.
 
 `dev` is what accumulates, `main` is what ships. Both are protected on the remote: no
 direct push, no force push, no deletion, linear history, and the `frontend` check green
-before anything merges.
+before anything merges. The remote protection lets an administrator through, which is
+the hand that has to be stopped, so `.claude/hooks/branch-gate.sh` refuses a push at
+either of them before it is ever attempted. `.claude/skills/` carries the two gestures
+in full, one for a pull request and one for a release.
 
 - **A feature or a fix takes its own branch off `dev`**, and comes back into `dev`
   through a pull request. Several pile up there, which is what makes a beta possible
