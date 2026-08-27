@@ -25,6 +25,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The tag names the release, the configuration names what the application says
+      # it is, and latest.json carries the second one. A tag ahead of the file would
+      # publish a release announcing the version already installed, which no client
+      # would ever be offered and nothing would report. Fail here instead, in seconds
+      # rather than after the whole build.
+      - name: Check the tag against the version in the configuration
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $configured = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $tagged = "${{ github.ref_name }}" -replace '^v', ''
+          if ($configured -ne $tagged) {
+            throw "the tag says $tagged and tauri.conf.json says $configured"
+          }
+          Write-Host "the tag and the configuration agree on $configured"
+
       # cl.exe and the Windows SDK are installed on the runner but are not on PATH.
       # This is what scripts/vcenv.bat does locally.
       - name: Load the MSVC environment
