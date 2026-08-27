@@ -14,9 +14,9 @@
       {
         "title": "Talk",
         "width": 785,
-        "height": 845,
+        "height": 854,
         "minWidth": 785,
-        "minHeight": 845,
+        "minHeight": 854,
         "resizable": true,
         "center": true,
         "decorations": false,
