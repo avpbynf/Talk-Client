@@ -63,13 +63,19 @@ pub fn set_volume(_level: f32) -> bool {
     false
 }
 
-/// The level to duck to, from a stored percentage.
+/// The level to duck to: a share of where the machine already sits.
+///
+/// The percentage is read against the current level and not against full scale.
+/// Read the other way it is a floor, and a machine playing below that floor
+/// never ducks at all. That is not an edge case: measured at a quarter of the
+/// scale, which is an ordinary listening level, a setting of thirty percent
+/// left the volume exactly where it was and the feature looked broken.
 ///
 /// Clamped rather than trusted: the value comes back from a settings file that
 /// a person can edit, and a percentage above a hundred would raise the volume
 /// on somebody who asked for the opposite.
-pub fn level_from_percent(percent: u8) -> f32 {
-    (percent.min(100) as f32) / 100.0
+pub fn duck_level(current: f32, percent: u8) -> f32 {
+    current.clamp(0.0, 1.0) * (percent.min(100) as f32) / 100.0
 }
 
 #[cfg(test)]
@@ -80,15 +86,33 @@ mod tests {
     // exercised here. The arithmetic between the slider and the API is, since
     // that is where an off-by-one-hundred would be silent and loud.
 
+    fn close(a: f32, b: f32) -> bool {
+        (a - b).abs() < 1e-6
+    }
+
     #[test]
-    fn a_percentage_becomes_a_scalar() {
-        assert_eq!(level_from_percent(0), 0.0);
-        assert_eq!(level_from_percent(20), 0.2);
-        assert_eq!(level_from_percent(100), 1.0);
+    fn a_percentage_takes_that_share_of_the_current_level() {
+        assert!(close(duck_level(1.0, 20), 0.2));
+        assert!(close(duck_level(0.5, 20), 0.1));
+        assert!(close(duck_level(0.5, 0), 0.0));
+    }
+
+    #[test]
+    fn a_machine_already_quiet_still_gets_quieter() {
+        // The level this was reported at: a quarter of the scale, with the
+        // setting at thirty percent. Against full scale the target sat above
+        // the current level and nothing moved at all.
+        let before = 0.26;
+        assert!(duck_level(before, 30) < before);
+    }
+
+    #[test]
+    fn a_hundred_percent_leaves_the_volume_alone() {
+        assert!(close(duck_level(0.4, 100), 0.4));
     }
 
     #[test]
     fn a_percentage_over_a_hundred_does_not_turn_the_volume_up() {
-        assert_eq!(level_from_percent(255), 1.0);
+        assert!(close(duck_level(0.4, 255), 0.4));
     }
 }
