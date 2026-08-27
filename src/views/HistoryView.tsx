@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "motion/react";
 interface HistoryViewProps {
   transcriptions: Transcription[];
   onClear: () => void;
+  onDelete: (id: string) => void;
   shortcut: string;
   historyLimit: number;
   onHistoryLimitChange: (limit: number) => void;
@@ -26,6 +27,7 @@ interface HistoryViewProps {
 export default function HistoryView({
   transcriptions,
   onClear,
+  onDelete,
   shortcut,
   historyLimit,
   onHistoryLimitChange,
@@ -220,6 +222,22 @@ export default function HistoryView({
                           <Sparkles className="h-2.5 w-2.5" />
                         </span>
                       )}
+                      {/*
+                        The card itself copies on click, so this has to stop the
+                        event before it gets there. Deleting and copying in the
+                        same gesture would be the worst outcome of the two.
+                      */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(t.id);
+                        }}
+                        aria-label="Delete this transcription"
+                        title="Delete this transcription"
+                        className="cursor-pointer p-1 rounded-md text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 </motion.div>

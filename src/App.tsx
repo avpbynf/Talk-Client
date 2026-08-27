@@ -493,6 +493,10 @@ function App() {
               setTranscriptions([]);
               invoke("db_clear_transcriptions");
             }}
+            onDelete={(id) => {
+              setTranscriptions((prev) => prev.filter((t) => t.id !== id));
+              invoke("db_delete_transcription", { id });
+            }}
             shortcut={shortcut}
             historyLimit={historyLimit}
             onHistoryLimitChange={async (limit) => {

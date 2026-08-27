@@ -444,6 +444,17 @@ impl Database {
         Ok(rows)
     }
 
+    /// Drop one transcription, and say whether it was there.
+    ///
+    /// The statistics are left alone on purpose, the same way pruning leaves
+    /// them: they are an aggregate in another table, and removing a line from
+    /// the history is not a claim that it never happened.
+    pub fn delete_transcription(&self, id: &str) -> Result<bool> {
+        let conn = self.conn.lock();
+        let removed = conn.execute("DELETE FROM transcriptions WHERE id = ?1", params![id])?;
+        Ok(removed > 0)
+    }
+
     /// Keep only the newest `keep` transcriptions, and say how many went.
     ///
     /// Zero keeps everything, which is what the setting means by unlimited.
@@ -584,5 +595,45 @@ mod tests {
 
         assert_eq!(after.total_transcriptions, before.total_transcriptions);
         assert_eq!(after.total_words, before.total_words);
+    }
+
+    #[test]
+    fn deleting_one_takes_only_that_one() {
+        let db = in_memory();
+        add(&db, "keep-me", 1);
+        add(&db, "drop-me", 2);
+        add(&db, "keep-me-too", 3);
+
+        assert!(db.delete_transcription("drop-me").expect("should delete"));
+
+        let left = ids(&db);
+        assert_eq!(left.len(), 2);
+        assert!(!left.contains(&"drop-me".to_string()));
+    }
+
+    #[test]
+    fn deleting_something_that_is_not_there_says_so_rather_than_failing() {
+        // The page removes the card first and tells the database after, so a
+        // second click on a card already gone must not be an error.
+        let db = in_memory();
+        add(&db, "t1", 1);
+
+        assert!(!db.delete_transcription("never-existed").expect("should not fail"));
+        assert_eq!(ids(&db).len(), 1);
+    }
+
+    #[test]
+    fn deleting_one_leaves_the_statistics_alone() {
+        // Removing a line from the history is not a claim that it never
+        // happened, so the counts stand.
+        let db = in_memory();
+        add(&db, "t1", 1);
+        add(&db, "t2", 2);
+        let before = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        db.delete_transcription("t1").expect("should delete");
+        let after = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        assert_eq!(after.total_transcriptions, before.total_transcriptions);
     }
 }

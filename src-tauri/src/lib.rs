@@ -227,6 +227,14 @@ fn db_add_transcription(
 }
 
 #[tauri::command]
+fn db_delete_transcription(
+    id: String,
+    db: tauri::State<'_, database::Database>,
+) -> Result<bool, String> {
+    db.delete_transcription(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_history_limit(state: tauri::State<'_, AppState>) -> usize {
     *state.history_limit.lock()
 }
@@ -929,6 +937,7 @@ pub fn run() {
             hide_overlay,
             get_saved_settings,
             db_add_transcription,
+            db_delete_transcription,
             get_history_limit,
             set_history_limit,
             db_get_transcriptions,
