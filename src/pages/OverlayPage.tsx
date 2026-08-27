@@ -6,12 +6,20 @@ import { Mic, MicOff, Brain, Server } from "lucide-react";
 import { getThemeGradients, type OverlayThemeId } from "@/lib/overlay-themes";
 
 type ProcessingState = "idle" | "recording" | "transcribing" | "streaming" | "server_transcribing";
-type OverlaySize = "small" | "medium" | "large";
+/**
+ * The overlay is drawn at this size and scaled to whatever the window is.
+ *
+ * It is the medium size, which is what every spacing, glyph and bar in here was
+ * tuned against. Sizing the window without scaling what is in it only added
+ * padding, which is why medium and large looked the same from a step away.
+ */
+const BASE_WIDTH = 220;
+const BASE_HEIGHT = 60;
 
 function OverlayPage() {
   const [state, setState] = useState<ProcessingState>("idle");
   const [progress, setProgress] = useState(0);
-  const [, setSize] = useState<OverlaySize>("medium");
+  const [scale, setScale] = useState(1);
   const [spectrum, setSpectrum] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
   const [elapsed, setElapsed] = useState(0);
   const [visible, setVisible] = useState(false);
@@ -37,16 +45,27 @@ function OverlayPage() {
     return () => { unlisten.then((f) => f()); };
   }, []);
 
-  // Load overlay size on mount and listen for resize
+  // Follow the window rather than the setting behind it: the same measurement
+  // then covers a size chosen in the preferences and a window resized by hand,
+  // and the scale is right before the setting has been read back.
   useEffect(() => {
-    invoke<OverlaySize>("get_overlay_size").then(setSize);
+    const measure = () => {
+      const width = window.innerWidth / BASE_WIDTH;
+      const height = window.innerHeight / BASE_HEIGHT;
+      // The smaller of the two, so the pill never runs past the edge it would
+      // be clipped against. The two sizes are near enough in proportion that
+      // what is left over is under a pixel.
+      setScale(Math.min(width, height));
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
 
     const currentWindow = getCurrentWindow();
-    const unlistenResize = currentWindow.onResized(() => {
-      invoke<OverlaySize>("get_overlay_size").then(setSize);
-    });
+    const unlistenResize = currentWindow.onResized(() => measure());
 
     return () => {
+      window.removeEventListener("resize", measure);
       unlistenResize.then((f) => f());
     };
   }, []);
@@ -308,6 +327,15 @@ function OverlayPage() {
       style={isHidden ? { visibility: "hidden", pointerEvents: "none" } : undefined}
       onMouseDown={handleMouseDown}
     >
+      <div
+        className="absolute top-1/2 left-1/2"
+        style={{
+          width: BASE_WIDTH,
+          height: BASE_HEIGHT,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: "center",
+        }}
+      >
       {/* Ambient color wash — clipped to pill shape so the blur doesn't
            leak outside and create a visible rectangle on the desktop */}
       <div className="absolute inset-0 rounded-2xl overflow-hidden">
@@ -334,6 +362,7 @@ function OverlayPage() {
       {/* Content layer */}
       <div className="absolute inset-[2px] overlay-content rounded-[14px] flex items-center justify-center gap-3 px-4">
         {renderContent()}
+      </div>
       </div>
     </div>
   );
