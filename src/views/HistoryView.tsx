@@ -8,7 +8,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Sparkles, Clock, Globe, HardDrive, ClipboardCheck } from "lucide-react";
@@ -75,46 +74,44 @@ export default function HistoryView({
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-semibold tracking-tight">History</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {isEmpty
-                    ? "Nothing dictated yet"
-                    : `${transcriptions.length} transcription${transcriptions.length !== 1 ? "s" : ""}`}
-                </p>
+                {/*
+                  The retention lives behind the count rather than in a control
+                  of its own. It is read far more often than it is changed, and
+                  the line already says the number it governs.
+                */}
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <p className="text-sm text-muted-foreground">
+                    {isEmpty
+                      ? "Nothing dictated yet"
+                      : `${transcriptions.length} of ${historyLimit} kept`}
+                  </p>
+                  <Select
+                    value={String(historyLimit)}
+                    onValueChange={(value) => {
+                      const limit = Number(value);
+                      if (retentionWouldDelete(transcriptions.length, limit) > 0) {
+                        setPendingLimit(limit);
+                      } else {
+                        onHistoryLimitChange(limit);
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      aria-label="How many transcriptions to keep"
+                      title="How many transcriptions to keep"
+                      className="h-auto w-auto gap-0 border-0 bg-transparent p-0 text-muted-foreground/40 shadow-none hover:text-muted-foreground focus:ring-0 [&>span]:hidden"
+                    />
+                    <SelectContent>
+                      {RETENTION_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={String(option.value)}>
+                          Keep {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <label
-                  htmlFor="history-retention"
-                  className="text-xs text-muted-foreground whitespace-nowrap"
-                >
-                  Keep
-                </label>
-                <Select
-                  value={String(historyLimit)}
-                  onValueChange={(value) => {
-                    const limit = Number(value);
-                    if (retentionWouldDelete(transcriptions.length, limit) > 0) {
-                      setPendingLimit(limit);
-                    } else {
-                      onHistoryLimitChange(limit);
-                    }
-                  }}
-                >
-                  <SelectTrigger
-                    id="history-retention"
-                    aria-label="How many transcriptions to keep"
-                    title="How many transcriptions to keep"
-                    className="w-[7.5rem] cursor-pointer bg-surface-deep border-border-card text-foreground"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RETENTION_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Button
                   variant="ghost"
                   size="icon"

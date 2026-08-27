@@ -1,17 +1,16 @@
 /**
  * What the history can be told to keep.
  *
- * Zero is unlimited, which is what the application did for its whole life
- * before this setting existed: nothing ever pruned and the database grew for
- * as long as it was used.
+ * Zero is not offered any more, but it is still honoured everywhere below and
+ * in the Rust that prunes: it means unlimited, which is what the application
+ * did for its whole life before this setting existed, and a settings file
+ * written while the option existed still carries it.
  */
 export const RETENTION_OPTIONS = [
   { value: 50, label: "50" },
   { value: 100, label: "100" },
   { value: 250, label: "250" },
   { value: 500, label: "500" },
-  { value: 1000, label: "1000" },
-  { value: 0, label: "Everything" },
 ] as const;
 
 /**

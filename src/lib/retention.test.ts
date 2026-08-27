@@ -40,9 +40,19 @@ describe("retentionWouldDelete", () => {
 });
 
 describe("RETENTION_OPTIONS", () => {
-  it("offers Everything, and only once", () => {
-    const unlimited = RETENTION_OPTIONS.filter((o) => o.value === 0);
-    expect(unlimited).toHaveLength(1);
+  it("offers quantities only", () => {
+    // Unlimited is no longer on the menu, though zero still means unlimited
+    // everywhere that reads the setting: a file written while it was offered
+    // has to keep working.
+    for (const option of RETENTION_OPTIONS) {
+      expect(option.value).toBeGreaterThan(0);
+    }
+  });
+
+  it("stays within the range that was asked for", () => {
+    const values = RETENTION_OPTIONS.map((o) => o.value as number);
+    expect(Math.min(...values)).toBe(50);
+    expect(Math.max(...values)).toBe(500);
   });
 
   it("has no duplicate values, since the dropdown keys on them", () => {
