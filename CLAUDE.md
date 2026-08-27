@@ -142,3 +142,12 @@ before anything merges.
   machine without them, CI is the only verification and the loop is roughly twenty
   minutes, so read Rust changes carefully before pushing rather than iterating on the
   runner.
+- **An unsigned release is silently never offered as an update.** `createUpdaterArtifacts`
+  makes the bundler write `latest.json` and a `.sig` beside the installer, and it needs
+  `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the
+  environment: without them a build stops, saying it found a public key and no private
+  one. CI holds both as repository secrets. The installed application polls
+  `releases/latest/download/latest.json` and verifies it against the public key in
+  `tauri.conf.json`, so anything published by a path that skips the signing still
+  installs by hand and is simply never seen by an installed client. Signing with a
+  different key does the same to every installation already out there.

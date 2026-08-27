@@ -12,7 +12,9 @@ import PreferencesView from "@/views/PreferencesView";
 import AppearanceView from "@/views/AppearanceView";
 import AnalyticsView from "@/views/AnalyticsView";
 import SetupWizard from "@/pages/SetupWizard";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { type AppThemeId, applyAppTheme } from "@/lib/app-themes";
+import { useUpdater } from "@/lib/use-updater";
 
 export interface ModelInfo {
   id: string;
@@ -157,6 +159,10 @@ function App() {
   // is what made the sound state show the wrong thing until the settings
   // loaded, so this one starts where Rust starts.
   const [historyLimit, setHistoryLimit] = useState(100);
+
+  // Looks at the GitHub releases on its own; the banner and the Preferences page
+  // are two views of the same state.
+  const updater = useUpdater();
 
   // Refs to avoid re-registering listeners
   const hasInitialized = useRef(false);
@@ -472,6 +478,9 @@ function App() {
         })()}
       />
 
+      {/* What a release found on GitHub says for itself, when there is one */}
+      <UpdateBanner updater={updater} />
+
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar */}
@@ -767,6 +776,7 @@ function App() {
               setStopSound(preset);
               await invoke("set_stop_sound", { preset });
             }}
+            updater={updater}
           />
         )}
       </div>
