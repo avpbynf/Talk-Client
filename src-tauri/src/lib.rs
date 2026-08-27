@@ -58,6 +58,8 @@ pub struct AppState {
     pub virtual_mic: Mutex<virtual_mic::VirtualMicController>,
     /// Selected input device name (None = system default)
     pub input_device_name: Mutex<Option<String>>,
+    /// Where the feedback sounds play, or the system default when absent
+    pub output_device_name: Mutex<Option<String>>,
     /// Current main shortcut (stored for handler dispatch, never re-registered via on_shortcut)
     pub main_shortcut: Mutex<Option<Shortcut>>,
     /// Current cancel shortcut (stored for handler dispatch, never re-registered via on_shortcut)
@@ -98,6 +100,7 @@ impl Default for AppState {
             preserve_clipboard: Mutex::new(false),
             virtual_mic: Mutex::new(virtual_mic::VirtualMicController::new()),
             input_device_name: Mutex::new(None),
+            output_device_name: Mutex::new(None),
             main_shortcut: Mutex::new(None),
             cancel_shortcut: Mutex::new(None),
             sound_engine: Mutex::new(None),
@@ -939,6 +942,45 @@ fn set_input_device(device_name: Option<String>, state: tauri::State<'_, AppStat
     }
 }
 
+#[tauri::command]
+fn get_default_input_device() -> Option<String> {
+    audio::default_input_device_name()
+}
+
+// ============================================================================
+// Output Device Commands
+// ============================================================================
+
+#[tauri::command]
+fn list_output_devices() -> Vec<String> {
+    audio::list_output_devices()
+}
+
+#[tauri::command]
+fn get_default_output_device() -> Option<String> {
+    audio::default_output_device_name()
+}
+
+#[tauri::command]
+fn get_output_device(state: tauri::State<'_, AppState>) -> Option<String> {
+    state.output_device_name.lock().clone()
+}
+
+#[tauri::command]
+fn set_output_device(device_name: Option<String>, state: tauri::State<'_, AppState>) {
+    *state.output_device_name.lock() = device_name.clone();
+
+    if let Some(engine) = state.sound_engine.lock().as_ref() {
+        engine.set_device(device_name.clone());
+    }
+
+    let mut app_settings = settings::load_settings();
+    app_settings.output_device_name = device_name;
+    if let Err(e) = settings::save_settings(&app_settings) {
+        eprintln!("Failed to save settings: {}", e);
+    }
+}
+
 // ============================================================================
 // App Entry Point
 // ============================================================================
@@ -1056,6 +1098,11 @@ pub fn run() {
             list_input_devices,
             get_input_device,
             set_input_device,
+            get_default_input_device,
+            list_output_devices,
+            get_default_output_device,
+            get_output_device,
+            set_output_device,
         ])
         .setup(|app| {
             // Load .env file in dev mode only
@@ -1096,6 +1143,7 @@ pub fn run() {
                 }
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
                 *state.input_device_name.lock() = app_settings.input_device_name.clone();
+                *state.output_device_name.lock() = app_settings.output_device_name.clone();
                 *state.history_limit.lock() = app_settings.history_limit;
 
                 // Auto-start meeting mode if previously enabled
@@ -1170,6 +1218,7 @@ pub fn run() {
 
             // Initialize sound engine (pre-compute PCM buffers for instant playback)
             if let Some(engine) = sound::SoundEngine::new() {
+                engine.set_device(app_settings.output_device_name.clone());
                 *app.state::<AppState>().sound_engine.lock() = Some(engine);
             }
 

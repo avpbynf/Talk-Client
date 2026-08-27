@@ -66,6 +66,12 @@ build fails in ways that read like a Rust error.
   the registry puts around a driver that fails to come up, and a C++ exception crossing
   back into Rust takes the process with it. Reading the registry is also why `whisper-rs`
   carries the `raw-api` feature: that is what re-exports the sys crate.
+- **An output stream stays on the endpoint it was opened on.** Nothing in cpal follows
+  the Windows default afterwards, so a stream opened at startup kept sounding on the
+  speakers when a headset arrived, and went silent when the device it held disappeared.
+  `SoundEngine` names the device it should be on before each sound and reopens when the
+  name has moved, which is why the worker thread owns the stream instead of handing a
+  handle out. The same trap waits for anything else that opens an audio device once.
 - **The VB-Cable payload is absent.** `src-tauri/nsis-hooks.nsh` ships
   `src-tauri/resources/VBCABLE_Driver/` and runs its setup at install time, but those
   binaries were Git LFS objects and the objects are gone from the remote. Fetch

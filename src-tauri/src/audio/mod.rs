@@ -148,6 +148,43 @@ pub fn list_input_devices() -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// The name Windows reports for the default input, when there is one.
+pub fn default_input_device_name() -> Option<String> {
+    cpal::default_host().default_input_device()?.name().ok()
+}
+
+/// List available output devices (speakers, headsets).
+pub fn list_output_devices() -> Vec<String> {
+    let host = cpal::default_host();
+    host.output_devices()
+        .map(|devices| devices.filter_map(|d| d.name().ok()).collect())
+        .unwrap_or_default()
+}
+
+/// The name Windows reports for the default output, when there is one.
+pub fn default_output_device_name() -> Option<String> {
+    cpal::default_host().default_output_device()?.name().ok()
+}
+
+/// Find an output device by name, or fall back to the system default, and answer with
+/// the name it goes by. The name is what tells a caller holding a stream open whether
+/// the device under it has changed.
+pub fn find_output_device(device_name: Option<&str>) -> Option<(cpal::Device, String)> {
+    let host = cpal::default_host();
+
+    if let Some(name) = device_name {
+        if let Some(device) = host.output_devices().ok().and_then(|mut devices| {
+            devices.find(|d| d.name().map(|n| n == name).unwrap_or(false))
+        }) {
+            return Some((device, name.to_string()));
+        }
+    }
+
+    let device = host.default_output_device()?;
+    let name = device.name().ok()?;
+    Some((device, name))
+}
+
 /// Find an input device by name, or fall back to the system default.
 fn find_input_device(device_name: Option<&str>) -> Result<cpal::Device, AudioError> {
     let host = cpal::default_host();
