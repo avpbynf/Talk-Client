@@ -26,6 +26,40 @@ export interface AnalyticsSummary {
   /** First day of the selected window, null when the window is the whole history. */
   periodStart: string | null;
   dailyStats: DailyStats[];
+  /** Dictations still kept that carry a real duration and a real processing time. */
+  measuredCount: number;
+  measuredWords: number;
+  measuredAudioMinutes: number;
+  measuredProcessingMinutes: number;
+  bestDay: string | null;
+  bestDayCount: number;
+  activeDays: number;
+  streak: number;
+}
+
+/**
+ * How fast you actually speak, in words per minute.
+ *
+ * Measured, unlike `estimatedAudioMinutes`, which divides the word count by a
+ * fixed 150 wpm and therefore cannot tell you anything about your own rate.
+ * Null while nothing kept carries a duration, which is the state of a fresh
+ * install and of a history cleared since the timings existed.
+ */
+export function speakingRate(summary: AnalyticsSummary): number | null {
+  if (summary.measuredCount === 0 || summary.measuredAudioMinutes <= 0) return null;
+  return summary.measuredWords / summary.measuredAudioMinutes;
+}
+
+/** How many seconds of speech the machine transcribes per second of work. */
+export function realtimeFactor(summary: AnalyticsSummary): number | null {
+  if (summary.measuredCount === 0 || summary.measuredProcessingMinutes <= 0) return null;
+  return summary.measuredAudioMinutes / summary.measuredProcessingMinutes;
+}
+
+/** Seconds of speech in an average dictation, from what was measured. */
+export function averageDictationSeconds(summary: AnalyticsSummary): number | null {
+  if (summary.measuredCount === 0) return null;
+  return (summary.measuredAudioMinutes * 60) / summary.measuredCount;
 }
 
 export type Period = "today" | "week" | "month" | "year" | "all";
@@ -111,17 +145,6 @@ export const HOSTED_APIS: readonly HostedApi[] = [
 /** What a run of audio would have cost at one provider's rate. */
 export function apiCost(minutes: number, api: HostedApi): number {
   return minutes * api.usdPerMin;
-}
-
-/**
- * The headline "not spent" figure.
- *
- * The cheapest of the three on purpose. Claiming the saving against the most
- * expensive provider would be picking the number that flatters, and the point
- * of the figure is that it holds however the reader would have done it.
- */
-export function cheapestApiCost(minutes: number): number {
-  return Math.min(...HOSTED_APIS.map((api) => apiCost(minutes, api)));
 }
 
 /**
