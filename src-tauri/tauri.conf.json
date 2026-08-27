@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "Talk",
-        "width": 1190,
-        "height": 750,
+        "width": 1140,
+        "height": 825,
         "minWidth": 800,
         "minHeight": 500,
         "resizable": true,
