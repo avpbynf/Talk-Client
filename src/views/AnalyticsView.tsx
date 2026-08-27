@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Keyboard, RotateCcw } from "lucide-react";
+import { Keyboard, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -119,7 +119,7 @@ export default function AnalyticsView({
                 title="Reset stats"
                 className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               >
-                <RotateCcw className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
 
@@ -215,7 +215,7 @@ export default function AnalyticsView({
                   onClick={handleResetStats}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
-                  <RotateCcw className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Confirm
                 </Button>
               </div>
