@@ -444,10 +444,145 @@ impl Database {
         Ok(rows)
     }
 
+    /// Keep only the newest `keep` transcriptions, and say how many went.
+    ///
+    /// Zero keeps everything, which is what the setting means by unlimited.
+    /// The ordering matches the history page, newest first, so what survives
+    /// is what the reader would have seen at the top of the list.
+    pub fn prune_transcriptions(&self, keep: usize) -> Result<usize> {
+        if keep == 0 {
+            return Ok(0);
+        }
+
+        let conn = self.conn.lock();
+        let removed = conn.execute(
+            "DELETE FROM transcriptions WHERE id NOT IN (
+                 SELECT id FROM transcriptions ORDER BY timestamp DESC LIMIT ?1
+             )",
+            params![keep as i64],
+        )?;
+        Ok(removed)
+    }
+
     pub fn reset_stats(&self) -> Result<()> {
         let conn = self.conn.lock();
         conn.execute("DELETE FROM daily_stats", [])?;
         Ok(())
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A database that lives and dies with the test, so a run never touches the
+    /// real history in %APPDATA%.
+    fn in_memory() -> Database {
+        Database::open(Path::new(":memory:")).expect("should open")
+    }
+
+    /// `day` orders the rows: the timestamp is what pruning sorts on.
+    fn add(db: &Database, id: &str, day: u32) {
+        db.add_transcription(&NewTranscription {
+            id: id.to_string(),
+            text: format!("dictation {}", id),
+            timestamp: format!("2026-08-{:02}T10:00:00Z", day),
+            model: None,
+            source: "local".to_string(),
+            enhanced: false,
+            audio_duration_ms: None,
+            processing_time_ms: None,
+        })
+        .expect("should insert");
+    }
+
+    fn ids(db: &Database) -> Vec<String> {
+        db.get_transcriptions(1000, 0)
+            .expect("should read")
+            .into_iter()
+            .map(|t| t.id)
+            .collect()
+    }
+
+    #[test]
+    fn keeping_everything_removes_nothing() {
+        // Zero is what the setting means by unlimited, and it must not be read
+        // as "keep zero of them".
+        let db = in_memory();
+        for day in 1..=5 {
+            add(&db, &format!("t{}", day), day);
+        }
+
+        assert_eq!(db.prune_transcriptions(0).expect("should prune"), 0);
+        assert_eq!(ids(&db).len(), 5);
+    }
+
+    #[test]
+    fn a_limit_above_what_is_there_removes_nothing() {
+        let db = in_memory();
+        add(&db, "t1", 1);
+        add(&db, "t2", 2);
+
+        assert_eq!(db.prune_transcriptions(100).expect("should prune"), 0);
+        assert_eq!(ids(&db).len(), 2);
+    }
+
+    #[test]
+    fn pruning_keeps_the_newest_and_drops_the_oldest() {
+        let db = in_memory();
+        for day in 1..=5 {
+            add(&db, &format!("t{}", day), day);
+        }
+
+        assert_eq!(db.prune_transcriptions(2).expect("should prune"), 3);
+        // Newest first, which is the order the history page shows.
+        assert_eq!(ids(&db), vec!["t5".to_string(), "t4".to_string()]);
+    }
+
+    #[test]
+    fn pruning_to_one_leaves_the_most_recent() {
+        let db = in_memory();
+        add(&db, "old", 1);
+        add(&db, "new", 9);
+
+        db.prune_transcriptions(1).expect("should prune");
+
+        assert_eq!(ids(&db), vec!["new".to_string()]);
+    }
+
+    #[test]
+    fn pruning_twice_is_not_a_second_cull() {
+        let db = in_memory();
+        for day in 1..=4 {
+            add(&db, &format!("t{}", day), day);
+        }
+
+        db.prune_transcriptions(2).expect("should prune");
+        assert_eq!(db.prune_transcriptions(2).expect("should prune"), 0);
+        assert_eq!(ids(&db).len(), 2);
+    }
+
+    #[test]
+    fn pruning_an_empty_history_is_harmless() {
+        let db = in_memory();
+        assert_eq!(db.prune_transcriptions(100).expect("should prune"), 0);
+    }
+
+    #[test]
+    fn pruning_leaves_the_statistics_alone() {
+        // The counts are an aggregate in another table. Dropping old rows from
+        // the history must not rewrite what the dashboard has already counted.
+        let db = in_memory();
+        for day in 1..=5 {
+            add(&db, &format!("t{}", day), day);
+        }
+        let before = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        db.prune_transcriptions(1).expect("should prune");
+        let after = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        assert_eq!(after.total_transcriptions, before.total_transcriptions);
+        assert_eq!(after.total_words, before.total_words);
+    }
 }

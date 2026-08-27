@@ -1,18 +1,49 @@
 import { Transcription } from "@/App";
 import { UI_LOCALE } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Sparkles, Clock, Globe, HardDrive, ClipboardCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
+/**
+ * What the history can be told to keep.
+ *
+ * Zero is unlimited, which is what the application did for its whole life
+ * before this setting existed: nothing ever pruned and the database grew for
+ * as long as it was used.
+ */
+const RETENTION_OPTIONS = [
+  { value: 50, label: "50 transcriptions" },
+  { value: 100, label: "100 transcriptions" },
+  { value: 250, label: "250 transcriptions" },
+  { value: 500, label: "500 transcriptions" },
+  { value: 1000, label: "1000 transcriptions" },
+  { value: 0, label: "Everything" },
+] as const;
+
 interface HistoryViewProps {
   transcriptions: Transcription[];
   onClear: () => void;
   shortcut: string;
+  historyLimit: number;
+  onHistoryLimitChange: (limit: number) => void;
 }
 
-export default function HistoryView({ transcriptions, onClear, shortcut }: HistoryViewProps) {
+export default function HistoryView({
+  transcriptions,
+  onClear,
+  shortcut,
+  historyLimit,
+  onHistoryLimitChange,
+}: HistoryViewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -68,16 +99,38 @@ export default function HistoryView({ transcriptions, onClear, shortcut }: Histo
                     : `${transcriptions.length} transcription${transcriptions.length !== 1 ? "s" : ""}`}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmClear(true)}
-                disabled={isEmpty}
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear all
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={String(historyLimit)}
+                  onValueChange={(value) => onHistoryLimitChange(Number(value))}
+                >
+                  <SelectTrigger
+                    aria-label="How much history to keep"
+                    title="How much history to keep"
+                    className="w-[11rem] cursor-pointer bg-surface-deep border-border-card text-foreground"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RETENTION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={String(option.value)}>
+                        Keep {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setConfirmClear(true)}
+                  disabled={isEmpty}
+                  aria-label="Clear the whole history"
+                  title="Clear the whole history"
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="h-px bg-border-subtle" />

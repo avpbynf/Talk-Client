@@ -137,6 +137,10 @@ function App() {
   const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>("frost");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("small");
   const [appTheme, setAppTheme] = useState<AppThemeId>("talk-dark");
+  // Matches default_history_limit() on the Rust side. The two drifting apart
+  // is what made the sound state show the wrong thing until the settings
+  // loaded, so this one starts where Rust starts.
+  const [historyLimit, setHistoryLimit] = useState(100);
 
   // Refs to avoid re-registering listeners
   const currentModelRef = useRef<string | null>(null);
@@ -254,12 +258,20 @@ function App() {
   }, []);
 
   async function initializeApp() {
+    // Read before the batch: the history fetch below needs it to size its query.
+    const savedLimit = await invoke<number>("get_history_limit").catch(() => 100);
+    setHistoryLimit(savedLimit);
+
     // Load basic data
     const [availableModels, downloaded, hotkeyConfig, savedHistory, availableGpus, currentVendor, autostart, startMin] = await Promise.all([
       invoke<ModelInfo[]>("get_available_models"),
       invoke<string[]>("get_downloaded_models"),
       invoke<HotkeyConfig>("get_hotkey_config"),
-      invoke<SavedTranscription[]>("db_get_transcriptions", { limit: 200, offset: 0 }),
+      invoke<SavedTranscription[]>("db_get_transcriptions", {
+        // Zero means keep everything, and the query still needs a number.
+        limit: savedLimit === 0 ? 100000 : savedLimit,
+        offset: 0,
+      }),
       invoke<GpuInfo[]>("get_available_gpus"),
       invoke<GpuVendor>("get_current_gpu_vendor"),
       invoke<boolean>("get_autostart_enabled"),
@@ -474,6 +486,28 @@ function App() {
               invoke("db_clear_transcriptions");
             }}
             shortcut={shortcut}
+            historyLimit={historyLimit}
+            onHistoryLimitChange={async (limit) => {
+              setHistoryLimit(limit);
+              await invoke("set_history_limit", { limit });
+              // The backend prunes as it saves, so the list on screen is read
+              // back rather than trimmed here: guessing which rows went would
+              // put the two out of step.
+              const kept = await invoke<SavedTranscription[]>("db_get_transcriptions", {
+                limit: limit === 0 ? 100000 : limit,
+                offset: 0,
+              });
+              setTranscriptions(
+                kept.map((t) => ({
+                  id: t.id,
+                  text: t.text,
+                  timestamp: new Date(t.timestamp),
+                  model: t.model,
+                  enhanced: t.enhanced,
+                  source: (t.source === "server" ? "server" : "local") as "local" | "server",
+                }))
+              );
+            }}
           />
         )}
         {currentView === "transcription" && (

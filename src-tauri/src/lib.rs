@@ -61,6 +61,8 @@ pub struct AppState {
     pub cancel_shortcut: Mutex<Option<Shortcut>>,
     /// Sound engine for instant audio feedback (pre-computed PCM buffers)
     pub sound_engine: Mutex<Option<sound::SoundEngine>>,
+    /// How many transcriptions the history keeps. Zero keeps every one.
+    pub history_limit: Mutex<usize>,
     /// Transcriptions still running.
     ///
     /// A dictation can be started while the previous one is still being
@@ -95,6 +97,7 @@ impl Default for AppState {
             main_shortcut: Mutex::new(None),
             cancel_shortcut: Mutex::new(None),
             sound_engine: Mutex::new(None),
+            history_limit: Mutex::new(100),
             jobs_in_flight: AtomicUsize::new(0),
         }
     }
@@ -213,8 +216,37 @@ fn get_saved_settings() -> settings::AppSettings {
 fn db_add_transcription(
     entry: database::NewTranscription,
     db: tauri::State<'_, database::Database>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    db.add_transcription(&entry).map_err(|e| e.to_string())
+    db.add_transcription(&entry).map_err(|e| e.to_string())?;
+    // Prune here rather than on a timer: this is the only place the history
+    // grows, so it is the only place it can overrun the setting.
+    let keep = *state.history_limit.lock();
+    db.prune_transcriptions(keep).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_history_limit(state: tauri::State<'_, AppState>) -> usize {
+    *state.history_limit.lock()
+}
+
+#[tauri::command]
+fn set_history_limit(
+    limit: usize,
+    db: tauri::State<'_, database::Database>,
+    state: tauri::State<'_, AppState>,
+) -> Result<usize, String> {
+    *state.history_limit.lock() = limit;
+
+    let mut settings = settings::load_settings();
+    settings.history_limit = limit;
+    settings::save_settings(&settings)?;
+
+    // Applied at once rather than at the next dictation, so the list on screen
+    // and what the database holds say the same thing. This deletes, which is
+    // why the control that calls it spells out what goes.
+    db.prune_transcriptions(limit).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -897,6 +929,8 @@ pub fn run() {
             hide_overlay,
             get_saved_settings,
             db_add_transcription,
+            get_history_limit,
+            set_history_limit,
             db_get_transcriptions,
             db_get_transcription_count,
             db_clear_transcriptions,
@@ -988,6 +1022,7 @@ pub fn run() {
                 *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
                 *state.input_device_name.lock() = app_settings.input_device_name.clone();
+                *state.history_limit.lock() = app_settings.history_limit;
 
                 // Auto-start meeting mode if previously enabled
                 if app_settings.meeting_mode_enabled {

@@ -160,6 +160,13 @@ pub struct AppSettings {
     /// Selected input device name (None = system default)
     #[serde(default)]
     pub input_device_name: Option<String>,
+    /// How many transcriptions to keep in the history. Zero keeps every one.
+    ///
+    /// Until this existed nothing ever pruned, and the database grew for as
+    /// long as the application was used. The only limit was how many the
+    /// history page asked for, which hid the growth rather than bounding it.
+    #[serde(default = "default_history_limit")]
+    pub history_limit: usize,
 }
 
 fn default_true() -> bool {
@@ -176,6 +183,10 @@ fn default_server_url() -> String {
 
 fn default_server_timeout() -> u64 {
     30000 // 30 seconds
+}
+
+fn default_history_limit() -> usize {
+    100
 }
 
 fn default_vocabulary() -> Vec<String> {
@@ -213,6 +224,7 @@ impl Default for AppSettings {
             companion_shortcuts: Vec::new(),
             meeting_mode_enabled: false,
             input_device_name: None,
+            history_limit: default_history_limit(),
         }
     }
 }
