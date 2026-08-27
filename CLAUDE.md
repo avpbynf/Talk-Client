@@ -58,6 +58,11 @@ before anything merges.
 - **Branches come back by rebase**, which keeps the commits as they were written and
   keeps the history linear, as the protection demands. Squashing would throw away the
   reasons written into each message and leave one line for a batch of unrelated work.
+  `dev` into `main` lands by fast-forward, so `main` stays an exact prefix of `dev`.
+- **`.github/pull_request_template.md` is not optional.** It is read before the body is
+  written, and every section gets an answer. The body speaks to a stranger and names the
+  defect, never the process that found it: no dates, no "the review found", no internal
+  file. Two to three thousand characters, template included.
 
 ## Conventions
 
