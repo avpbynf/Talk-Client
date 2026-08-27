@@ -6,8 +6,10 @@ interface SystemSectionProps {
   onAutostartChange: (enabled: boolean) => void;
   startMinimized: boolean;
   onStartMinimizedChange: (enabled: boolean) => void;
-  pauseMediaOnRecord: boolean;
-  onPauseMediaOnRecordChange: (enabled: boolean) => void;
+  duckAudioOnRecord: boolean;
+  onDuckAudioOnRecordChange: (enabled: boolean) => void;
+  duckVolumePercent: number;
+  onDuckVolumePercentChange: (percent: number) => void;
   preserveClipboard: boolean;
   onPreserveClipboardChange: (enabled: boolean) => void;
 }
@@ -17,8 +19,10 @@ export default function SystemSection({
   onAutostartChange,
   startMinimized,
   onStartMinimizedChange,
-  pauseMediaOnRecord,
-  onPauseMediaOnRecordChange,
+  duckAudioOnRecord,
+  onDuckAudioOnRecordChange,
+  duckVolumePercent,
+  onDuckVolumePercentChange,
   preserveClipboard,
   onPreserveClipboardChange,
 }: SystemSectionProps) {
@@ -59,18 +63,45 @@ export default function SystemSection({
           />
         </div>
 
-        {/* Pause Media */}
-        <div className="flex items-center justify-between border-t border-border-subtle pt-4">
-          <div>
-            <label className="text-sm font-medium">Pause media</label>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Pauses whatever is playing while you record
-            </p>
+        {/* Duck the machine while recording */}
+        <div className="border-t border-border-subtle pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium">Turn the volume down</label>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Everything the machine plays drops while you talk, and comes back after
+              </p>
+            </div>
+            <Switch
+              checked={duckAudioOnRecord}
+              onCheckedChange={onDuckAudioOnRecordChange}
+            />
           </div>
-          <Switch
-            checked={pauseMediaOnRecord}
-            onCheckedChange={onPauseMediaOnRecordChange}
-          />
+
+          {duckAudioOnRecord && (
+            <div className="slide-enter mt-4 flex items-center gap-3">
+              <label
+                htmlFor="duck-volume"
+                className="text-xs text-muted-foreground whitespace-nowrap"
+              >
+                Down to
+              </label>
+              <input
+                id="duck-volume"
+                type="range"
+                min={0}
+                max={90}
+                step={5}
+                value={duckVolumePercent}
+                onChange={(e) => onDuckVolumePercentChange(Number(e.target.value))}
+                aria-label="What to turn the volume down to"
+                className="flex-1 h-1.5 cursor-pointer appearance-none rounded-full bg-surface-active accent-[var(--color-active)]"
+              />
+              <span className="w-10 text-right text-xs font-mono text-muted-foreground">
+                {duckVolumePercent}%
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Preserve Clipboard */}

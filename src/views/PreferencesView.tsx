@@ -20,8 +20,10 @@ interface PreferencesViewProps {
   onAutostartChange: (enabled: boolean) => void;
   startMinimized: boolean;
   onStartMinimizedChange: (enabled: boolean) => void;
-  pauseMediaOnRecord: boolean;
-  onPauseMediaOnRecordChange: (enabled: boolean) => void;
+  duckAudioOnRecord: boolean;
+  onDuckAudioOnRecordChange: (enabled: boolean) => void;
+  duckVolumePercent: number;
+  onDuckVolumePercentChange: (percent: number) => void;
   preserveClipboard: boolean;
   onPreserveClipboardChange: (enabled: boolean) => void;
   companionShortcuts: CompanionShortcut[];
@@ -45,8 +47,10 @@ export default function PreferencesView({
   onAutostartChange,
   startMinimized,
   onStartMinimizedChange,
-  pauseMediaOnRecord,
-  onPauseMediaOnRecordChange,
+  duckAudioOnRecord,
+  onDuckAudioOnRecordChange,
+  duckVolumePercent,
+  onDuckVolumePercentChange,
   preserveClipboard,
   onPreserveClipboardChange,
   companionShortcuts,
@@ -104,8 +108,10 @@ export default function PreferencesView({
               onAutostartChange={onAutostartChange}
               startMinimized={startMinimized}
               onStartMinimizedChange={onStartMinimizedChange}
-              pauseMediaOnRecord={pauseMediaOnRecord}
-              onPauseMediaOnRecordChange={onPauseMediaOnRecordChange}
+              duckAudioOnRecord={duckAudioOnRecord}
+              onDuckAudioOnRecordChange={onDuckAudioOnRecordChange}
+              duckVolumePercent={duckVolumePercent}
+              onDuckVolumePercentChange={onDuckVolumePercentChange}
               preserveClipboard={preserveClipboard}
               onPreserveClipboardChange={onPreserveClipboardChange}
             />

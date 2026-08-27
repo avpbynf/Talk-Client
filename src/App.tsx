@@ -77,7 +77,8 @@ interface SavedSettings {
   server_url: string;
   server_fallback: boolean;
   server_timeout: number;
-  pause_media_on_record: boolean;
+  duck_audio_on_record: boolean;
+  duck_volume_percent: number;
   preserve_clipboard: boolean;
 }
 
@@ -126,7 +127,9 @@ function App() {
   const [serverToken, setServerToken] = useState("");
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [startMinimized, setStartMinimized] = useState(false);
-  const [pauseMediaOnRecord, setPauseMediaOnRecord] = useState(false);
+  const [duckAudioOnRecord, setDuckAudioOnRecord] = useState(false);
+  // Matches default_duck_percent() on the Rust side.
+  const [duckVolumePercent, setDuckVolumePercent] = useState(20);
   const [preserveClipboard, setPreserveClipboard] = useState(false);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("unknown");
   const isCheckingServerRef = useRef(false);
@@ -294,7 +297,8 @@ function App() {
     setServerUrl(savedSettings.server_url || "");
     setServerFallback(savedSettings.server_fallback !== false); // Default to true
     setServerTimeout(savedSettings.server_timeout || 30000);
-    setPauseMediaOnRecord(savedSettings.pause_media_on_record || false);
+    setDuckAudioOnRecord(savedSettings.duck_audio_on_record || false);
+    setDuckVolumePercent(savedSettings.duck_volume_percent ?? 20);
     setPreserveClipboard(savedSettings.preserve_clipboard || false);
     setOverlayTheme(savedSettings.overlay_theme || "frost");
     setOverlaySize(savedSettings.overlay_size || "small");
@@ -637,10 +641,15 @@ function App() {
               setStartMinimized(enabled);
               await invoke("set_start_minimized", { enabled });
             }}
-            pauseMediaOnRecord={pauseMediaOnRecord}
-            onPauseMediaOnRecordChange={async (enabled) => {
-              setPauseMediaOnRecord(enabled);
-              await invoke("set_pause_media_on_record", { enabled });
+            duckAudioOnRecord={duckAudioOnRecord}
+            onDuckAudioOnRecordChange={async (enabled) => {
+              setDuckAudioOnRecord(enabled);
+              await invoke("set_duck_audio_on_record", { enabled });
+            }}
+            duckVolumePercent={duckVolumePercent}
+            onDuckVolumePercentChange={async (percent) => {
+              setDuckVolumePercent(percent);
+              await invoke("set_duck_volume_percent", { percent });
             }}
             preserveClipboard={preserveClipboard}
             onPreserveClipboardChange={async (enabled) => {

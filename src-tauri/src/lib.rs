@@ -2,6 +2,7 @@ mod audio;
 mod audio_encoder;
 mod clipboard;
 mod database;
+mod ducking;
 mod hotkeys;
 mod keystroke;
 mod models;
@@ -45,10 +46,10 @@ pub struct AppState {
     pub server_fallback: Mutex<bool>,
     /// Server request timeout in milliseconds
     pub server_timeout: Mutex<u64>,
-    /// Pause media playback during recording
-    pub pause_media_on_record: Mutex<bool>,
-    /// Track if we paused media (to resume on stop)
-    pub did_pause_media: Mutex<bool>,
+    /// Turn the machine down while recording
+    pub duck_audio_on_record: Mutex<bool>,
+    /// What to drop the volume to, as a percentage of where it was
+    pub duck_volume_percent: Mutex<u8>,
     /// Preserve clipboard content after pasting transcription
     pub preserve_clipboard: Mutex<bool>,
     /// Virtual mic controller for meeting mode
@@ -89,8 +90,8 @@ impl Default for AppState {
             server_url: Mutex::new(String::new()),
             server_fallback: Mutex::new(true),
             server_timeout: Mutex::new(30000),
-            pause_media_on_record: Mutex::new(false),
-            did_pause_media: Mutex::new(false),
+            duck_audio_on_record: Mutex::new(false),
+            duck_volume_percent: Mutex::new(20),
             preserve_clipboard: Mutex::new(false),
             virtual_mic: Mutex::new(virtual_mic::VirtualMicController::new()),
             input_device_name: Mutex::new(None),
@@ -675,18 +676,30 @@ fn complete_setup() -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_pause_media_on_record(state: tauri::State<'_, AppState>) -> bool {
-    *state.pause_media_on_record.lock()
+fn get_duck_audio_on_record(state: tauri::State<'_, AppState>) -> bool {
+    *state.duck_audio_on_record.lock()
 }
 
 #[tauri::command]
-fn set_pause_media_on_record(enabled: bool, state: tauri::State<'_, AppState>) {
-    *state.pause_media_on_record.lock() = enabled;
+fn set_duck_audio_on_record(enabled: bool, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    *state.duck_audio_on_record.lock() = enabled;
     let mut app_settings = settings::load_settings();
-    app_settings.pause_media_on_record = enabled;
-    if let Err(e) = settings::save_settings(&app_settings) {
-        eprintln!("Failed to save settings: {}", e);
-    }
+    app_settings.duck_audio_on_record = enabled;
+    settings::save_settings(&app_settings)
+}
+
+#[tauri::command]
+fn get_duck_volume_percent(state: tauri::State<'_, AppState>) -> u8 {
+    *state.duck_volume_percent.lock()
+}
+
+#[tauri::command]
+fn set_duck_volume_percent(percent: u8, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let percent = percent.min(100);
+    *state.duck_volume_percent.lock() = percent;
+    let mut app_settings = settings::load_settings();
+    app_settings.duck_volume_percent = percent;
+    settings::save_settings(&app_settings)
 }
 
 #[tauri::command]
@@ -965,8 +978,10 @@ pub fn run() {
             set_autostart_enabled,
             get_start_minimized,
             set_start_minimized,
-            get_pause_media_on_record,
-            set_pause_media_on_record,
+            get_duck_audio_on_record,
+            set_duck_audio_on_record,
+            get_duck_volume_percent,
+            set_duck_volume_percent,
             get_preserve_clipboard,
             set_preserve_clipboard,
             get_sound_feedback,
@@ -1013,7 +1028,17 @@ pub fn run() {
                 *state.server_url.lock() = app_settings.server_url.clone();
                 *state.server_fallback.lock() = app_settings.server_fallback;
                 *state.server_timeout.lock() = app_settings.server_timeout;
-                *state.pause_media_on_record.lock() = app_settings.pause_media_on_record;
+                *state.duck_audio_on_record.lock() = app_settings.duck_audio_on_record;
+                *state.duck_volume_percent.lock() = app_settings.duck_volume_percent;
+
+                // A volume left ducked by a crash. Nothing else will ever
+                // put it back, so this is the only chance.
+                if let Some(level) = app_settings.volume_before_duck {
+                    ducking::set_volume(level);
+                    let mut cleared = settings::load_settings();
+                    cleared.volume_before_duck = None;
+                    let _ = settings::save_settings(&cleared);
+                }
                 *state.preserve_clipboard.lock() = app_settings.preserve_clipboard;
                 *state.input_device_name.lock() = app_settings.input_device_name.clone();
                 *state.history_limit.lock() = app_settings.history_limit;

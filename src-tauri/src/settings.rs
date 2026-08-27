@@ -133,9 +133,21 @@ pub struct AppSettings {
     /// Whether to start minimized to tray
     #[serde(default)]
     pub start_minimized: bool,
-    /// Pause media playback during recording
+    /// Turn the machine down while recording, instead of pausing whatever is
+    /// in front. The old `pause_media_on_record` is gone; serde ignores it, so
+    /// a settings file written before this still loads.
     #[serde(default)]
-    pub pause_media_on_record: bool,
+    pub duck_audio_on_record: bool,
+    /// What to drop the volume to, as a percentage of where it was.
+    #[serde(default = "default_duck_percent")]
+    pub duck_volume_percent: u8,
+    /// The level taken before ducking, kept on disk rather than in memory.
+    ///
+    /// If the application dies mid-recording the machine is left quiet with
+    /// nothing in it knowing why. The next launch reads this back, restores it
+    /// and clears it.
+    #[serde(default)]
+    pub volume_before_duck: Option<f32>,
     /// Preserve clipboard content after pasting transcription
     #[serde(default = "default_true")]
     pub preserve_clipboard: bool,
@@ -189,6 +201,10 @@ fn default_history_limit() -> usize {
     100
 }
 
+fn default_duck_percent() -> u8 {
+    20
+}
+
 fn default_vocabulary() -> Vec<String> {
     Vec::new()
 }
@@ -215,7 +231,9 @@ impl Default for AppSettings {
             setup_completed: false,
             autostart_enabled: false,
             start_minimized: false,
-            pause_media_on_record: false,
+            duck_audio_on_record: false,
+            duck_volume_percent: default_duck_percent(),
+            volume_before_duck: None,
             preserve_clipboard: true,
             sound_feedback: true,
             start_sound: default_sound_beep(),

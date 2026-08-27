@@ -8,42 +8,46 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use thiserror::Error;
 
-#[cfg(windows)]
-fn send_media_play_pause() {
-    use enigo::{Enigo, Key, Keyboard, Settings};
-    if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
-        let _ = enigo.key(Key::MediaPlayPause, enigo::Direction::Click);
+/// Take the machine down while the microphone is open, and remember where it was.
+///
+/// This replaces sending MediaPlayPause at whatever window happened to be in
+/// front, which hit the wrong application as often as the right one and had no
+/// way of knowing whether it had paused or resumed. Lowering the render
+/// endpoint touches everything at once and is exactly reversible.
+fn duck_audio(state: &AppState) {
+    if !*state.duck_audio_on_record.lock() {
+        return;
     }
-}
 
-#[cfg(windows)]
-fn resume_media_if_paused(state: &AppState) {
-    let did_pause = std::mem::replace(&mut *state.did_pause_media.lock(), false);
-    if did_pause {
-        send_media_play_pause();
-    }
-}
-
-/// Check if audio is currently playing on the default render device.
-/// Uses IAudioMeterInformation to read the peak level — if > 0, something is playing.
-#[cfg(windows)]
-fn is_audio_playing() -> bool {
-    use windows::Win32::Media::Audio::{
-        eRender, eConsole, IMMDeviceEnumerator, MMDeviceEnumerator,
+    let Some(before) = crate::ducking::current_volume() else {
+        return;
     };
-    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
-    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
 
-    unsafe {
-        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-        let enumerator: Result<IMMDeviceEnumerator, _> =
-            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL);
-        let Ok(enumerator) = enumerator else { return false };
-        let Ok(device) = enumerator.GetDefaultAudioEndpoint(eRender, eConsole) else { return false };
-        let Ok(meter) = device.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None) else { return false };
-        let Ok(peak) = meter.GetPeakValue() else { return false };
-        peak > 0.001
+    let target = crate::ducking::level_from_percent(*state.duck_volume_percent.lock());
+    // Nothing to do if it is already at or below where we would put it. Storing
+    // the level anyway would restore somebody's volume upwards on stop.
+    if before <= target {
+        return;
     }
+
+    if crate::ducking::set_volume(target) {
+        // On disk rather than in memory: if the process dies here, the next
+        // launch is the only thing left that can put it back.
+        let mut settings = crate::settings::load_settings();
+        settings.volume_before_duck = Some(before);
+        let _ = crate::settings::save_settings(&settings);
+    }
+}
+
+/// Put the volume back where it was, if this recording is what moved it.
+fn restore_audio() {
+    let mut settings = crate::settings::load_settings();
+    let Some(before) = settings.volume_before_duck.take() else {
+        return;
+    };
+
+    crate::ducking::set_volume(before);
+    let _ = crate::settings::save_settings(&settings);
 }
 
 #[derive(Error, Debug)]
@@ -442,9 +446,8 @@ pub fn cancel_recording(app: &AppHandle) {
         }
     }
 
-    // Resume media playback if we paused it
-    #[cfg(windows)]
-    resume_media_if_paused(&state);
+    // A cancelled recording still ducked the machine on its way in.
+    restore_audio();
 
     // Hide overlay
     if let Some(overlay) = app.get_webview_window("overlay") {
@@ -506,15 +509,8 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     // 2b. Sound feedback (instant — pre-computed PCM buffer)
     play_sound_feedback(app, "start");
 
-    // 3. Pause media playback if enabled AND something is actually playing
-    #[cfg(windows)]
-    {
-        let should_pause = *state.pause_media_on_record.lock();
-        if should_pause && is_audio_playing() {
-            send_media_play_pause();
-            *state.did_pause_media.lock() = true;
-        }
-    }
+    // 3. Take the machine down so it does not talk over the speaker
+    duck_audio(&state);
 
     // 4. Show overlay (pre-created at startup, just show it — never recreate)
     if let Some(overlay) = app.get_webview_window("overlay") {
@@ -561,8 +557,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         if let Some(ref buffer) = *buffer_lock {
             buffer.take()
         } else {
-            #[cfg(windows)]
-            resume_media_if_paused(&state);
+            restore_audio();
             return Err("No audio buffer found".to_string());
         }
     };
@@ -580,9 +575,9 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         }
     }
 
-    // Resume media playback immediately at recording stop (not after transcription)
-    #[cfg(windows)]
-    resume_media_if_paused(&state);
+    // Put the volume back at the stop, not after the transcription: the
+    // speaker has finished and the wait is no reason to keep the room quiet.
+    restore_audio();
 
     let _ = app.emit("recording-stopped", ());
 
