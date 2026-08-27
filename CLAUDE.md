@@ -45,8 +45,15 @@ before anything merges.
   without having decided anything about a release.
 - **`main` only ever receives `dev`**, through a single pull request carrying everything
   ready to ship. That pull request is the deployment, and the version is tagged on `main`
-  afterwards, which is what `release.yml` builds the installer from.
-- Nothing is committed on `dev` or `main` directly, this session included.
+  afterwards. The tag is what publishes: `release.yml` runs on tags and on nothing else,
+  so the request itself builds no installer.
+- **The version bump is the last thing to land on `dev`** before that request, on its own
+  commit, so the tip of `main` at a release names the version it is. A batch landing on top
+  of a bump has undone it, and needs a fresh one before anything is tagged.
+- **Nothing is pushed to `dev` or `main`, the release included.** Both arrive by pull
+  request and by the button. The price is that the deployment replays the commits under
+  new identities, so `main` holds its own rather than the ones on `dev`; the contents are
+  the same, and the next deployment skips what is already applied.
 - **`main` stays the default branch**, since it is what the repository page shows and
   what a clone lands on, and it is where the releases hang. The cost is that a new pull
   request opens against `main` unless it is told otherwise, so naming `dev` as the base
@@ -58,7 +65,6 @@ before anything merges.
 - **Branches come back by rebase**, which keeps the commits as they were written and
   keeps the history linear, as the protection demands. Squashing would throw away the
   reasons written into each message and leave one line for a batch of unrelated work.
-  `dev` into `main` lands by fast-forward, so `main` stays an exact prefix of `dev`.
 - **`.github/pull_request_template.md` is not optional.** It is read before the body is
   written, and every section gets an answer. The body speaks to a stranger and names the
   defect, never the process that found it: no dates, no "the review found", no internal
