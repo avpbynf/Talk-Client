@@ -213,20 +213,6 @@ fn get_saved_settings() -> settings::AppSettings {
 // ============================================================================
 
 #[tauri::command]
-fn db_add_transcription(
-    entry: database::NewTranscription,
-    db: tauri::State<'_, database::Database>,
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
-    db.add_transcription(&entry).map_err(|e| e.to_string())?;
-    // Prune here rather than on a timer: this is the only place the history
-    // grows, so it is the only place it can overrun the setting.
-    let keep = *state.history_limit.lock();
-    db.prune_transcriptions(keep).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
 fn db_delete_transcription(
     id: String,
     db: tauri::State<'_, database::Database>,
@@ -936,7 +922,6 @@ pub fn run() {
             show_overlay,
             hide_overlay,
             get_saved_settings,
-            db_add_transcription,
             db_delete_transcription,
             get_history_limit,
             set_history_limit,

@@ -75,11 +75,12 @@ export default function AnalyticsView({
     fetchAnalytics(userWpm, period);
   }, [fetchAnalytics, userWpm, period]);
 
-  // Refetch once the new transcription is in the database, not when it is
-  // merely finished: transcription-complete is what triggers the write, so
-  // answering it would race the very row being counted.
+  // transcription-complete now means the row is in: Rust saves it before it
+  // announces it. There was a stretch where the frontend did the saving on this
+  // same event, so the refetch raced the write and the figures sat one dictation
+  // behind.
   useEffect(() => {
-    const unlisten = listen("transcription-saved", () => {
+    const unlisten = listen("transcription-complete", () => {
       fetchAnalytics(userWpm, period);
     });
     return () => {

@@ -1,4 +1,4 @@
-use crate::{audio, audio_encoder, server_transcription, AppState, RecordingMode};
+use crate::{audio, audio_encoder, database, server_transcription, AppState, RecordingMode};
 use crate::settings::TranscriptionMode;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -599,6 +599,12 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let _overlay_lease = OverlayLease::take(app);
     emit_to_overlay(app, "transcribing");
 
+    // Both figures the history has always stored as null, because the frontend
+    // was doing the saving and cannot know either of them. The capture is mono
+    // at 16 kHz, which is what the encoder and whisper both assume.
+    let audio_duration_ms = (audio_data.len() as f64 / 16_000.0 * 1000.0) as i64;
+    let started = std::time::Instant::now();
+
     // Get transcription mode settings
     let transcription_mode = *state.transcription_mode.lock();
     let server_url = state.server_url.lock().clone();
@@ -613,8 +619,10 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         Some(user_vocabulary.join(", "))
     };
 
-    // Transcribe based on mode
-    let transcription = match transcription_mode {
+    // Transcribe based on mode. The source travels with the text: in server
+    // mode a fallback may have quietly run this locally, and the history
+    // badge would otherwise lie about it.
+    let (transcription, source) = match transcription_mode {
         TranscriptionMode::Server => {
             // Try server transcription
             emit_to_overlay(app, "streaming");
@@ -638,7 +646,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
             // "generic_dev"), NOT a Whisper language code. Pass None to let the server use
             // its configured DEFAULT_LANGUAGE.
             match server_transcription::transcribe_stream(&server_url, &wav_data, server_timeout, None, vocabulary_prompt.as_deref(), on_segment, |_| {}).await {
-                Ok(text) => text,
+                Ok(text) => (text, "server"),
                 Err(e) => {
                     eprintln!("Server transcription failed: {}", e);
 
@@ -648,7 +656,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
                         emit_to_overlay(app, "transcribing");
 
                         match transcribe_locally(app, audio_data, vocabulary_prompt.clone()).await? {
-                            Some(text) => text,
+                            Some(text) => (text, "local"),
                             None => {
                                 return Err(format!(
                                     "Server failed: {}. No local model loaded for fallback.",
@@ -664,7 +672,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         }
         TranscriptionMode::Local => {
             match transcribe_locally(app, audio_data, vocabulary_prompt).await? {
-                Some(text) => text,
+                Some(text) => (text, "local"),
                 None => return Err("No model loaded".to_string()),
             }
         }
@@ -680,7 +688,32 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
         let _ = crate::clipboard::type_text(&transcription, preserve);
     }
 
-    let _ = app.emit("transcription-complete", &transcription);
+    // Save before announcing.
+    //
+    // The frontend used to do this, on the very event this line emits, so its
+    // write raced the dashboard's refetch of the same event and the figures sat
+    // one dictation behind. Saving here means the row is in by the time anyone
+    // hears about it, and the id and the timings come from the side that knows
+    // them.
+    let entry = database::NewTranscription {
+        id: uuid::Uuid::new_v4().to_string(),
+        text: transcription.clone(),
+        timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        model: state.current_model.lock().clone(),
+        source: source.to_string(),
+        enhanced: false,
+        audio_duration_ms: Some(audio_duration_ms),
+        processing_time_ms: Some(started.elapsed().as_millis() as i64),
+    };
+
+    let db = app.state::<database::Database>();
+    if let Err(e) = db.add_transcription(&entry) {
+        eprintln!("Failed to save the transcription: {}", e);
+    } else if let Err(e) = db.prune_transcriptions(*state.history_limit.lock()) {
+        eprintln!("Failed to prune the history: {}", e);
+    }
+
+    let _ = app.emit("transcription-complete", &entry);
 
     Ok(transcription)
 }

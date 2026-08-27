@@ -47,6 +47,11 @@ thiserror = "1"
 parking_lot = "0.12"
 dotenvy = "0.15"
 url = "2"
+# Both were already in the tree through tauri, so declaring them costs no
+# extra compilation. They are what lets the recording path stamp a row
+# itself rather than handing the job to the frontend.
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
 # Windows clipboard/input
 [target.'cfg(windows)'.dependencies]
 enigo = "0.2"

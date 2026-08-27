@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
-import { emit, listen } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { History, Cpu, Settings, BookA, Palette, LayoutDashboard } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
@@ -143,20 +143,10 @@ function App() {
   const [historyLimit, setHistoryLimit] = useState(100);
 
   // Refs to avoid re-registering listeners
-  const currentModelRef = useRef<string | null>(null);
-  const transcriptionModeRef = useRef(transcriptionMode);
   const hasInitialized = useRef(false);
   const companionShortcutsRef = useRef(companionShortcuts);
 
   // Keep refs in sync with state
-  useEffect(() => {
-    currentModelRef.current = currentModel;
-  }, [currentModel]);
-
-  useEffect(() => {
-    transcriptionModeRef.current = transcriptionMode;
-  }, [transcriptionMode]);
-
   useEffect(() => { companionShortcutsRef.current = companionShortcuts; }, [companionShortcuts]);
 
   // Check setup status first
@@ -199,40 +189,27 @@ function App() {
       setDownloadedModels((prev) => [...prev, event.payload.model_id]);
     });
 
-    const unlistenTranscription = listen<string>("transcription-complete", (event) => {
-      const now = new Date();
-      const source = transcriptionModeRef.current === "local" ? "local" : "server";
-      const newTranscription: Transcription = {
-        id: Date.now().toString(),
-        text: event.payload,
-        timestamp: now,
-        model: currentModelRef.current,
-        enhanced: false,
-        source,
-      };
-      setTranscriptions((prev) => [newTranscription, ...prev]);
-
-      // Persist, then say so.
-      //
-      // The dashboard used to refetch on transcription-complete, the same event
-      // this handler answers, so its query raced the insert below and usually
-      // read the database as it was before. It showed one dictation behind,
-      // every time. transcription-saved fires once the row is really in.
-      invoke("db_add_transcription", {
-        entry: {
-          id: newTranscription.id,
-          text: newTranscription.text,
-          timestamp: now.toISOString(),
-          model: currentModelRef.current,
-          source,
-          enhanced: false,
-          audioDurationMs: null,
-          processingTimeMs: null,
-        },
-      })
-        .then(() => emit("transcription-saved"))
-        .catch((err) => console.error("Failed to save the transcription:", err));
-    });
+    // The row is already in the database by the time this fires: Rust saves it
+    // and then announces it. The payload is that row, so nothing here invents
+    // an id or guesses which engine ran, both of which used to be wrong when a
+    // server dictation quietly fell back to the local model.
+    const unlistenTranscription = listen<SavedTranscription>(
+      "transcription-complete",
+      (event) => {
+        const saved = event.payload;
+        setTranscriptions((prev) => [
+          {
+            id: saved.id,
+            text: saved.text,
+            timestamp: new Date(saved.timestamp),
+            model: saved.model,
+            enhanced: saved.enhanced,
+            source: (saved.source === "server" ? "server" : "local") as "local" | "server",
+          },
+          ...prev,
+        ]);
+      }
+    );
 
     const unlistenRecordingStarted = listen("recording-started", () => {
       setIsRecording(true);
