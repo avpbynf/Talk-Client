@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Keyboard, Trash2 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { loadUserWpm, PERIOD_DAYS } from "@/lib/analytics";
 import type { AnalyticsSummary, Period, YearlyDayActivity } from "@/lib/analytics";
@@ -61,15 +61,6 @@ export default function AnalyticsView({
     }
   }, []);
 
-  useEffect(() => {
-    if (!confirmReset) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setConfirmReset(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [confirmReset]);
-
   const handleResetStats = useCallback(async () => {
     try {
       await invoke("db_reset_stats");
@@ -84,9 +75,11 @@ export default function AnalyticsView({
     fetchAnalytics(userWpm, period);
   }, [fetchAnalytics, userWpm, period]);
 
-  // Refetch when a new transcription arrives
+  // Refetch once the new transcription is in the database, not when it is
+  // merely finished: transcription-complete is what triggers the write, so
+  // answering it would race the very row being counted.
   useEffect(() => {
-    const unlisten = listen("transcription-complete", () => {
+    const unlisten = listen("transcription-saved", () => {
       fetchAnalytics(userWpm, period);
     });
     return () => {
@@ -174,55 +167,15 @@ export default function AnalyticsView({
         </div>
       </ScrollArea>
 
-      {/* Same confirmation as the history page. Wiping the stats is the same
-          kind of act, so it asks the same way rather than swapping the button
-          for two others under the reader's cursor. */}
-      <AnimatePresence>
-        {confirmReset && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={() => setConfirmReset(false)}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.15 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm mx-6 p-5 rounded-xl border border-border-card bg-surface-raised shadow-xl"
-            >
-              <h2 className="text-sm font-semibold">Reset the statistics?</h2>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                Every count goes back to zero and does not come back. The
-                transcriptions themselves stay in the history.
-              </p>
-              <div className="flex items-center justify-end gap-2 mt-5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmReset(false)}
-                  className="text-muted-foreground"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetStats}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Confirm
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset the statistics?"
+        description="Every count goes back to zero and does not come back. The transcriptions themselves stay in the history."
+        confirmIcon={<Trash2 className="h-4 w-4 mr-2" />}
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={handleResetStats}
+      />
+
     </div>
   );
 }

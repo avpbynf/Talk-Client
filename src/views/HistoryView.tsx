@@ -1,6 +1,8 @@
 import { Transcription } from "@/App";
 import { UI_LOCALE } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { RETENTION_OPTIONS, retentionWouldDelete } from "@/lib/retention";
 import {
   Select,
   SelectContent,
@@ -10,24 +12,8 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Sparkles, Clock, Globe, HardDrive, ClipboardCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-
-/**
- * What the history can be told to keep.
- *
- * Zero is unlimited, which is what the application did for its whole life
- * before this setting existed: nothing ever pruned and the database grew for
- * as long as it was used.
- */
-const RETENTION_OPTIONS = [
-  { value: 50, label: "50 transcriptions" },
-  { value: 100, label: "100 transcriptions" },
-  { value: 250, label: "250 transcriptions" },
-  { value: 500, label: "500 transcriptions" },
-  { value: 1000, label: "1000 transcriptions" },
-  { value: 0, label: "Everything" },
-] as const;
 
 interface HistoryViewProps {
   transcriptions: Transcription[];
@@ -46,15 +32,9 @@ export default function HistoryView({
 }: HistoryViewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
-
-  useEffect(() => {
-    if (!confirmClear) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setConfirmClear(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [confirmClear]);
+  // A retention choice waiting on the reader, set only when applying it
+  // would delete something.
+  const [pendingLimit, setPendingLimit] = useState<number | null>(null);
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -102,7 +82,14 @@ export default function HistoryView({
               <div className="flex items-center gap-2">
                 <Select
                   value={String(historyLimit)}
-                  onValueChange={(value) => onHistoryLimitChange(Number(value))}
+                  onValueChange={(value) => {
+                    const limit = Number(value);
+                    if (retentionWouldDelete(transcriptions.length, limit) > 0) {
+                      setPendingLimit(limit);
+                    } else {
+                      onHistoryLimitChange(limit);
+                    }
+                  }}
                 >
                   <SelectTrigger
                     aria-label="How much history to keep"
@@ -237,54 +224,31 @@ export default function HistoryView({
         </div>
       </ScrollArea>
 
-      <AnimatePresence>
-        {confirmClear && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={() => setConfirmClear(false)}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.15 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm mx-6 p-5 rounded-xl border border-border-card bg-surface-raised shadow-xl"
-            >
-              <h2 className="text-sm font-semibold">Clear the whole history?</h2>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                All {transcriptions.length} of them go, and they do not come back.
-              </p>
-              <div className="flex items-center justify-end gap-2 mt-5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmClear(false)}
-                  className="text-muted-foreground"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setConfirmClear(false);
-                    onClear();
-                  }}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Confirm
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        open={confirmClear}
+        title="Clear the whole history?"
+        description={`All ${transcriptions.length} of them go, and they do not come back.`}
+        confirmIcon={<Trash2 className="h-4 w-4 mr-2" />}
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => {
+          setConfirmClear(false);
+          onClear();
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingLimit !== null}
+        title={`Keep only ${pendingLimit} transcriptions?`}
+        description={`${retentionWouldDelete(transcriptions.length, pendingLimit ?? 0)} older ones go, and they do not come back. The statistics keep counting them.`}
+        confirmIcon={<Trash2 className="h-4 w-4 mr-2" />}
+        onCancel={() => setPendingLimit(null)}
+        onConfirm={() => {
+          const limit = pendingLimit;
+          setPendingLimit(null);
+          if (limit !== null) onHistoryLimitChange(limit);
+        }}
+      />
+
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ServerStatus } from "@/views/transcription/TranscriptionView";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { History, Cpu, Settings, BookA, Palette, LayoutDashboard } from "lucide-react";
 import { Titlebar } from "@/components/Titlebar";
 import { cn } from "@/lib/utils";
@@ -211,7 +211,13 @@ function App() {
         source,
       };
       setTranscriptions((prev) => [newTranscription, ...prev]);
-      // Persist to SQLite
+
+      // Persist, then say so.
+      //
+      // The dashboard used to refetch on transcription-complete, the same event
+      // this handler answers, so its query raced the insert below and usually
+      // read the database as it was before. It showed one dictation behind,
+      // every time. transcription-saved fires once the row is really in.
       invoke("db_add_transcription", {
         entry: {
           id: newTranscription.id,
@@ -223,7 +229,9 @@ function App() {
           audioDurationMs: null,
           processingTimeMs: null,
         },
-      });
+      })
+        .then(() => emit("transcription-saved"))
+        .catch((err) => console.error("Failed to save the transcription:", err));
     });
 
     const unlistenRecordingStarted = listen("recording-started", () => {
