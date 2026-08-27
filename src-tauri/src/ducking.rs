@@ -28,6 +28,67 @@ pub fn set_volume(level: f32) -> bool {
     .is_some()
 }
 
+/// How long a slide takes. Down is quicker than up: the point of going down is
+/// to get out of the way of the speaker, while coming back sounds natural only
+/// if it takes its time.
+pub const FADE_DOWN_MS: u64 = 140;
+pub const FADE_UP_MS: u64 = 320;
+
+/// How many levels a slide is cut into. Twelve steps over a tenth of a second
+/// is below what an ear hears as separate, and each one is a call across COM,
+/// so more would cost without being heard.
+#[cfg(windows)]
+const FADE_STEPS: u32 = 12;
+
+/// The slide currently allowed to move the volume.
+///
+/// A recording stopped as fast as it started leaves two slides running at once,
+/// pulling in opposite directions. Each takes a ticket on the way in and stops
+/// as soon as a newer one exists, so the last order given is the one that wins.
+#[cfg(windows)]
+static FADE_TICKET: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Slide the master volume to `level` over `millis`, rather than jumping.
+///
+/// Blocks for the length of the slide, so callers on a path that has to answer
+/// quickly give it its own thread.
+#[cfg(windows)]
+pub fn fade_volume(level: f32, millis: u64) -> bool {
+    use std::sync::atomic::Ordering;
+
+    let level = level.clamp(0.0, 1.0);
+    let ticket = FADE_TICKET.fetch_add(1, Ordering::SeqCst) + 1;
+    let step_millis = (millis / FADE_STEPS as u64).max(1);
+
+    with_endpoint(|volume| unsafe {
+        let from = volume.GetMasterVolumeLevelScalar().ok()?;
+
+        for step in 1..=FADE_STEPS {
+            if FADE_TICKET.load(Ordering::SeqCst) != ticket {
+                // A newer slide is running, and it started from wherever this
+                // one had got to. Leaving now is what keeps the two from
+                // fighting over the same endpoint.
+                return Some(());
+            }
+
+            let progress = step as f32 / FADE_STEPS as f32;
+            let next = from + (level - from) * progress;
+            volume
+                .SetMasterVolumeLevelScalar(next.clamp(0.0, 1.0), std::ptr::null())
+                .ok()?;
+            std::thread::sleep(std::time::Duration::from_millis(step_millis));
+        }
+
+        Some(())
+    })
+    .is_some()
+}
+
+#[cfg(not(windows))]
+pub fn fade_volume(_level: f32, _millis: u64) -> bool {
+    false
+}
+
 #[cfg(windows)]
 fn with_endpoint<T>(
     f: impl FnOnce(&windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume) -> Option<T>,

@@ -8,6 +8,12 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use thiserror::Error;
 
+/// Which duck or restore is allowed to have the last word on the stored level.
+///
+/// Both slide the volume on their own thread, so a recording started while the
+/// previous one is still coming back up leaves two of them in flight.
+static DUCK_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Take the machine down while the microphone is open, and remember where it was.
 ///
 /// This replaces sending MediaPlayPause at whatever window happened to be in
@@ -30,24 +36,52 @@ fn duck_audio(state: &AppState) {
         return;
     }
 
-    if crate::ducking::set_volume(target) {
-        // On disk rather than in memory: if the process dies here, the next
-        // launch is the only thing left that can put it back.
-        let mut settings = crate::settings::load_settings();
+    DUCK_GENERATION.fetch_add(1, Ordering::SeqCst);
+
+    // On disk rather than in memory: if the process dies here, the next
+    // launch is the only thing left that can put it back.
+    //
+    // An existing value is left alone. Dictating again while the volume is
+    // still on its way up would otherwise store a level read halfway through
+    // the slide, and the machine would settle there instead of where it was.
+    let mut settings = crate::settings::load_settings();
+    if settings.volume_before_duck.is_none() {
         settings.volume_before_duck = Some(before);
         let _ = crate::settings::save_settings(&settings);
     }
+
+    // The slide takes about a tenth of a second, and this path still has an
+    // overlay to show and an event to emit, so it runs on its own thread.
+    std::thread::spawn(move || {
+        crate::ducking::fade_volume(target, crate::ducking::FADE_DOWN_MS);
+    });
 }
 
 /// Put the volume back where it was, if this recording is what moved it.
 fn restore_audio() {
-    let mut settings = crate::settings::load_settings();
-    let Some(before) = settings.volume_before_duck.take() else {
+    let settings = crate::settings::load_settings();
+    let Some(before) = settings.volume_before_duck else {
         return;
     };
 
-    crate::ducking::set_volume(before);
-    let _ = crate::settings::save_settings(&settings);
+    let generation = DUCK_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+
+    // The stored level is cleared once the volume is actually back, and not
+    // before: a process that dies halfway up would otherwise leave the machine
+    // quiet with nothing left saying where it came from. A recording started
+    // during the slide moves the generation on, and this slide then leaves the
+    // level where it is for the newer one to put back.
+    std::thread::spawn(move || {
+        crate::ducking::fade_volume(before, crate::ducking::FADE_UP_MS);
+
+        if DUCK_GENERATION.load(Ordering::SeqCst) != generation {
+            return;
+        }
+
+        let mut settings = crate::settings::load_settings();
+        settings.volume_before_duck = None;
+        let _ = crate::settings::save_settings(&settings);
+    });
 }
 
 #[derive(Error, Debug)]
