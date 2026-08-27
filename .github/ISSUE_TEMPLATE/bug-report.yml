@@ -1,0 +1,61 @@
+name: Something is wrong
+description: A behaviour that is not what it should be, in the application or in what it produces.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        What is being looked for is the shape of it: what you did, what happened, and what you
+        expected instead. A report that names the mode and the model answers half of itself.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The one under the title in the window, or the installer you ran.
+      placeholder: 0.8.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode
+      description: The Transcription page says which one is on, and neither is a degraded version of the other.
+      options:
+        - Local, the model runs on this machine
+        - Server, audio goes to a server
+        - I do not know
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: What you did, what came out, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: machine
+    attributes:
+      label: The machine
+      description: |
+        What matters here is the graphics card the engine runs on, the model loaded, and the audio
+        devices if the problem is sound. The Transcription page names the card and the model.
+      placeholder: |
+        Card: NVIDIA GeForce RTX 4060 Laptop GPU, chosen on the Transcription page
+        Model: large-v3-turbo-q5_0
+        Microphone: Razer Seiren V3 Mini
+    validations:
+      required: false
+
+  - type: textarea
+    id: anything-printed
+    attributes:
+      label: Anything the application printed
+      description: A development build prints to its terminal. Paste what came out around the moment, rather than the whole run.
+      render: text
+    validations:
+      required: false
