@@ -23,7 +23,7 @@ fn duck_audio(state: &AppState) {
         return;
     };
 
-    let target = crate::ducking::level_from_percent(*state.duck_volume_percent.lock());
+    let target = crate::ducking::duck_level(before, *state.duck_volume_percent.lock());
     // Nothing to do if it is already at or below where we would put it. Storing
     // the level anyway would restore somebody's volume upwards on stop.
     if before <= target {
@@ -113,7 +113,7 @@ pub fn setup_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error
 
     let _ = global_shortcut.unregister_all();
 
-    // Store parsed shortcuts in AppState — the single handler in Builder::with_handler
+    // Store parsed shortcuts in AppState, read by the single handler in Builder::with_handler
     // dispatches based on these values. No on_shortcut calls needed.
     if let Ok(shortcut) = parse_shortcut(&config.shortcut) {
         *state.main_shortcut.lock() = Some(shortcut);
@@ -143,7 +143,7 @@ pub fn enable_shortcuts(app: &AppHandle) {
     let global_shortcut = app.global_shortcut();
     let state = app.state::<AppState>();
 
-    // Just re-register — handlers are in Builder::with_handler, no closure allocation
+    // Just re-register: handlers are in Builder::with_handler, no closure allocation
     let main = *state.main_shortcut.lock();
     if let Some(main) = main {
         let _ = global_shortcut.register(main);
@@ -163,7 +163,7 @@ pub fn update_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dy
         eprintln!("Warning: failed to unregister shortcuts: {}", e);
     }
 
-    // Update stored shortcut and register (no on_shortcut — handler is in Builder)
+    // Update stored shortcut and register (no on_shortcut, the handler is in Builder)
     *state.main_shortcut.lock() = Some(new_parsed);
     if let Err(e) = global_shortcut.register(new_parsed) {
         eprintln!("Warning: register failed: {} - will work after restart", e);
@@ -199,7 +199,7 @@ pub fn update_cancel_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(),
         let _ = global_shortcut.register(main);
     }
 
-    // Update stored cancel shortcut and register (no on_shortcut — handler is in Builder)
+    // Update stored cancel shortcut and register (no on_shortcut, the handler is in Builder)
     *state.cancel_shortcut.lock() = Some(new_parsed);
     let _ = global_shortcut.register(new_parsed);
 
@@ -457,7 +457,7 @@ pub fn cancel_recording(app: &AppHandle) {
     // Emit cancelled event
     let _ = app.emit("recording-cancelled", ());
 
-    // Sound feedback — cancellation counts as stop
+    // Sound feedback: cancellation counts as stop
     play_sound_feedback(app, "stop");
 }
 
@@ -488,7 +488,7 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // 1. Mute virtual mic FIRST (instant — just flips an AtomicBool)
+    // 1. Mute virtual mic FIRST (instant, it just flips an AtomicBool)
     {
         let vm = state.virtual_mic.lock();
         if vm.is_active() {
@@ -506,13 +506,13 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     *state.audio_capture_handle.lock() = Some(handle);
     *state.is_recording.lock() = true;
 
-    // 2b. Sound feedback (instant — pre-computed PCM buffer)
+    // 2b. Sound feedback (instant, from a pre-computed PCM buffer)
     play_sound_feedback(app, "start");
 
     // 3. Take the machine down so it does not talk over the speaker
     duck_audio(&state);
 
-    // 4. Show overlay (pre-created at startup, just show it — never recreate)
+    // 4. Show overlay (pre-created at startup, just show it, never recreate)
     if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.show();
         let _ = overlay.set_always_on_top(true);
@@ -581,7 +581,7 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
 
     let _ = app.emit("recording-stopped", ());
 
-    // Sound feedback (instant — pre-computed PCM buffer)
+    // Sound feedback (instant, from a pre-computed PCM buffer)
     play_sound_feedback(app, "stop");
 
     // Helper to emit to overlay window

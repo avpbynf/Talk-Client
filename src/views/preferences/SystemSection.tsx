@@ -69,7 +69,8 @@ export default function SystemSection({
             <div>
               <label className="text-sm font-medium">Turn the volume down</label>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Everything the machine plays drops while you talk, and comes back after
+                Everything the machine plays drops to a share of where it was while you
+                talk, and comes back after
               </p>
             </div>
             <Switch
@@ -94,11 +95,11 @@ export default function SystemSection({
                 step={5}
                 value={duckVolumePercent}
                 onChange={(e) => onDuckVolumePercentChange(Number(e.target.value))}
-                aria-label="What to turn the volume down to"
+                aria-label="How much of the volume to keep while recording"
                 className="flex-1 h-1.5 cursor-pointer appearance-none rounded-full bg-surface-active accent-[var(--color-active)]"
               />
-              <span className="w-10 text-right text-xs font-mono text-muted-foreground">
-                {duckVolumePercent}%
+              <span className="w-16 text-right text-xs font-mono text-muted-foreground">
+                {duckVolumePercent}% of it
               </span>
             </div>
           )}
