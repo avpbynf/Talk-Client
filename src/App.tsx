@@ -168,6 +168,14 @@ function App() {
     invoke<boolean>("is_setup_completed").then(setSetupCompleted);
   }, []);
 
+  // The window is built hidden and shown here, once React has painted something into
+  // it. Rust ignores this on a launch that was meant to stay in the tray.
+  useEffect(() => {
+    invoke("show_main_window").catch((error) => {
+      console.error("Failed to show the window:", error);
+    });
+  }, []);
+
   // Initialize app only once on mount (guard against StrictMode double-call)
   useEffect(() => {
     if (hasInitialized.current) return;

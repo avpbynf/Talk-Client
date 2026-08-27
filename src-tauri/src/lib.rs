@@ -68,6 +68,8 @@ pub struct AppState {
     pub sound_engine: Mutex<Option<sound::SoundEngine>>,
     /// How many transcriptions the history keeps. Zero keeps every one.
     pub history_limit: Mutex<usize>,
+    /// Whether the main window still owes the screen its first appearance
+    pub show_main_window_pending: Mutex<bool>,
     /// Transcriptions still running.
     ///
     /// A dictation can be started while the previous one is still being
@@ -105,6 +107,7 @@ impl Default for AppState {
             cancel_shortcut: Mutex::new(None),
             sound_engine: Mutex::new(None),
             history_limit: Mutex::new(100),
+            show_main_window_pending: Mutex::new(false),
             jobs_in_flight: AtomicUsize::new(0),
         }
     }
@@ -813,6 +816,28 @@ async fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(
     settings::save_settings(&app_settings)
 }
 
+/// Show the main window, which is built hidden.
+///
+/// The window carries nothing but a white rectangle until the page has rendered, and
+/// on this machine that lasted half a second on every launch. It is built hidden and
+/// the page asks for it once it has something to show. A launch meant to stay in the
+/// tray owes no appearance, so the request is swallowed and the window stays where it
+/// is: that is the whole point of starting minimised.
+#[tauri::command]
+fn show_main_window(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    let mut pending = state.show_main_window_pending.lock();
+    if !*pending {
+        return;
+    }
+    *pending = false;
+    drop(pending);
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[tauri::command]
 fn get_start_minimized() -> bool {
     settings::load_settings().start_minimized
@@ -1008,6 +1033,22 @@ fn set_output_device(device_name: Option<String>, state: tauri::State<'_, AppSta
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // First in the chain, as the plugin asks: a second launch has to be turned away
+        // before anything else in the application has started building itself.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // Clicking the desktop shortcut while it runs brings the running one
+            // forward rather than opening a second window. A launch that asked to stay
+            // in the tray, which is what autostart does, is left alone.
+            if args.iter().any(|arg| arg == "--minimized") {
+                return;
+            }
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -1094,6 +1135,7 @@ pub fn run() {
             set_autostart_enabled,
             get_start_minimized,
             set_start_minimized,
+            show_main_window,
             get_duck_audio_on_record,
             set_duck_audio_on_record,
             get_duck_volume_percent,
@@ -1184,10 +1226,29 @@ pub fn run() {
             let args: Vec<String> = std::env::args().collect();
             let should_minimize = args.contains(&"--minimized".to_string()) || app_settings.start_minimized;
 
-            if should_minimize {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.hide();
-                }
+            // The window is built hidden, so starting minimised is not a matter of
+            // hiding it again but of never asking for it.
+            *app.state::<AppState>().show_main_window_pending.lock() = !should_minimize;
+
+            if !should_minimize {
+                // The page asks for the window as soon as it has rendered. This is the
+                // net under that: a frontend that fails to load would otherwise leave
+                // the application running with nothing on screen but a tray icon.
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    let state = handle.state::<AppState>();
+                    let mut pending = state.show_main_window_pending.lock();
+                    if !*pending {
+                        return;
+                    }
+                    *pending = false;
+                    drop(pending);
+
+                    if let Some(window) = handle.get_webview_window("main") {
+                        let _ = window.show();
+                    }
+                });
             }
 
             // Setup tray menu
