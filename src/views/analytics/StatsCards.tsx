@@ -1,16 +1,14 @@
-import { UI_LOCALE, cheapestApiCost } from "@/lib/analytics";
+import {
+  UI_LOCALE,
+  averageDictationSeconds,
+  realtimeFactor,
+  speakingRate,
+} from "@/lib/analytics";
 import type { AnalyticsSummary } from "@/lib/analytics";
 
 interface StatsCardsProps {
   summary: AnalyticsSummary;
-}
-
-function formatTime(minutes: number): string {
-  if (minutes < 1) return "< 1 min";
-  if (minutes < 60) return `${Math.round(minutes)} min`;
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  userWpm: number;
 }
 
 interface StatCardProps {
@@ -45,7 +43,29 @@ function StatCard({ label, value, detail, colorVar }: StatCardProps) {
   );
 }
 
-export function StatsCards({ summary }: StatsCardsProps) {
+function formatSeconds(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)} s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return s > 0 ? `${m} min ${s} s` : `${m} min`;
+}
+
+/**
+ * The four figures nothing below repeats.
+ *
+ * Money and time won used to sit here as well, and both are the headline of a
+ * card further down the page, so the top row said what the reader was about to
+ * read anyway. The word count went the same way: the time card lists it.
+ */
+export function StatsCards({ summary, userWpm }: StatsCardsProps) {
+  const rate = speakingRate(summary);
+  const factor = realtimeFactor(summary);
+  const average = averageDictationSeconds(summary);
+
+  // Nothing kept carries a duration on a fresh install, and dividing by it
+  // would print an infinity where a figure belongs.
+  const waiting = "not measured yet";
+
   return (
     <div className="grid grid-cols-4 gap-3">
       <StatCard
@@ -55,21 +75,29 @@ export function StatsCards({ summary }: StatsCardsProps) {
         colorVar="--color-active"
       />
       <StatCard
-        label="Words"
-        value={summary.totalWords.toLocaleString(UI_LOCALE)}
-        detail={`${summary.totalCharacters.toLocaleString(UI_LOCALE)} characters`}
+        label="You speak at"
+        value={rate === null ? "--" : `${Math.round(rate)} wpm`}
+        detail={rate === null ? waiting : `you type at ${userWpm}`}
         colorVar="--color-hybrid"
       />
       <StatCard
-        label="Not spent"
-        value={`$${cheapestApiCost(summary.estimatedAudioMinutes).toFixed(2)}`}
-        detail={`${summary.estimatedAudioMinutes.toFixed(0)} min of audio`}
+        label="Faster than real time"
+        value={factor === null ? "--" : `${factor.toFixed(1)}x`}
+        detail={
+          factor === null
+            ? waiting
+            : `${summary.measuredCount.toLocaleString(UI_LOCALE)} dictations timed`
+        }
         colorVar="--color-success"
       />
       <StatCard
-        label="Time won"
-        value={formatTime(summary.timeSavedMinutes)}
-        detail="against typing it"
+        label="A dictation lasts"
+        value={average === null ? "--" : formatSeconds(average)}
+        detail={
+          average === null
+            ? waiting
+            : `${Math.round(summary.measuredWords / summary.measuredCount)} words on average`
+        }
         colorVar="--color-warning"
       />
     </div>

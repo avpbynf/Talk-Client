@@ -103,6 +103,26 @@ pub struct AnalyticsSummary {
     /// of the two comes later.
     pub period_start: Option<String>,
     pub daily_stats: Vec<DailyStats>,
+    /// How many of the dictations still kept carry both a duration and a
+    /// processing time. The two figures below are sums over those, and over
+    /// nothing else: the permanent daily_stats has no room for a duration, and
+    /// the history it would have to come from is pruned to a limit the reader
+    /// chooses. Zero means the numbers say nothing yet.
+    pub measured_count: i64,
+    /// Words in those same dictations, so a rate can be worked out against the
+    /// duration rather than against a total the duration knows nothing about.
+    pub measured_words: i64,
+    pub measured_audio_minutes: f64,
+    pub measured_processing_minutes: f64,
+    /// The busiest day of the window, and what it carried.
+    pub best_day: Option<String>,
+    pub best_day_count: i64,
+    /// Days in the window that carried at least one dictation.
+    pub active_days: i64,
+    /// Days in a row carrying at least one, counted back from today. A day
+    /// still open does not break it, so a streak survives until a day is
+    /// missed outright.
+    pub streak: i64,
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +133,42 @@ pub fn default_db_path() -> PathBuf {
     ProjectDirs::from("com", "avpbynf", "t4lk")
         .map(|dirs| dirs.config_dir().join("t4lk.db"))
         .unwrap_or_else(|| PathBuf::from("t4lk.db"))
+}
+
+/// Days in a row up to `today`, from dates sorted newest first.
+///
+/// A day still open does not break the count: a streak that stopped yesterday
+/// evening is still a streak until midnight passes without a dictation.
+fn count_streak(active_dates: &[String], today: chrono::NaiveDate) -> i64 {
+    let mut expected = today;
+    let mut streak = 0;
+
+    for date in active_dates {
+        let Ok(day) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") else {
+            continue;
+        };
+
+        if day > expected {
+            continue;
+        }
+
+        if day == expected {
+            streak += 1;
+            expected = day.pred_opt().unwrap_or(day);
+            continue;
+        }
+
+        // Nothing today yet, so yesterday is where a live streak starts.
+        if streak == 0 && day == today.pred_opt().unwrap_or(today) {
+            streak = 1;
+            expected = day.pred_opt().unwrap_or(day);
+            continue;
+        }
+
+        break;
+    }
+
+    streak
 }
 
 fn weekday_label(weekday: i32) -> &'static str {
@@ -354,6 +410,68 @@ impl Database {
             |row| row.get(0),
         )?;
 
+        // What was actually measured, as opposed to worked out from a word
+        // count and an average speaking rate. Only the dictations still kept
+        // carry it, and only those saved since the columns existed.
+        let (measured_count, measured_words, measured_audio_ms, measured_processing_ms): (
+            i64, i64, i64, i64,
+        ) = conn
+            .query_row(
+                &format!(
+                    "SELECT
+                    COUNT(*),
+                    COALESCE(SUM(word_count), 0),
+                    COALESCE(SUM(audio_duration_ms), 0),
+                    COALESCE(SUM(processing_time_ms), 0)
+                 FROM transcriptions
+                 WHERE audio_duration_ms > 0 AND processing_time_ms > 0{}",
+                    match &period_start {
+                        Some(start) => format!(" AND date(timestamp, 'localtime') >= '{}'", start),
+                        None => String::new(),
+                    }
+                ),
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap_or((0, 0, 0, 0));
+
+        // The busiest day of the window, and how many days carried anything.
+        let day_window = match &period_start {
+            Some(start) => format!("WHERE transcription_count > 0 AND date >= '{}'", start),
+            None => "WHERE transcription_count > 0".to_string(),
+        };
+
+        let (best_day, best_day_count): (Option<String>, i64) = conn
+            .query_row(
+                &format!(
+                    "SELECT date, transcription_count FROM daily_stats {}
+                     ORDER BY transcription_count DESC, date DESC LIMIT 1",
+                    day_window
+                ),
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap_or((None, 0));
+
+        let active_days: i64 = conn
+            .query_row(
+                &format!("SELECT COUNT(*) FROM daily_stats {}", day_window),
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        // The streak is a fact about the habit rather than about the window, so
+        // it is counted over everything however the page is filtered.
+        let mut stmt = conn.prepare(
+            "SELECT date FROM daily_stats WHERE transcription_count > 0 ORDER BY date DESC",
+        )?;
+        let active_dates = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>>>()?;
+        let streak = count_streak(&active_dates, chrono::Local::now().date_naive());
+        drop(stmt);
+
         // The first day anything was dictated. daily_stats outlives a history
         // clear, so this is the real start of use rather than the oldest
         // transcription still kept.
@@ -420,6 +538,14 @@ impl Database {
             first_day,
             period_start,
             daily_stats,
+            measured_count,
+            measured_words,
+            measured_audio_minutes: measured_audio_ms as f64 / 60_000.0,
+            measured_processing_minutes: measured_processing_ms as f64 / 60_000.0,
+            best_day,
+            best_day_count,
+            active_days,
+            streak,
         })
     }
 
@@ -635,5 +761,96 @@ mod tests {
         let after = db.get_analytics_summary(40.0, None).expect("should summarise");
 
         assert_eq!(after.total_transcriptions, before.total_transcriptions);
+    }
+
+    /// A dictation that carries what was actually measured, as the ones saved
+    /// since those columns existed do.
+    fn add_measured(db: &Database, id: &str, day: u32, audio_ms: i64, processing_ms: i64) {
+        db.add_transcription(&NewTranscription {
+            id: id.to_string(),
+            text: "one two three four five".to_string(),
+            timestamp: format!("2026-08-{:02}T10:00:00Z", day),
+            model: None,
+            source: "local".to_string(),
+            enhanced: false,
+            audio_duration_ms: Some(audio_ms),
+            processing_time_ms: Some(processing_ms),
+        })
+        .expect("should insert");
+    }
+
+    #[test]
+    fn the_measured_sums_ignore_dictations_that_carry_no_timings() {
+        let db = in_memory();
+        add(&db, "old", 1);
+        add_measured(&db, "new", 2, 30_000, 5_000);
+
+        let summary = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        assert_eq!(summary.measured_count, 1, "the older row has no timings");
+        assert_eq!(summary.measured_words, 5);
+        assert!((summary.measured_audio_minutes - 0.5).abs() < 1e-6);
+        assert!((summary.measured_processing_minutes - 5.0 / 60.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn the_measured_sums_say_nothing_rather_than_zero_over_zero() {
+        let db = in_memory();
+        add(&db, "t1", 1);
+
+        let summary = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        // The page reads the count before it divides, which is what keeps a
+        // fresh install from showing an infinite speaking rate.
+        assert_eq!(summary.measured_count, 0);
+        assert_eq!(summary.measured_audio_minutes, 0.0);
+    }
+
+    #[test]
+    fn the_busiest_day_is_the_one_that_carried_the_most() {
+        let db = in_memory();
+        // daily_stats is keyed on the day of the dictation itself, so these
+        // land on two days rather than on the day the test runs.
+        add(&db, "t1", 1);
+        add(&db, "t2", 2);
+        add(&db, "t3", 2);
+
+        let summary = db.get_analytics_summary(40.0, None).expect("should summarise");
+
+        assert_eq!(summary.best_day_count, 2);
+        assert_eq!(summary.best_day.as_deref(), Some("2026-08-02"));
+        assert_eq!(summary.active_days, 2);
+    }
+
+    #[test]
+    fn a_streak_counts_the_days_in_a_row() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 8, 27).expect("a real date");
+        let dates = vec![
+            "2026-08-27".to_string(),
+            "2026-08-26".to_string(),
+            "2026-08-25".to_string(),
+            // The gap is what ends it, whatever comes before.
+            "2026-08-20".to_string(),
+        ];
+
+        assert_eq!(count_streak(&dates, today), 3);
+    }
+
+    #[test]
+    fn a_day_with_nothing_in_it_yet_does_not_end_a_streak() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 8, 27).expect("a real date");
+        let dates = vec!["2026-08-26".to_string(), "2026-08-25".to_string()];
+
+        // Nothing dictated today, which at nine in the morning is the normal
+        // state of affairs and no reason to reset the count.
+        assert_eq!(count_streak(&dates, today), 2);
+    }
+
+    #[test]
+    fn a_streak_that_stopped_two_days_ago_is_over() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 8, 27).expect("a real date");
+        let dates = vec!["2026-08-25".to_string(), "2026-08-24".to_string()];
+
+        assert_eq!(count_streak(&dates, today), 0);
     }
 }

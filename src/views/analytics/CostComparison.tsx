@@ -40,17 +40,10 @@ export function CostComparison({ summary }: CostComparisonProps) {
               </div>
             ))}
 
-            <div className="h-px bg-border-subtle my-1" />
-
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm">Talk</span>
-              <span className="text-sm text-[var(--color-success)] font-semibold">
-                $0.00
-              </span>
-            </div>
-
-            <p className="text-[10px] text-muted-foreground/40 mt-2 leading-tight">
+            <p className="text-[10px] text-muted-foreground/40 mt-3 leading-tight">
               Prices as published, {PRICES_CHECKED}. Per minute of audio.
+              {summary.serverCount > 0 &&
+                ` ${summary.serverCount} of these went through your server, which costs whatever that server costs.`}
             </p>
           </>
         )}

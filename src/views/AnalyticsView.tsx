@@ -12,6 +12,7 @@ import type { ServerStatus } from "@/views/transcription/TranscriptionView";
 import { ReadyBand } from "@/views/analytics/ReadyBand";
 import { PeriodFilter } from "@/views/analytics/PeriodFilter";
 import { StatsCards } from "@/views/analytics/StatsCards";
+import { Facts } from "@/views/analytics/Facts";
 import { ActivityChart } from "@/views/analytics/ActivityChart";
 import { CostComparison } from "@/views/analytics/CostComparison";
 import { SubscriptionComparison } from "@/views/analytics/SubscriptionComparison";
@@ -119,7 +120,9 @@ export default function AnalyticsView({
 
             {summary ? (
               <>
-                <StatsCards summary={summary} />
+                <StatsCards summary={summary} userWpm={userWpm} />
+
+                <Facts summary={summary} />
 
                 <div className="grid grid-cols-3 gap-4">
                   <CostComparison summary={summary} />

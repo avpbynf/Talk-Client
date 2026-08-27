@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   HOSTED_APIS,
   apiCost,
-  cheapestApiCost,
+  averageDictationSeconds,
   COMPETITORS,
   PERIOD_DAYS,
   PERIOD_LABELS,
@@ -13,8 +13,11 @@ import {
   getRandomSentence,
   loadUserWpm,
   monthsSince,
+  realtimeFactor,
   saveUserWpm,
+  speakingRate,
 } from "./analytics";
+import type { AnalyticsSummary } from "./analytics";
 
 describe("monthsSince", () => {
   beforeEach(() => {
@@ -164,15 +167,64 @@ describe("what a hosted API would have cost", () => {
     expect(apiCost(0, api)).toBe(0);
   });
 
-  it("takes the cheapest of them for the headline, not the most flattering", () => {
-    // The figure has to hold whichever provider the reader would have picked,
-    // so it is the cheapest one that sets it.
-    const cheapest = Math.min(...HOSTED_APIS.map((a) => a.usdPerMin));
-    expect(cheapestApiCost(100)).toBeCloseTo(cheapest * 100);
+});
 
-    for (const a of HOSTED_APIS) {
-      expect(cheapestApiCost(100)).toBeLessThanOrEqual(apiCost(100, a) + 1e-9);
-    }
+describe("the measured figures", () => {
+  const summary = (patch: Partial<AnalyticsSummary>): AnalyticsSummary =>
+    ({
+      totalTranscriptions: 0,
+      totalWords: 0,
+      totalCharacters: 0,
+      estimatedAudioMinutes: 0,
+      costSavedUsd: 0,
+      timeSavedMinutes: 0,
+      localCount: 0,
+      serverCount: 0,
+      todayCount: 0,
+      weekCount: 0,
+      firstDay: null,
+      periodStart: null,
+      dailyStats: [],
+      measuredCount: 0,
+      measuredWords: 0,
+      measuredAudioMinutes: 0,
+      measuredProcessingMinutes: 0,
+      bestDay: null,
+      bestDayCount: 0,
+      activeDays: 0,
+      streak: 0,
+      ...patch,
+    }) as AnalyticsSummary;
+
+  it("reads the speaking rate off the audio and not off a fixed average", () => {
+    const rate = speakingRate(
+      summary({ measuredCount: 3, measuredWords: 300, measuredAudioMinutes: 2 })
+    );
+    expect(rate).toBeCloseTo(150);
+  });
+
+  it("says nothing rather than dividing by an audio length it does not have", () => {
+    // A fresh install, and a history cleared since the timings existed.
+    expect(speakingRate(summary({ measuredCount: 0 }))).toBeNull();
+    expect(realtimeFactor(summary({ measuredCount: 0 }))).toBeNull();
+    expect(averageDictationSeconds(summary({ measuredCount: 0 }))).toBeNull();
+    expect(
+      speakingRate(summary({ measuredCount: 2, measuredWords: 10, measuredAudioMinutes: 0 }))
+    ).toBeNull();
+  });
+
+  it("counts how many seconds of speech go through per second of work", () => {
+    const factor = realtimeFactor(
+      summary({ measuredCount: 1, measuredAudioMinutes: 6, measuredProcessingMinutes: 1 })
+    );
+    expect(factor).toBeCloseTo(6);
+  });
+
+  it("averages a dictation over what was actually timed", () => {
+    const seconds = averageDictationSeconds(
+      summary({ measuredCount: 4, measuredAudioMinutes: 2 })
+    );
+    expect(seconds).toBeCloseTo(30);
   });
 });
 
