@@ -710,6 +710,16 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     // The overlay goes down when the lease is dropped, and only if nothing else
     // still wants it.
 
+    // Nothing was said, or nothing came back. Whisper answers an empty string
+    // for a recording with no speech in it, and a server can answer with
+    // nothing at all while still answering. Going on would paste nothing, put a
+    // blank card at the top of the history, and count a dictation that never
+    // happened: the counters are permanent, so that last one is the one that
+    // cannot be taken back from the interface.
+    if transcription.trim().is_empty() {
+        return Ok(String::new());
+    }
+
     // Copy to clipboard and simulate paste
     #[cfg(windows)]
     {
