@@ -18,6 +18,7 @@ interface LocalTabProps {
   currentGpuVendor: GpuVendor;
   gpuDevices: GpuDevice[];
   currentGpuDevice: number;
+  switchingGpuDevice: number | null;
   onDownload: (modelId: string) => void;
   onLoad: (modelId: string) => void;
   onUnload: () => void;
@@ -37,6 +38,7 @@ export function LocalTab({
   currentGpuVendor,
   gpuDevices,
   currentGpuDevice,
+  switchingGpuDevice,
   onDownload,
   onLoad,
   onUnload,
@@ -61,6 +63,7 @@ export function LocalTab({
         onVendorChange={onGpuVendorChange}
         devices={gpuDevices}
         currentDevice={currentGpuDevice}
+        switchingDevice={switchingGpuDevice}
         onDeviceChange={onGpuDeviceChange}
       />
 

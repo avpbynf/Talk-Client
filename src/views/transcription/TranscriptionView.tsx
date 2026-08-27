@@ -30,6 +30,7 @@ interface TranscriptionViewProps {
   onGpuVendorChange: (vendor: GpuVendor) => void;
   gpuDevices: GpuDevice[];
   currentGpuDevice: number;
+  switchingGpuDevice: number | null;
   onGpuDeviceChange: (index: number) => void;
   transcriptionMode: TranscriptionMode;
   onTranscriptionModeChange: (mode: TranscriptionMode) => void;
@@ -61,6 +62,7 @@ export default function TranscriptionView({
   onGpuVendorChange,
   gpuDevices,
   currentGpuDevice,
+  switchingGpuDevice,
   onGpuDeviceChange,
   transcriptionMode,
   onTranscriptionModeChange,
@@ -137,6 +139,7 @@ export default function TranscriptionView({
                 onGpuVendorChange={onGpuVendorChange}
                 gpuDevices={gpuDevices}
                 currentGpuDevice={currentGpuDevice}
+                switchingGpuDevice={switchingGpuDevice}
                 onGpuDeviceChange={onGpuDeviceChange}
               />
             )}
@@ -182,6 +185,7 @@ export default function TranscriptionView({
                       onGpuVendorChange={onGpuVendorChange}
                       gpuDevices={gpuDevices}
                       currentGpuDevice={currentGpuDevice}
+                      switchingGpuDevice={switchingGpuDevice}
                       onGpuDeviceChange={onGpuDeviceChange}
                     />
                   </>

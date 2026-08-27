@@ -128,6 +128,10 @@ function App() {
   const [currentGpuVendor, setCurrentGpuVendor] = useState<GpuVendor>("cpu");
   const [gpuDevices, setGpuDevices] = useState<GpuDevice[]>([]);
   const [currentGpuDevice, setCurrentGpuDevice] = useState(0);
+  // The card being switched to, while the model reloads on it. Kept apart from
+  // isLoading so that changing card does not make the backend tile above it
+  // look like it is being decided again.
+  const [switchingDevice, setSwitchingDevice] = useState<number | null>(null);
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("local");
   const [serverUrl, setServerUrl] = useState("");
@@ -622,10 +626,11 @@ function App() {
             }}
             gpuDevices={gpuDevices}
             currentGpuDevice={currentGpuDevice}
+            switchingGpuDevice={switchingDevice}
             onGpuDeviceChange={async (index) => {
               const previous = currentGpuDevice;
               setCurrentGpuDevice(index);
-              setIsLoading(true);
+              setSwitchingDevice(index);
               try {
                 await invoke("set_gpu_device", { index });
               } catch (error) {
@@ -633,7 +638,7 @@ function App() {
                 setCurrentGpuDevice(previous);
                 await syncCurrentModel();
               } finally {
-                setIsLoading(false);
+                setSwitchingDevice(null);
               }
             }}
             transcriptionMode={transcriptionMode}
