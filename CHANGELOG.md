@@ -5,6 +5,558 @@ All notable changes to this project are documented in this file.
 Based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-08-27
+
+### Bug Fixes
+
+- (window) Give the sides back, so the page really gets 785 by 845
+
+The same invisible frame that took nine pixels of height takes sixteen of width, measured on the running window: a configuration of 785 left the page 769 across. Both numbers now describe the frame rather than the page.
+- (window) Count the frame, so the page really gets 785 by 845
+
+Measured on the running window: the configured size lands on the outer rectangle, and Windows takes nine pixels of invisible resize border out of the height before the page sees any of it. A window asked for at 845 gave the home page 836, which is exactly enough to put a scrollbar on it.
+
+  Nine go back on, to the size it opens at and to the smallest it can be made. The width was already right: the sixteen pixels the frame takes there are added outside rather than removed inside.
+- (transcription) Keep the backend tile still while the card is switching
+
+Changing card reloads the model, and the reload was driving the same loading flag as a change of backend, so the Vulkan tile went back to its spinner and validated itself again over a decision nobody had touched.
+
+  The spinner belongs to the card being switched to. Both backend tiles go quiet for the length of the reload instead, which is also what stops a backend change from being started in the middle of one.
+- (recording) Do not record a dictation that came back empty
+
+Whisper answers with an empty string for a recording that carries no speech, and a server can answer with nothing in it while still answering. The save path ran on whatever came back, so such a recording was pasted as nothing, saved as a blank card, and counted.
+
+  The count is the half that cannot be repaired afterwards: the history prunes itself and the blank cards leave with it, but daily_stats is permanent, so the total and the local against server split keep a dictation that never happened.
+- (sound) Fade both ends of a feedback sound
+
+The presets only ever had a decay, which never reaches silence, and no attack at all. A
+  wave that opens at full amplitude, which the square one does by construction, puts a step
+  in the signal, and a buffer that stops mid-cycle puts another one at the end. A speaker
+  reproduces each as a click, and the click is what made a hundred millisecond beep sound
+  mechanical rather than played.
+
+  Both ends are shaped now, on a raised cosine rather than a straight line, since the
+  corner where a linear ramp meets the note is itself audible on a sound this short. The
+  attack stays under twelve milliseconds so the beep still lands the instant the recording
+  starts, the release runs longer because nobody is waiting on that end, and both are taken
+  as a share of a short sound so the fifty millisecond click is shaped rather than
+  swallowed.
+- (recording) Slide the volume down instead of cutting it
+
+One call to SetMasterVolumeLevelScalar moves the whole machine in a single sample, which
+  is heard as a cut rather than as the room being turned down, and it lands right at the
+  moment somebody starts speaking. The move is now a slide: twelve steps, quicker on the
+  way down than on the way back, since getting out of the speaker's way is the urgent half
+  and coming back only has to sound natural.
+
+  Both slides run on their own thread. The start path still has an overlay to show and an
+  event to emit, and the stop path answers a shortcut, so neither can wait a third of a
+  second on COM calls.
+
+  Two slides can be in flight at once, and the second half of this is what keeps them from
+  fighting. Each takes a ticket and stops as soon as a newer one exists, so the last order
+  given wins rather than the last one to finish. A recording that starts while the volume
+  is still coming up leaves the stored level alone instead of writing down a level read
+  halfway through a slide, and the restore that was interrupted no longer clears it: the
+  newer one does, once the volume is actually back.
+- (history) Drop from the list on screen what the database just pruned
+
+Rust prunes as it saves, the page did not, so the list grew past the limit for as long
+  as the window stayed open. After four dictations on a limit of a hundred the header read
+  "104 of 100 kept", and the four oldest rows on screen had already been deleted: clicking
+  one deleted nothing, and a restart made them disappear with no explanation.
+
+  The listener is registered once, so the limit comes through a ref rather than the closure
+  it was captured in, the way the companion shortcuts already do it. Zero still means keep
+  everything.
+- (transcription) Do not keep a model that no longer loads, nor a card that never took it
+
+A review of the two previous commits found three ways the state could lie, all on the
+  failure path nobody walks until a driver misbehaves.
+
+  A reload that fails left the engine empty while current_model still named a model. Every
+  caller reads that as a model that is loaded, so the next dictation answered nothing at
+  all instead of saying what had happened. The model is forgotten with the engine now, and
+  the pages that changed the card ask the backend what is loaded rather than assuming.
+
+  set_gpu_device wrote the choice to the settings file before knowing whether the card
+  could take the model, while the interface rolled its own selection back when the call
+  errored. The two then disagreed until the next restart, which read the file and picked
+  the card that had just failed. The choice is held in memory for the reload, written to
+  disk only once it worked, and put back where it was otherwise.
+
+  Changing the backend had no rollback at all while changing the card did, three lines
+  apart. Both roll back now.
+
+  The sound worker also dropped its open stream whenever the device enumeration answered
+  nothing, which happens for a moment while Windows moves devices around, losing a beep
+  that the stream already open would have played. A hiccup leaves the stream alone.
+
+  The README claimed the card with the most memory wins. It is the discrete card that
+  wins, which is the whole point, since an integrated chip reports the shared system
+  memory as its own. It also still described the recording as pausing what plays, which
+  stopped being true when ducking replaced the pause.
+- (recording) Duck by a share of the volume, not down to a fixed one
+
+The percentage was read against full scale, so it was a floor rather than an
+  attenuation: nothing happened at all when the machine already played below it. That
+  is not a corner, it is where most people sit. Measured on the machine that reported
+  it, the volume was at 26 percent of the scale against a setting of 30, so the guard
+  that skips a machine already quieter than the target fired on every recording and the
+  sound never moved once.
+
+  The figure is now a share of the level found when the recording starts: at 30 percent,
+  a machine at 26 goes to 8 and comes back to 26. The guard stays and only fires where
+  it means something, a setting of 100 or a machine already silent. The slider reads
+  "30% of it" rather than a level, since that is what it does now.
+
+  Nothing to migrate: the stored numbers keep their range and their spirit, they are
+  just read against what is playing.
+
+  The comment punctuation in hotkeys/mod.rs comes back to ASCII on the way through.
+- (sound) Follow the output device instead of the one that was default at startup
+
+The stream was opened once, on whatever Windows called the default at launch, and a
+  thread parked forever kept it alive. Plugging a headset moves the default and leaves
+  that stream where it was, so the sounds went on playing to the speakers, and unplugging
+  the device it held left them nowhere at all. Nothing in cpal follows the default for
+  you: the only way is to open a new stream.
+
+  The worker thread owns the stream now rather than handing a handle out, and names the
+  device it should be on before each sound. When the name has moved, the stream is opened
+  again on the new one. It costs a call per sound, and it is the only moment cheap enough
+  to notice a headset arriving without polling for it.
+
+  A device can also be pinned, the way the microphone already is. Preferences names it
+  under the sounds it governs, with the system default first and the current default
+  spelled out beside it. A pinned device that is absent falls back to the default instead
+  of playing to nothing, so unplugging the headset it names is not a silent app.
+
+  get_default_input_device lands with it: the microphone section has been calling that
+  command since it was written, and swallowing the error, which is why the default was
+  never named there either.
+- (history) Hide the retention behind the count it governs
+
+A labelled dropdown beside the title spent a control on a setting that is read
+  far more often than it is changed. The line under the title already names the
+  number, so the caret sits at the end of it and the line reads "128 of 500 kept".
+
+  Everything comes off the menu, and the range stops at 500. Zero is still
+  honoured everywhere that reads the setting, including the Rust that prunes: a
+  settings file written while the option existed has to keep working.
+- (history) Say "Keep" beside the dropdown, not inside every option
+
+Repeating "Keep 50 transcriptions" on each line made the list long enough to
+  read as a sentence and hid the number, which is the only part that differs. The
+  label sits outside now and the options are the quantities.
+- (dashboard) Stop refetching in step with the write it depends on
+
+The dashboard listened to transcription-complete, which is the same event that
+  triggers the insert: both handlers ran on it, and the analytics query went out
+  alongside a fire-and-forget db_add_transcription. It usually read the database
+  as it was before, so the figures sat one dictation behind, every time.
+
+  The write now says when it has landed, and the dashboard answers that instead.
+
+  Changing the retention warns first when it would delete, which it did not. The
+  decision moves into lib/retention.ts so it can be tested without driving a Radix
+  select through jsdom, and the warning only appears when something actually goes:
+  a dialog that fires with no consequence teaches the reader to dismiss it unread.
+
+  The three confirmations share one ConfirmDialog. Two had already drifted apart,
+  which is what made the reset control feel unlike the clear one, and a third copy
+  would have drifted further.
+- (dashboard) Put the bin back on the reset control
+
+The reset arrow was a change nobody asked for. The bin matches the history
+  page, which is the point of the alignment.
+- (dashboard) Ask before resetting the stats the way the history does
+
+Two destructive controls, two different behaviours: the history opened a modal
+  with a backdrop and an Escape, the dashboard swapped its own button for a Cancel
+  and a Confirm under the reader's cursor. Wiping the counts is the same kind of
+  act and now asks the same way.
+
+  The bin becomes a reset arrow, since nothing is deleted here: the counts go back
+  to zero and the transcriptions stay in the history, which the modal now says.
+
+  Icon only, with an aria-label and a title. An icon button with no accessible
+  name announces nothing at all to a screen reader.
+- (dashboard) Drop the strikethrough on the compared amounts
+
+Thinning the line kept the digits readable but did not make the effect worth
+  having. The colour already says the money would have gone out, and the zero
+  underneath says it did not.
+- (recording) Let a dictation start while the previous one transcribes
+
+Starting a second dictation already worked: is_recording is cleared as soon as
+  the audio is taken, well before the transcription runs. What did not work was
+  everything around it.
+
+  The overlay is one shared window, and the first transcription to finish hid it,
+  pulling it out from under whatever had started since. It is now held by a lease
+  that releases on drop, so the last one out turns the light off and every early
+  return is covered, which the old code path was not.
+
+  The local engine ran on a runtime worker while holding a blocking mutex for the
+  whole of a synchronous transcription. A second dictation stopping in the
+  meantime had nowhere to run. It moves to the blocking pool, where work like that
+  belongs.
+
+  Both local call sites go through one helper now. They had drifted into two
+  copies of the same block.
+- (dashboard) Keep the struck amounts readable
+
+The comparison figures were struck with a 2 pixel line in the same red as the
+  digits, which on text that small closed the counters and buried the number the
+  card exists to show.
+
+  The strike stays, since it is what says the amount was never paid, but it drops
+  to a hairline at 40 percent so it reads as a strike rather than as a bar across
+  the glyphs.
+- (vocabulary) Dedupe within a single input as well
+
+The check compared each word against the existing vocabulary only, so pasting
+  "tauri tauri" in one go added it twice. Comparing against everything accepted so
+  far, the existing terms included, closes it.
+
+  The parsing moves to src/lib/vocabulary.ts to be testable on its own. The view
+  keeps calling it in the same place.
+- (overlay) Default to the small size
+
+Rust opened a new installation at medium while the frontend showed small
+  selected and fell back to it, so the checked box disagreed with the window on
+  screen. Small is the size the preferences were built around, so Rust follows.
+
+  Existing installations keep the size they already wrote.
+- (preferences) Start the sound state on the Rust defaults
+
+The frontend opened with feedback off and both sounds set to none, then
+  corrected itself once get_sound_feedback and friends answered. Preferences
+  flashed the wrong state on every visit, and kept it whenever one of those
+  calls failed, since the catch arms fell back to off as well.
+
+  Rust has always defaulted to feedback on and beep on both ends. The initial
+  state and the catch arms now say the same thing.
+- (overlay) Default to the Frost theme
+
+Aurora was the default a new install landed on. Frost is the one that reads
+  well against the widest range of backgrounds, so it is the better first
+  impression. The frontend fallback follows, otherwise a settings file with no
+  theme written yet shows one theme while the Rust side uses another.
+
+  Existing installations keep whatever they already chose.
+
+### Build
+
+- Run cargo from src-tauri so its config is read
+
+cargo discovers .cargo/config.toml from the working directory upwards and pays
+  no attention to where --manifest-path points. The config lives in src-tauri, so
+  calling cargo from the repository root meant CC, CXX and CMAKE_GENERATOR were
+  never applied: cmake fell back to the Visual Studio generator, which dies in the
+  deep TryCompile paths under vulkan-shaders-gen.
+
+  Nobody hit it because whisper-rs-sys was already built in the shared target
+  directory. A fresh clone or a fresh worktree forces the rebuild and finds it.
+
+### Documentation
+
+- (repo) Keep main as the default branch, and say what that costs
+
+It is what the repository page shows, what a clone lands on, and where the releases hang. A new pull request therefore opens against main unless it is told otherwise, so naming dev as the base is part of opening one.
+- (repo) Say that a pull request title is a Conventional Commit too
+
+It is what the repository shows for that branch forever, and what a squash would write into the history. A branch spanning several scopes takes the type of what it mainly delivers and drops the scope.
+
+  Branches come back by rebase for the same reason the messages are written carefully: squashing would leave one line for a batch and throw the reasons away.
+
+### Features
+
+- (overlay) Scale what is inside, not just the window around it
+
+Choosing a size moved the window and nothing else: every glyph, bar and spacing kept its own size, so the room around them grew and medium against large was a difference nobody could see from a step away. The point of the setting is a reader who cannot see the small one.
+
+  The overlay is drawn at one size and scaled to the window, by the smaller of the two ratios so the pill never runs past the edge. Large goes to 341 by 93, a real step rather than a nudge, and the sizes keep the shape the drawing assumes, which a test now holds them to.
+- (updater) Take new versions from the releases page on its own
+
+The installed application polls latest.json, published as an asset of the
+  newest release, and offers what it finds in a strip under the titlebar. It
+  looks ten seconds after launch and once an hour after, since a window here
+  stays open for days.
+
+  Nothing installs unless it carries a signature made with the private half of
+  the key in tauri.conf.json, which is why the release workflow now needs the
+  signing secrets and why a build without them stops rather than shipping an
+  installer no client would accept.
+- (models) Stop a download, and ask before deleting a model
+
+A model is around a gigabyte. Nothing was watching for a change of mind once a download had started, so a wrong click on a slow line held the page for a quarter of an hour with no way out but quitting the application. A cross beside the bar raises a flag the download reads at its next chunk, and the partial file goes with it.
+
+  Deleting went straight through, which is the same gigabyte to fetch again over the same line. It now asks, through the dialog the history and the statistics already share, and says what it costs.
+- (window) Open at 785x845, and never smaller
+
+The size it opens at is also the size it stops at: below that the pages start folding, and there is nothing to gain from letting a window get there. Narrow and tall suits pages that are lists.
+- (window) Open at 1140x825
+
+Narrower and taller. The old size was set so the home page fitted in one screenful with the typing test at the foot; that page has gained a row of facts since, and the pages beside it are lists that read better tall than wide.
+- (dashboard) Measure what the top row shows, instead of repeating the cards below
+
+Three of the four figures at the top were the headline of a card further down: not spent
+  is the hosted API card, time won is the time card, and the word count is a line inside
+  that same card. The row said what the reader was about to read anyway.
+
+  What replaces them was already being recorded and never read. Every dictation saves its
+  audio duration and its processing time, so the speaking rate comes off the audio rather
+  than off the fixed 150 words a minute the estimate divides by, and the real time factor
+  says whether the card the engine runs on is earning its keep. Both are sums over the
+  dictations still kept, which the history limit prunes, so the count they rest on is shown
+  beside them and a fresh install reads "not measured yet" rather than an infinity.
+
+  A strip under the row carries what the database knew and nobody displayed: how long you
+  have been dictating, the streak, the busiest day, and the split between local and server,
+  which Rust has always computed and the interface threw away. The streak is deliberately
+  counted over everything rather than over the selected window, and a day still open does
+  not break it.
+
+  The comparison cards lose their Talk row. Zero against a hosted API is not news, and the
+  line took the eye away from the prices it sits under. Where a dictation went is worth a
+  word, though, so the API card now says how many went through the server, which costs
+  whatever that server costs.
+- (window) One instance, and nothing on screen when it starts in the tray
+
+Two things the launch got wrong.
+
+  The window was declared visible, so Windows painted a white rectangle for as long as the
+  webview took to render, about half a second, and starting minimised meant hiding that
+  rectangle rather than never showing it. The window is built hidden now and the page asks
+  for it once React has painted something into it. A launch meant for the tray owes no
+  appearance, so that request is swallowed and nothing appears at all. A net behind it
+  shows the window after five seconds if the page never asks, since a frontend that fails
+  to load would otherwise leave the application running with only a tray icon.
+
+  The desktop shortcut opened a second application every time, each with its own window,
+  its own tray icon and its own claim on the global shortcut. tauri-plugin-single-instance
+  turns the second launch away and brings the running window forward instead, which is
+  what clicking the shortcut is asking for. It sits first in the builder chain, as the
+  plugin requires. A second launch carrying --minimized, which is what autostart passes,
+  is left alone rather than being turned into a window nobody asked to see.
+- (transcription) Pick the card the local engine runs on
+
+Whisper took whatever the driver listed first. On a laptop carrying an
+  integrated chip beside a discrete card that is a coin toss decided outside the
+  application, and the Windows graphics preference was the only way to settle it.
+  The Transcription page lists the cards by name now, and the model reloads on the
+  one picked without a restart.
+
+  Nothing saved means the discrete card rather than the roomiest one. Measured on
+  this machine, the integrated Iris Xe reports 16 GB of shared system memory
+  against the 4060's 8 GB of its own, so memory alone would hand the work to the
+  slower of the two. Class first, then memory within a class.
+
+  The choice is saved as a name beside an index, because gpu_device is a rank
+  among the GPUs and not a device id: it moves the day a card is added or a driver
+  stops reporting one, and the name is what finds the card again.
+
+  The cards are read from the ggml device registry, which is the same walk whisper
+  does to resolve that rank, so the two agree by construction. It also wraps a
+  Vulkan that fails to come up in a catch, which the Vulkan entry points do not,
+  and an exception crossing back into Rust would take the process with it. Reading
+  it is why whisper-rs now carries raw-api, which re-exports the sys crate. The
+  walk only happens in GPU mode: enumerating brings the Vulkan instance up, and a
+  machine running on the CPU has no reason to pay for that.
+- (recording) Turn the machine down while you talk, instead of pausing it
+
+The pause sent MediaPlayPause blindly at whatever window was in front. It hit
+  the wrong application as often as the right one, had no way of knowing whether
+  it had paused or resumed, and could not undo a wrong guess. Lowering the render
+  endpoint touches everything at once and is exactly reversible.
+
+  A toggle and a slider, down to twenty percent by default, and the volume comes
+  back at the stop rather than after the transcription: the speaker has finished
+  and the wait is no reason to keep the room quiet. A cancelled recording restores
+  too, which the pause did not always manage.
+
+  The level taken before ducking is written to the settings file rather than held
+  in memory. If the application dies mid-recording the machine is left quiet with
+  nothing in it knowing why, and the next launch is the only thing left that can
+  put it back, so that is where it restores.
+
+  Ducking is skipped when the volume already sits at or below the target,
+  otherwise stopping would push somebody's volume up.
+- (history) Delete a single transcription from its own card
+
+Clearing everything was the only way to get rid of one. The button sits in the
+  card footer, appears on hover, and stops the click before it reaches the card,
+  which copies: deleting and copying in the same gesture would be the worst of the
+  two outcomes.
+
+  No confirmation for a single one. The dialog is there for the acts that take
+  many at once, and asking on every line would train the reader to click through
+  it.
+
+  The statistics stand, the same way they do after a prune: removing a line from
+  the history is not a claim that it never happened.
+- (history) Choose how much of it to keep, and actually keep to it
+
+Nothing ever pruned. add_transcription inserted and the database grew for as
+  long as the application was used. The only bound was the history page asking
+  for 200 rows, which hid the growth rather than limiting it, and the changelog
+  entry claiming a cap of 100 described a frontend array that did not survive the
+  move to SQLite.
+
+  There is a real setting now, default 100, persisted like the rest and applied
+  in the one place the history grows. Choosing a smaller number prunes at once
+  rather than at the next dictation, so the list on screen and the database say
+  the same thing.
+
+  Zero means everything, which is what the application did before. The page reads
+  the kept rows back from the database after a change instead of trimming its own
+  list, since guessing which rows went would put the two out of step.
+
+  The statistics are an aggregate in another table and are deliberately left
+  alone: dropping old transcriptions must not rewrite what has already been
+  counted. There is a test for that, and for the ordering, since this is a DELETE
+  on somebody's history.
+
+  Clear all loses its label to match the dashboard, and keeps an accessible name.
+- (dashboard) Compare against three hosted APIs, not one
+
+The card quoted a single rate, OpenAI's, and it lived in two places: database.rs
+  computed the saving from its own copy while analytics.ts held the copy shown on
+  screen. Two constants for one number, free to drift.
+
+  There is one table now, read by both the card and the headline figure. Three
+  providers, laid out like the subscription card next to it: the cheap end, the
+  one everybody knows, and a major cloud. A spread rather than the three cheapest,
+  since a comparison that only picks flattering numbers is not worth showing.
+
+  The headline takes the cheapest of the three, so the saving holds whichever
+  provider the reader would have gone with.
+
+  Where it ran goes, and the split bar with it. It answered a different question
+  from the one the card asks, and the bar had nothing to compare on the many
+  installs that only ever use one mode.
+
+### Maintenance
+
+- (repo) Add the pull request template, and the rules that go with it
+
+The template is what a request answers rather than a body written from memory: what changes, why it was not already like that, what proves it, what it leaves owing, and a checklist that gets ticked truthfully. It also carries the merge button, since the wrong one either forks the tree or throws away the reasoning in the commit bodies.
+- (repo) Write down the branch flow, and check dev the way main is checked
+
+Work accumulates on dev and ships from main, so both are protected on the remote: no
+  direct push, no force push, no deletion, linear history, and the frontend check green
+  before a merge. A feature or a fix takes its own branch off dev and returns by pull
+  request; main only ever receives dev, through one pull request that is the deployment.
+
+  The check workflow only ran on pushes to main, so dev would have accumulated without a
+  gate of its own between pull requests.
+- (installer) Build the wizard in English only
+
+The application, its Rust strings included, is entirely in English. The NSIS
+  wizard still offered French and asked which language to install in, which was
+  one screen standing between the user and the install for no benefit.
+
+  The installer hooks were already written in English, so nothing else moves.
+
+### Refactoring
+
+- (preferences) Both devices at the top, the companion shortcuts folded at the bottom
+
+Where a sound comes out belongs with where the voice goes in, not buried inside the
+  sounds it happens to govern. InputDeviceSection becomes AudioDevicesSection and carries
+  the two: same icon, same list, same button to look for devices again, one row each. The
+  sounds section keeps the presets and points at where the choice now lives.
+
+  The companion shortcuts were open at all times on a list most installations never fill,
+  and they sat in the middle of the page, between the sounds and the system settings. They
+  fold away now, shut by default with a count beside the title, and they sit at the bottom
+  where a rarely touched list belongs. Add still works from the shut state and opens the
+  section on the way.
+- (recording) Save the transcription where it is produced
+
+The frontend was persisting what Rust had just transcribed. That is what forced
+  a second event: both handlers answered transcription-complete, so the dashboard
+  query raced the write and the figures sat one dictation behind. Saving before
+  announcing removes the race by construction, and the extra event with it.
+
+  Two columns stop being null. audio_duration_ms and processing_time_ms were
+  always null because the frontend cannot know either: it has neither the samples
+  nor the clock. Rust has both.
+
+  The source is no longer guessed from the mode the user picked. A server
+  dictation that quietly fell back to the local engine was recorded as "server",
+  so the badge in the history lied about which engine ran. The branch now carries
+  the answer out with the text.
+
+  db_add_transcription goes, along with the two refs that existed only to tell it
+  what to write.
+
+### Tests
+
+- (vocabulary) Cover the view, and give its buttons a name
+
+Eleven tests over the whole loop: the empty state, the count, adding one term
+  and several from one line, Enter as a submit, the duplicate that must reach
+  neither the backend nor the parent, removing one term and clearing the lot.
+
+  Two things the tests forced out into the open. The remove and reorder buttons
+  were icons with no accessible name, so a screen reader announced nothing at all
+  and a test had nothing to grab; both carry an aria-label now. And the word list
+  heading was still "Vos termes", which every earlier scan missed because it sits
+  against a JSX expression and the extraction refused any run containing braces.
+- Cover the audio buffer, the tone generation and the WAV edges
+
+Twenty-four more tests, on the three modules that are pure enough to exercise
+  without a device.
+
+  The audio buffer gets its meter, its spectrum and its ten-minute cap. The meter
+  one is worth the line it costs: it reads the tail of the buffer rather than all
+  of it, so a long loud recording followed by silence has to fall, or the overlay
+  keeps showing speech after the speaker stopped.
+
+  Sound generation gets length, gain and the fade. A buffer that ends at full
+  amplitude is heard as a click, and the descending sweep integrates a negative
+  term, which is where a NaN would come from and rodio plays those as noise.
+
+  The WAV encoder gets what the previous two tests skipped: clamping past full
+  scale, which would otherwise wrap the loudest part of a word into the quietest,
+  non-finite input from a misbehaving device, and the header fields Whisper
+  resamples from.
+- Collect only the tests under src
+
+A git worktree under .claude/worktrees carries its own copy of the tree, so
+  vitest found every test twice and reported double the count. Anchoring the
+  include at src leaves the nested copies out.
+- Cover the analytics helpers and the settings defaults
+
+The analytics side carries the arithmetic behind the comparison card, where a
+  wrong figure is not obviously wrong on screen: months are counted as a
+  subscription bills them, and a fresh install already owes one.
+
+  On the Rust side the tests pin the defaults the frontend initialises its own
+  state from. Those two drifting apart is what put the overlay theme, the overlay
+  size and the sound state each in a different place. A test says so now.
+
+  load_settings and save_settings are deliberately not exercised: they resolve
+  through ProjectDirs to the real %APPDATA%, so a test run would read and
+  overwrite the settings of whoever ran it.
+- Stand up the client test harnesses
+
+vitest on jsdom for the frontend, cargo test for the native side. The Rust one
+  needed no new dependency, only a script that loads the MSVC environment the way
+  the build ones do.
+
+  vitest.config.ts is kept apart from vite.config.ts because that one exports an
+  async factory reading TAURI_DEV_HOST and pinning the dev server to port 1421,
+  none of which a test run should touch.
+
+  The setup file mocks invoke and listen. jsdom has no Tauri runtime behind it, so
+  the real ones throw before a component renders at all. matchMedia and
+  ResizeObserver are stubbed for the same reason: jsdom implements neither and the
+  overlay and the scroll areas both reach for them.
+
 ## [0.7.0] - 2026-08-26
 
 ### Bug Fixes
@@ -76,6 +628,12 @@ The two BMP the NSIS wizard displays were composed by hand, so the wordmark
 
 ### Documentation
 
+- Replace the README screenshot with a cleaner capture
+
+The previous one came from PrintWindow, which returns the whole window
+  rectangle including the invisible resize border, so it carried a few pixels of
+  margin on three sides and none on the fourth. This one is the client area,
+  1192x752, and sits square.
 - Show the home page in the README
 
 Taken from the running application, at the size it now opens at, and reduced to
@@ -161,6 +719,10 @@ The three sizes existed in Rust and set_overlay_size() really resized the
 
 ### Maintenance
 
+- (release) V0.7.0
+
+Version bumped in the four files that have to agree, Cargo.lock included, and
+  the changelog rebuilt from the history by git-cliff.
 - Rename the product from T4lk to Talk
 
 The bundle identifier, the config and data directories and the history
@@ -175,6 +737,11 @@ The bundle identifier, the config and data directories and the history
 
 ### Refactoring
 
+- (i18n) The strings Rust sends to the screen
+
+The frontend sweep could not see these. Twelve model descriptions and three
+  accelerator ones land straight in the cards the user picks from, and the delete
+  refusal lands in a toast. Nothing French is left in the client now.
 - (i18n) The rest of the interface in English
 
 Twenty files: the setup wizard, the preferences and their sections, the
