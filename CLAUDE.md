@@ -34,6 +34,20 @@ build fails in ways that read like a Rust error.
 - `src-tauri/src/virtual_mic/` detects and routes through VB-Cable
 - `src/views/` are the settings pages, `src/pages/` the overlay and setup wizard
 
+## Branches
+
+`dev` is what accumulates, `main` is what ships. Both are protected on the remote: no
+direct push, no force push, no deletion, linear history, and the `frontend` check green
+before anything merges.
+
+- **A feature or a fix takes its own branch off `dev`**, and comes back into `dev`
+  through a pull request. Several pile up there, which is what makes a beta possible
+  without having decided anything about a release.
+- **`main` only ever receives `dev`**, through a single pull request carrying everything
+  ready to ship. That pull request is the deployment, and the version is tagged on `main`
+  afterwards, which is what `release.yml` builds the installer from.
+- Nothing is committed on `dev` or `main` directly, this session included.
+
 ## Conventions
 
 - English in code and comments
