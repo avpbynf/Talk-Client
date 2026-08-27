@@ -1,7 +1,7 @@
 import { RecordingMode } from "@/App";
 import type { CompanionShortcut } from "@/App";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import InputDeviceSection from "./preferences/InputDeviceSection";
+import AudioDevicesSection from "./preferences/AudioDevicesSection";
 import RecordingModeSection from "./preferences/RecordingModeSection";
 import ShortcutsSection from "./preferences/ShortcutsSection";
 import CompanionShortcutsSection from "./preferences/CompanionShortcutsSection";
@@ -78,7 +78,7 @@ export default function PreferencesView({
             {/* Separator */}
             <div className="h-px bg-border-subtle" />
 
-            <InputDeviceSection />
+            <AudioDevicesSection />
             <RecordingModeSection
               recordingMode={recordingMode}
               onRecordingModeChange={onRecordingModeChange}
@@ -98,10 +98,6 @@ export default function PreferencesView({
               stopSound={stopSound}
               onStopSoundChange={onStopSoundChange}
             />
-            <CompanionShortcutsSection
-              companionShortcuts={companionShortcuts}
-              onCompanionShortcutsChange={onCompanionShortcutsChange}
-            />
             <MeetingModeSection />
             <SystemSection
               autostartEnabled={autostartEnabled}
@@ -114,6 +110,10 @@ export default function PreferencesView({
               onDuckVolumePercentChange={onDuckVolumePercentChange}
               preserveClipboard={preserveClipboard}
               onPreserveClipboardChange={onPreserveClipboardChange}
+            />
+            <CompanionShortcutsSection
+              companionShortcuts={companionShortcuts}
+              onCompanionShortcutsChange={onCompanionShortcutsChange}
             />
           </div>
         </div>
