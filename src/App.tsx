@@ -272,6 +272,16 @@ function App() {
     }
   }
 
+  // A backend that failed to rebuild the engine has dropped the model with it. Asking
+  // rather than assuming keeps the page from showing a model that is no longer there.
+  async function syncCurrentModel() {
+    try {
+      setCurrentModel(await invoke<string | null>("get_current_model"));
+    } catch (error) {
+      console.error("Failed to read the loaded model:", error);
+    }
+  }
+
   async function initializeApp() {
     // Read before the batch: the history fetch below needs it to size its query.
     const savedLimit = await invoke<number>("get_history_limit").catch(() => 100);
@@ -577,6 +587,7 @@ function App() {
             gpus={gpus}
             currentGpuVendor={currentGpuVendor}
             onGpuVendorChange={async (vendor) => {
+              const previous = currentGpuVendor;
               setCurrentGpuVendor(vendor);
               setIsLoading(true);
               try {
@@ -584,6 +595,8 @@ function App() {
                 await loadGpuDevices(vendor);
               } catch (error) {
                 console.error("Failed to change GPU:", error);
+                setCurrentGpuVendor(previous);
+                await syncCurrentModel();
               } finally {
                 setIsLoading(false);
               }
@@ -599,6 +612,7 @@ function App() {
               } catch (error) {
                 console.error("Failed to change graphics card:", error);
                 setCurrentGpuDevice(previous);
+                await syncCurrentModel();
               } finally {
                 setIsLoading(false);
               }

@@ -316,6 +316,12 @@ fn current_gpu_device_index(state: &AppState, backend: AcceleratorBackend) -> u3
 }
 
 /// Rebuild the engine on the model already loaded, if there is one.
+///
+/// The old engine goes before the new one is built, since both at once would hold two
+/// models on the card. That leaves nothing loaded when the build then fails, so the
+/// model is forgotten as well: a `current_model` still naming a model that is not
+/// there reads to every caller as a model that is loaded, and dictation would answer
+/// nothing at all rather than saying what happened.
 fn reload_engine(state: &AppState, backend: AcceleratorBackend) -> Result<(), String> {
     let current_model = state.current_model.lock().clone();
     if let Some(model_id) = current_model {
@@ -324,8 +330,13 @@ fn reload_engine(state: &AppState, backend: AcceleratorBackend) -> Result<(), St
             *state.whisper_engine.lock() = None;
 
             let device = current_gpu_device_index(state, backend);
-            let engine = WhisperEngine::new_with_backend(&model_path, backend, device)
-                .map_err(|e| e.to_string())?;
+            let engine = match WhisperEngine::new_with_backend(&model_path, backend, device) {
+                Ok(engine) => engine,
+                Err(e) => {
+                    *state.current_model.lock() = None;
+                    return Err(e.to_string());
+                }
+            };
             *state.whisper_engine.lock() = Some(engine);
         }
     }
@@ -404,7 +415,18 @@ fn set_gpu_device(index: u32, state: tauri::State<'_, AppState>) -> Result<(), S
         index: device.index,
         name: device.name.clone(),
     };
-    *state.gpu_device.lock() = Some(preference.clone());
+
+    // Held in state first, since the reload reads the choice from there, and written to
+    // disk only once the card has actually taken the model. Saving before would leave a
+    // settings file naming a card the application never managed to run on, and the next
+    // launch would walk into it again.
+    let previous = state.gpu_device.lock().replace(preference.clone());
+
+    let backend = *state.accelerator_backend.lock();
+    if let Err(e) = reload_engine(&state, backend) {
+        *state.gpu_device.lock() = previous;
+        return Err(e);
+    }
 
     let mut app_settings = settings::load_settings();
     app_settings.gpu_device = Some(preference);
@@ -412,9 +434,7 @@ fn set_gpu_device(index: u32, state: tauri::State<'_, AppState>) -> Result<(), S
         eprintln!("Failed to save settings: {}", e);
     }
 
-    // Reload model on the new card if one is loaded
-    let backend = *state.accelerator_backend.lock();
-    reload_engine(&state, backend)
+    Ok(())
 }
 
 #[tauri::command]
