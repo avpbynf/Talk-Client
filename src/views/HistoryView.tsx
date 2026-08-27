@@ -80,6 +80,12 @@ export default function HistoryView({
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <label
+                  htmlFor="history-retention"
+                  className="text-xs text-muted-foreground whitespace-nowrap"
+                >
+                  Keep
+                </label>
                 <Select
                   value={String(historyLimit)}
                   onValueChange={(value) => {
@@ -92,16 +98,17 @@ export default function HistoryView({
                   }}
                 >
                   <SelectTrigger
-                    aria-label="How much history to keep"
-                    title="How much history to keep"
-                    className="w-[11rem] cursor-pointer bg-surface-deep border-border-card text-foreground"
+                    id="history-retention"
+                    aria-label="How many transcriptions to keep"
+                    title="How many transcriptions to keep"
+                    className="w-[7.5rem] cursor-pointer bg-surface-deep border-border-card text-foreground"
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {RETENTION_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={String(option.value)}>
-                        Keep {option.label}
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

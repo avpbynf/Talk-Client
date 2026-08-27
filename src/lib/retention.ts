@@ -6,11 +6,11 @@
  * as long as it was used.
  */
 export const RETENTION_OPTIONS = [
-  { value: 50, label: "50 transcriptions" },
-  { value: 100, label: "100 transcriptions" },
-  { value: 250, label: "250 transcriptions" },
-  { value: 500, label: "500 transcriptions" },
-  { value: 1000, label: "1000 transcriptions" },
+  { value: 50, label: "50" },
+  { value: 100, label: "100" },
+  { value: 250, label: "250" },
+  { value: 500, label: "500" },
+  { value: 1000, label: "1000" },
   { value: 0, label: "Everything" },
 ] as const;
 
