@@ -144,6 +144,11 @@ async fn download_model(
 }
 
 #[tauri::command]
+fn cancel_model_download(state: tauri::State<'_, AppState>) {
+    state.model_manager.cancel_download();
+}
+
+#[tauri::command]
 fn get_downloaded_models(state: tauri::State<'_, AppState>) -> Vec<String> {
     state.model_manager.get_downloaded_models()
 }
@@ -1072,6 +1077,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_available_models,
             download_model,
+            cancel_model_download,
             get_downloaded_models,
             delete_model,
             load_model,
