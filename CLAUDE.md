@@ -47,11 +47,18 @@ before anything merges.
   ready to ship. That pull request is the deployment, and the version is tagged on `main`
   afterwards, which is what `release.yml` builds the installer from.
 - Nothing is committed on `dev` or `main` directly, this session included.
+- **A pull request title is a Conventional Commit like any other.** It is what the
+  repository shows for that branch forever, and what a squash would write into the
+  history. A branch spanning several scopes takes the type of what it mainly delivers and
+  drops the scope rather than inventing one.
+- **Branches come back by rebase**, which keeps the commits as they were written and
+  keeps the history linear, as the protection demands. Squashing would throw away the
+  reasons written into each message and leave one line for a batch of unrelated work.
 
 ## Conventions
 
 - English in code and comments
-- Conventional Commits
+- Conventional Commits, in commit messages and pull request titles alike
 - Everything is written LF, and a CRLF appearing is a tooling regression
 
 ## Things that bite
