@@ -9,6 +9,8 @@ interface GpuSelectorProps {
   onVendorChange: (vendor: GpuVendor) => void;
   devices: GpuDevice[];
   currentDevice: number;
+  /** The card a switch is running towards, or null while nothing is switching. */
+  switchingDevice: number | null;
   onDeviceChange: (index: number) => void;
 }
 
@@ -41,6 +43,7 @@ export function GpuSelector({
   onVendorChange,
   devices,
   currentDevice,
+  switchingDevice,
   onDeviceChange,
 }: GpuSelectorProps) {
   const mergedGpus = ALL_GPU_OPTIONS.map((defaultGpu) => {
@@ -49,6 +52,13 @@ export function GpuSelector({
   });
 
   const showDevices = currentVendor === "vulkan" && devices.length > 0;
+
+  // Changing card reloads the model, which is a reason to refuse a change of
+  // backend at the same time, and no reason at all to make the backend look
+  // like it is being decided again. So both tiles go quiet, and the spinner
+  // stays on the card that is actually being switched to.
+  const switching = switchingDevice !== null;
+  const busy = isLoading || switching;
 
   return (
     <div className="p-5 rounded-xl border border-border-card bg-surface-raised">
@@ -66,13 +76,13 @@ export function GpuSelector({
         {mergedGpus.map((gpu) => (
           <div key={gpu.vendor} className="relative group">
             <button
-              onClick={() => gpu.available && !isLoading && onVendorChange(gpu.vendor)}
-              disabled={!gpu.available || isLoading}
+              onClick={() => gpu.available && !busy && onVendorChange(gpu.vendor)}
+              disabled={!gpu.available || busy}
               className={cn(
                 "w-full p-3 rounded-lg border text-left transition-all duration-200",
                 currentVendor === gpu.vendor
                   ? "border-[var(--color-warning)] bg-[var(--color-warning)]/10"
-                  : gpu.available && !isLoading
+                  : gpu.available && !busy
                   ? "border-border-card bg-surface-inset hover:bg-card"
                   : "opacity-40 cursor-not-allowed border-border-subtle bg-surface-deep"
               )}
@@ -119,15 +129,15 @@ export function GpuSelector({
                   <button
                     key={device.index}
                     onClick={() =>
-                      !isLoading && device.index !== currentDevice && onDeviceChange(device.index)
+                      !busy && device.index !== currentDevice && onDeviceChange(device.index)
                     }
-                    disabled={isLoading}
+                    disabled={busy}
                     className={cn(
                       "w-full px-3 py-2 rounded-lg border text-left transition-all duration-200",
                       "flex items-center gap-2",
                       device.index === currentDevice
                         ? "border-[var(--color-warning)] bg-[var(--color-warning)]/10"
-                        : isLoading
+                        : busy
                         ? "opacity-40 cursor-not-allowed border-border-subtle bg-surface-deep"
                         : "border-border-card bg-surface-inset hover:bg-card"
                     )}
@@ -137,7 +147,7 @@ export function GpuSelector({
                       {describeDevice(device)}
                     </span>
                     {device.index === currentDevice && (
-                      isLoading
+                      switchingDevice === device.index
                         ? <Loader2 className="h-4 w-4 text-warning animate-spin shrink-0" />
                         : <Check className="h-4 w-4 text-warning shrink-0" />
                     )}
