@@ -1,16 +1,21 @@
+use crate::audio;
 use rodio::buffer::SamplesBuffer;
 use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::f32::consts::PI;
+use std::sync::mpsc::{self, Receiver, Sender};
 
 const SAMPLE_RATE: u32 = 44100;
 
 /// Pre-computed sound buffers for instant playback.
 /// All presets are generated once at startup and stored in RAM.
 ///
-/// The `OutputStream` (which is `!Send`) lives in a dedicated parked thread.
-/// Only the `OutputStreamHandle` (`Send + Sync`) is stored here.
+/// The `OutputStream` (which is `!Send`) never leaves the thread that owns it, and
+/// samples reach it through a channel. That thread reopens the stream when the device
+/// underneath has changed, which is what makes a headset plugged in halfway through a
+/// session hear the sounds: the stream itself stays bound to the endpoint it was opened
+/// on, so following Windows means opening a new one.
 pub struct SoundEngine {
-    handle: OutputStreamHandle,
+    commands: Sender<Command>,
     start_beep: Vec<f32>,
     stop_beep: Vec<f32>,
     start_click: Vec<f32>,
@@ -19,34 +24,30 @@ pub struct SoundEngine {
     stop_chime: Vec<f32>,
 }
 
+enum Command {
+    Play(Vec<f32>),
+    UseDevice(Option<String>),
+}
+
+/// The output the worker thread is holding open.
+struct Output {
+    /// Dropped with the struct, which is what closes the stream on the old device
+    _stream: OutputStream,
+    handle: OutputStreamHandle,
+    device_name: String,
+}
+
 impl SoundEngine {
     pub fn new() -> Option<Self> {
-        // OutputStream wraps cpal::Stream which is !Send on Windows (WASAPI).
-        // We create it in a dedicated thread that stays parked forever,
-        // keeping the stream alive. Only the OutputStreamHandle (Send+Sync)
-        // crosses the thread boundary.
-        let (tx, rx) = std::sync::mpsc::sync_channel::<Option<OutputStreamHandle>>(1);
+        let (commands, rx) = mpsc::channel();
 
         std::thread::Builder::new()
             .name("sound-output".into())
-            .spawn(move || {
-                let Ok((_stream, handle)) = OutputStream::try_default() else {
-                    let _ = tx.send(None);
-                    return;
-                };
-                let _ = tx.send(Some(handle));
-                // Park forever to keep _stream alive (zero CPU usage).
-                // Thread is cleaned up when the process exits.
-                loop {
-                    std::thread::park();
-                }
-            })
+            .spawn(move || run_output(rx))
             .ok()?;
 
-        let handle = rx.recv().ok()??;
-
         Some(Self {
-            handle,
+            commands,
             start_beep: gen_tone(880.0, 0.1, 0.10, 0.01, Waveform::Sine),
             stop_beep: gen_tone(440.0, 0.15, 0.10, 0.01, Waveform::Sine),
             start_click: gen_tone(1000.0, 0.05, 0.08, 0.001, Waveform::Square),
@@ -54,6 +55,13 @@ impl SoundEngine {
             start_chime: gen_sweep(523.25, 659.25, 0.3, 0.12, 0.01),
             stop_chime: gen_sweep(659.25, 523.25, 0.3, 0.12, 0.01),
         })
+    }
+
+    /// Play on `device_name`, or on whatever Windows calls the default when it is
+    /// `None`. A device that is named but absent falls back to the default too, so
+    /// unplugging the headset it names does not leave the app silent.
+    pub fn set_device(&self, device_name: Option<String>) {
+        let _ = self.commands.send(Command::UseDevice(device_name));
     }
 
     pub fn play(&self, sound_type: &str, preset: &str) {
@@ -67,8 +75,54 @@ impl SoundEngine {
             _ => return,
         };
 
-        let buffer = SamplesBuffer::new(1, SAMPLE_RATE, samples.clone());
-        let _ = self.handle.play_raw(buffer.convert_samples());
+        let _ = self.commands.send(Command::Play(samples.clone()));
+    }
+}
+
+/// Owns the output stream and answers commands until the engine is dropped.
+fn run_output(commands: Receiver<Command>) {
+    let mut preferred: Option<String> = None;
+    let mut output: Option<Output> = None;
+
+    while let Ok(command) = commands.recv() {
+        match command {
+            Command::UseDevice(device_name) => {
+                preferred = device_name;
+                // Reopened on the next sound rather than here: nothing is playing, and
+                // the device asked for may not be plugged in yet.
+                output = None;
+            }
+            Command::Play(samples) => {
+                let Some((device, device_name)) = audio::find_output_device(preferred.as_deref())
+                else {
+                    output = None;
+                    continue;
+                };
+
+                // Asking for the name costs a call on every sound, and it is the only
+                // thing that notices a headset arriving: Windows moves the default, the
+                // name stops matching, and the stream is opened again on the new one.
+                let same_device = output
+                    .as_ref()
+                    .map(|output| output.device_name == device_name)
+                    .unwrap_or(false);
+
+                if !same_device {
+                    output = OutputStream::try_from_device(&device).ok().map(
+                        |(stream, handle)| Output {
+                            _stream: stream,
+                            handle,
+                            device_name,
+                        },
+                    );
+                }
+
+                if let Some(output) = &output {
+                    let buffer = SamplesBuffer::new(1, SAMPLE_RATE, samples);
+                    let _ = output.handle.play_raw(buffer.convert_samples());
+                }
+            }
+        }
     }
 }
 

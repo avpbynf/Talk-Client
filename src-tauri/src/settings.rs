@@ -175,6 +175,9 @@ pub struct AppSettings {
     /// Selected input device name (None = system default)
     #[serde(default)]
     pub input_device_name: Option<String>,
+    /// Where the feedback sounds play, or the system default when absent
+    #[serde(default)]
+    pub output_device_name: Option<String>,
     /// How many transcriptions to keep in the history. Zero keeps every one.
     ///
     /// Until this existed nothing ever pruned, and the database grew for as
@@ -246,6 +249,7 @@ impl Default for AppSettings {
             companion_shortcuts: Vec::new(),
             meeting_mode_enabled: false,
             input_device_name: None,
+            output_device_name: None,
             history_limit: default_history_limit(),
         }
     }
