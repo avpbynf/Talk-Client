@@ -893,7 +893,7 @@ Add analytics home page as the default view with:
 - (hotkeys) Eliminate closure accumulation on enable/disable cycles
 
 Replaced per-shortcut on_shortcut() calls with single
-  Builder::with_handler() dispatch pattern — zero closure allocation on
+  Builder::with_handler() dispatch pattern, zero closure allocation on
   enable/disable/update cycles. Removed console.log from hot path.
 - (audio) Prevent memory leaks in resample buffers and web audio
 
@@ -944,7 +944,7 @@ Replaced per-shortcut on_shortcut() calls with single
 - (ui) Always-visible delete button + remove row borders
 
 Delete button no longer hidden on hover. Remove border/background
-  from rows for a cleaner inline look — background only shows when
+  from rows for a cleaner inline look: background only shows when
   dragging.
 - Play stop sound on recording cancellation
 - Event listeners lost in StrictMode + companion UI polish
@@ -1163,7 +1163,7 @@ Create overlay window visible (not hidden) at startup so WebView2
 Mute virtual mic first (instant AtomicBool flip), start audio capture
   immediately, then show overlay. Removes 50ms sleep and overlay
   re-creation (~100ms+ WebviewWindow build). Overlay is pre-created at
-  startup and simply shown/hidden — never recreated in the hot path.
+  startup and simply shown/hidden, never recreated in the hot path.
   Net latency reduction: ~150ms+ on recording start.
 
 ### Refactoring
@@ -1190,7 +1190,7 @@ Swap donationware VB-Cable (not compatible with commercial use)
 - (ui) Click-to-capture keys with cancel X, no pencil
 - (ui) Auto-save + drag-to-reorder companion shortcuts
 
-- Remove edit/view modes, draft state, save/cancel buttons — all
+- Remove edit/view modes, draft state, save/cancel buttons: all
     fields are inline-editable and auto-save on change
   - Add drag-to-reorder with @dnd-kit (same pattern as vocabulary)
     using GripVertical handle
@@ -1217,7 +1217,7 @@ Replace segmented button group with a Select dropdown for the
 - (ui) Click-to-edit companion shortcuts, remove buttons
 
 Entire row is clickable (cursor pointer) to enter edit mode.
-  Remove edit/delete hover buttons from view mode — delete is available
+  Remove edit/delete hover buttons from view mode, delete is available
   in edit mode action bar.
 - (ui) Reorder companion shortcut fields
 
