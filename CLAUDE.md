@@ -84,6 +84,14 @@ workflows run that same file.
   `SoundEngine` names the device it should be on before each sound and reopens when the
   name has moved, which is why the worker thread owns the stream instead of handing a
   handle out. The same trap waits for anything else that opens an audio device once.
+- **`set_always_on_top(true)` does nothing on a window that already carries the flag.**
+  tao keeps it in its own window state and `WindowFlags::apply_diff` returns early when
+  nothing changed, so a window built with `always_on_top(true)` never emits a second
+  `SetWindowPos` however often it is asked. `show()` is `ShowWindow(SW_SHOW)` and leaves
+  the z-order where it found it. Windows takes a window out of the topmost band on its
+  own account, and the overlay then draws behind everything on screen until the process
+  restarts and builds the window again. `overlay::raise()` asks for `HWND_TOPMOST`
+  itself, and anything else that has to stay in front needs the same.
 - **The VB-Cable payload is absent.** `src-tauri/nsis-hooks.nsh` ships
   `src-tauri/resources/VBCABLE_Driver/` and runs its setup at install time, but those
   binaries were Git LFS objects and the objects are gone from the remote. Fetch

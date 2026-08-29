@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Bug Fixes
+
+- (overlay) Draw the overlay in front, and not behind the window in the way
+
+Windows takes a window out of the always-on-top band on its own account, and the overlay had no
+way back into it: a dictation then drew it underneath the browser, the editor or Talk's own
+window, so the shortcut played its sound and nothing appeared, and restarting the application was
+the only thing that repaired it. Every dictation now puts it back in front first.
+
 ## [0.8.0] - 2026-08-27
 
 ### Bug Fixes

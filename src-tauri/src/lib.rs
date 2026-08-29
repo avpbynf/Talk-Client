@@ -6,6 +6,7 @@ mod ducking;
 mod hotkeys;
 mod keystroke;
 mod models;
+mod overlay;
 mod server_transcription;
 mod settings;
 mod sound;
@@ -547,7 +548,7 @@ fn set_overlay_size(app: tauri::AppHandle, size: settings::OverlaySize) -> Resul
         let (width, height) = size.dimensions();
         let _ = overlay.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
         // Re-apply always on top after resize
-        let _ = overlay.set_always_on_top(true);
+        overlay::raise(&overlay);
     }
 
     Ok(())
@@ -627,7 +628,7 @@ async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
     // Check if overlay already exists
     if let Some(overlay) = app.get_webview_window("overlay") {
         overlay.show().map_err(|e| e.to_string())?;
-        let _ = overlay.set_always_on_top(true);
+        overlay::raise(&overlay);
         return Ok(());
     }
 

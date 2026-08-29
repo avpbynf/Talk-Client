@@ -547,10 +547,7 @@ fn start_recording_internal(app: &AppHandle) -> Result<(), String> {
     duck_audio(&state);
 
     // 4. Show overlay (pre-created at startup, just show it, never recreate)
-    if let Some(overlay) = app.get_webview_window("overlay") {
-        let _ = overlay.show();
-        let _ = overlay.set_always_on_top(true);
-    }
+    crate::overlay::show(app);
 
     // 5. Emit recording state
     let _ = app.emit("recording-started", ());
