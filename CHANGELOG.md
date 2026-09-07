@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 Based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Features
+
+- (history) Paste the last transcription without coming back to the window
+
+A dictation that landed in the wrong window meant opening Talk, finding the card at the top of the
+history and copying it. Ctrl+Shift+Space now puts that text wherever the caret is, and the
+combination is changed on the Preferences page like the other two.
+
+  It answers with what the history shows, so it still works after a restart, and it waits for the
+  keys of the shortcut itself to come back up before pasting: pressed while Ctrl and Shift are
+  still down, the window in front would read Ctrl+Shift+V, which is a different command in most
+  editors and browsers.
+
 ## [0.8.1] - 2026-08-29
 
 ### Bug Fixes

@@ -3,6 +3,10 @@ use clipboard_win::{formats, raw, set_clipboard};
 #[cfg(windows)]
 use enigo::{Enigo, Key, Keyboard, Settings};
 use thiserror::Error;
+#[cfg(windows)]
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    GetAsyncKeyState, VIRTUAL_KEY, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
+};
 
 #[derive(Error, Debug)]
 pub enum ClipboardError {
@@ -77,10 +81,49 @@ pub fn copy_and_paste(text: &str) -> Result<(), ClipboardError> {
     Ok(())
 }
 
+/// The modifiers that would turn the paste into something else if still held.
+#[cfg(windows)]
+const PASTE_MODIFIERS: [VIRTUAL_KEY; 5] = [VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN];
+
+/// Whether any of them is physically down right now.
+#[cfg(windows)]
+fn modifiers_held() -> bool {
+    PASTE_MODIFIERS
+        .iter()
+        .any(|key| unsafe { GetAsyncKeyState(key.0 as i32) } as u16 & 0x8000 != 0)
+}
+
+/// Wait for the hand to leave the keyboard before the paste goes out.
+///
+/// A global shortcut fires on the key down, so a paste following it at once
+/// arrives while its own modifiers are still held and the window in front reads
+/// Ctrl+Shift+V, which is a different command in most editors and browsers.
+/// Waiting costs nothing when nothing is held, which is the dictation case.
+/// Past the deadline the modifiers are released synthetically: somebody leaning
+/// on the key still has to get their text, and a real release afterwards is a
+/// key-up for a key the window already believes is up.
+#[cfg(windows)]
+fn wait_for_modifiers(enigo: &mut Enigo) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(600);
+    while modifiers_held() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    if !modifiers_held() {
+        return;
+    }
+
+    for key in [Key::Control, Key::Shift, Key::Alt, Key::Meta] {
+        let _ = enigo.key(key, enigo::Direction::Release);
+    }
+}
+
 #[cfg(windows)]
 fn simulate_paste() -> Result<(), ClipboardError> {
     let mut enigo = Enigo::new(&Settings::default())
         .map_err(|e| ClipboardError::SimulateInput(e.to_string()))?;
+
+    wait_for_modifiers(&mut enigo);
 
     enigo
         .key(Key::Control, enigo::Direction::Press)

@@ -65,6 +65,8 @@ pub struct AppState {
     pub main_shortcut: Mutex<Option<Shortcut>>,
     /// Current cancel shortcut (stored for handler dispatch, never re-registered via on_shortcut)
     pub cancel_shortcut: Mutex<Option<Shortcut>>,
+    /// Current paste-the-last-one shortcut (stored for handler dispatch, never re-registered via on_shortcut)
+    pub paste_shortcut: Mutex<Option<Shortcut>>,
     /// Sound engine for instant audio feedback (pre-computed PCM buffers)
     pub sound_engine: Mutex<Option<sound::SoundEngine>>,
     /// How many transcriptions the history keeps. Zero keeps every one.
@@ -106,6 +108,7 @@ impl Default for AppState {
             output_device_name: Mutex::new(None),
             main_shortcut: Mutex::new(None),
             cancel_shortcut: Mutex::new(None),
+            paste_shortcut: Mutex::new(None),
             sound_engine: Mutex::new(None),
             history_limit: Mutex::new(100),
             show_main_window_pending: Mutex::new(false),
@@ -503,6 +506,11 @@ fn update_shortcut(app: tauri::AppHandle, shortcut: String) -> Result<(), String
 #[tauri::command]
 fn update_cancel_shortcut(app: tauri::AppHandle, shortcut: String) -> Result<(), String> {
     hotkeys::update_cancel_shortcut(&app, &shortcut).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_paste_shortcut(app: tauri::AppHandle, shortcut: String) -> Result<(), String> {
+    hotkeys::update_paste_shortcut(&app, &shortcut).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1062,10 +1070,13 @@ pub fn run() {
                     let state = app.state::<AppState>();
                     let is_main = state.main_shortcut.lock().as_ref() == Some(shortcut);
                     let is_cancel = state.cancel_shortcut.lock().as_ref() == Some(shortcut);
+                    let is_paste = state.paste_shortcut.lock().as_ref() == Some(shortcut);
                     if is_main {
                         hotkeys::handle_shortcut_event(app, event.state);
                     } else if is_cancel && matches!(event.state, ShortcutState::Pressed) {
                         hotkeys::cancel_recording(app);
+                    } else if is_paste && matches!(event.state, ShortcutState::Pressed) {
+                        hotkeys::paste_last_transcription(app);
                     }
                 })
                 .build(),
@@ -1093,6 +1104,7 @@ pub fn run() {
             save_hotkey_config,
             update_shortcut,
             update_cancel_shortcut,
+            update_paste_shortcut,
             disable_shortcuts,
             enable_shortcuts,
             cancel_recording,

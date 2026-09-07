@@ -97,6 +97,8 @@ pub struct HotkeyConfig {
     pub shortcut: String,
     #[serde(default = "default_cancel_shortcut")]
     pub cancel_shortcut: String,
+    #[serde(default = "default_paste_shortcut")]
+    pub paste_shortcut: String,
     pub mode: RecordingMode,
 }
 
@@ -104,11 +106,16 @@ fn default_cancel_shortcut() -> String {
     "Ctrl+F1".to_string()
 }
 
+fn default_paste_shortcut() -> String {
+    "Ctrl+Shift+Space".to_string()
+}
+
 impl Default for HotkeyConfig {
     fn default() -> Self {
         Self {
             shortcut: "Ctrl+Space".to_string(),
             cancel_shortcut: default_cancel_shortcut(),
+            paste_shortcut: default_paste_shortcut(),
             mode: RecordingMode::Toggle,
         }
     }
@@ -142,28 +149,53 @@ pub fn save_config(config: &HotkeyConfig) -> Result<(), HotkeyError> {
 
 pub fn setup_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config().unwrap_or_default();
+    let state = app.state::<AppState>();
+
+    // Store the parsed shortcuts in AppState: the single handler in
+    // Builder::with_handler dispatches on these values, so nothing here needs
+    // an on_shortcut closure of its own.
+    if let Ok(main) = parse_shortcut(&config.shortcut) {
+        *state.main_shortcut.lock() = Some(main);
+    }
+    if let Ok(cancel) = parse_shortcut(&config.cancel_shortcut) {
+        *state.cancel_shortcut.lock() = Some(cancel);
+    }
+    if let Ok(paste) = parse_shortcut(&config.paste_shortcut) {
+        *state.paste_shortcut.lock() = Some(paste);
+    }
+
+    register_stored(app.handle());
+
+    Ok(())
+}
+
+/// Put every stored shortcut back up, dropping whatever was registered.
+///
+/// The plugin unregisters by naming a combination, and each caller here has
+/// just replaced one of the three, so the lot goes down and the lot comes back
+/// rather than each path remembering to re-register the two it did not touch.
+/// A combination another application already holds is reported and skipped,
+/// leaving the other two working.
+fn register_stored(app: &AppHandle) {
     let global_shortcut = app.global_shortcut();
     let state = app.state::<AppState>();
 
-    let _ = global_shortcut.unregister_all();
+    if let Err(e) = global_shortcut.unregister_all() {
+        eprintln!("Warning: failed to unregister shortcuts: {}", e);
+    }
 
-    // Store parsed shortcuts in AppState, read by the single handler in Builder::with_handler
-    // dispatches based on these values. No on_shortcut calls needed.
-    if let Ok(shortcut) = parse_shortcut(&config.shortcut) {
-        *state.main_shortcut.lock() = Some(shortcut);
+    let stored = [
+        ("Main", *state.main_shortcut.lock()),
+        ("Cancel", *state.cancel_shortcut.lock()),
+        ("Paste", *state.paste_shortcut.lock()),
+    ];
+
+    for (name, shortcut) in stored {
+        let Some(shortcut) = shortcut else { continue };
         if let Err(e) = global_shortcut.register(shortcut) {
-            eprintln!("Main shortcut register error: {} - try a different shortcut", e);
+            eprintln!("{} shortcut register error: {} - try a different one", name, e);
         }
     }
-
-    if let Ok(cancel_parsed) = parse_shortcut(&config.cancel_shortcut) {
-        *state.cancel_shortcut.lock() = Some(cancel_parsed);
-        if let Err(e) = global_shortcut.register(cancel_parsed) {
-            eprintln!("Cancel shortcut register error: {}", e);
-        }
-    }
-
-    Ok(())
 }
 
 pub fn disable_shortcuts(app: &AppHandle) {
@@ -174,76 +206,44 @@ pub fn disable_shortcuts(app: &AppHandle) {
 }
 
 pub fn enable_shortcuts(app: &AppHandle) {
-    let global_shortcut = app.global_shortcut();
-    let state = app.state::<AppState>();
-
-    // Just re-register: handlers are in Builder::with_handler, no closure allocation
-    let main = *state.main_shortcut.lock();
-    if let Some(main) = main {
-        let _ = global_shortcut.register(main);
-    }
-    let cancel = *state.cancel_shortcut.lock();
-    if let Some(cancel) = cancel {
-        let _ = global_shortcut.register(cancel);
-    }
+    register_stored(app);
 }
 
 pub fn update_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let new_parsed = parse_shortcut(new_shortcut)?;
-    let global_shortcut = app.global_shortcut();
-    let state = app.state::<AppState>();
-
-    if let Err(e) = global_shortcut.unregister_all() {
-        eprintln!("Warning: failed to unregister shortcuts: {}", e);
-    }
-
-    // Update stored shortcut and register (no on_shortcut, the handler is in Builder)
-    *state.main_shortcut.lock() = Some(new_parsed);
-    if let Err(e) = global_shortcut.register(new_parsed) {
-        eprintln!("Warning: register failed: {} - will work after restart", e);
-    }
-
-    // Re-register cancel shortcut
-    let cancel = *state.cancel_shortcut.lock();
-    if let Some(cancel) = cancel {
-        let _ = global_shortcut.register(cancel);
-    }
-
-    let mut config = load_config().unwrap_or_default();
-    config.shortcut = new_shortcut.to_string();
-    if let Err(e) = save_config(&config) {
-        eprintln!("Warning: failed to save config: {}", e);
-    }
-
+    let parsed = parse_shortcut(new_shortcut)?;
+    *app.state::<AppState>().main_shortcut.lock() = Some(parsed);
+    register_stored(app);
+    store_in_config(|config| config.shortcut = new_shortcut.to_string());
     Ok(())
 }
 
 pub fn update_cancel_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let new_parsed = parse_shortcut(new_shortcut)?;
-    let global_shortcut = app.global_shortcut();
-    let state = app.state::<AppState>();
+    let parsed = parse_shortcut(new_shortcut)?;
+    *app.state::<AppState>().cancel_shortcut.lock() = Some(parsed);
+    register_stored(app);
+    store_in_config(|config| config.cancel_shortcut = new_shortcut.to_string());
+    Ok(())
+}
 
-    if let Err(e) = global_shortcut.unregister_all() {
-        eprintln!("Warning: failed to unregister shortcuts: {}", e);
-    }
+pub fn update_paste_shortcut(app: &AppHandle, new_shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let parsed = parse_shortcut(new_shortcut)?;
+    *app.state::<AppState>().paste_shortcut.lock() = Some(parsed);
+    register_stored(app);
+    store_in_config(|config| config.paste_shortcut = new_shortcut.to_string());
+    Ok(())
+}
 
-    // Re-register main shortcut
-    let main = *state.main_shortcut.lock();
-    if let Some(main) = main {
-        let _ = global_shortcut.register(main);
-    }
-
-    // Update stored cancel shortcut and register (no on_shortcut, the handler is in Builder)
-    *state.cancel_shortcut.lock() = Some(new_parsed);
-    let _ = global_shortcut.register(new_parsed);
-
+/// Read the file, change the one field, write it back.
+///
+/// A shortcut that registered but was never written comes back as the old one
+/// at the next launch, which is worth a line in the log even though nothing
+/// here can do anything about it.
+fn store_in_config(change: impl FnOnce(&mut HotkeyConfig)) {
     let mut config = load_config().unwrap_or_default();
-    config.cancel_shortcut = new_shortcut.to_string();
+    change(&mut config);
     if let Err(e) = save_config(&config) {
         eprintln!("Warning: failed to save config: {}", e);
     }
-
-    Ok(())
 }
 
 fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, Box<dyn std::error::Error>> {
@@ -493,6 +493,41 @@ pub fn cancel_recording(app: &AppHandle) {
 
     // Sound feedback: cancellation counts as stop
     play_sound_feedback(app, "stop");
+}
+
+/// Paste what was dictated last, wherever the caret happens to be.
+///
+/// Without it the text is reachable only by coming back to the window and
+/// copying the card, which is a trip through two applications for something
+/// that was on screen a second ago.
+///
+/// The row is read from the database rather than from memory, so the shortcut
+/// still answers after a restart, and it answers with what the history shows
+/// rather than with a copy that outlived a clear.
+pub fn paste_last_transcription(app: &AppHandle) {
+    let app = app.clone();
+
+    // The clipboard path waits for the shortcut's own modifiers to come back
+    // up and sleeps either side of the paste, so it does not belong on the
+    // thread the shortcut handler runs on.
+    std::thread::spawn(move || {
+        let last = match app.state::<database::Database>().get_transcriptions(1, 0) {
+            Ok(rows) => rows.into_iter().next(),
+            Err(e) => {
+                eprintln!("Failed to read the last transcription: {}", e);
+                return;
+            }
+        };
+
+        // Nothing has been dictated yet, or the history was cleared. Pasting
+        // an empty string would wipe a selection for nothing.
+        let Some(last) = last else { return };
+
+        let preserve = *app.state::<AppState>().preserve_clipboard.lock();
+        if let Err(e) = crate::clipboard::type_text(&last.text, preserve) {
+            eprintln!("Failed to paste the last transcription: {}", e);
+        }
+    });
 }
 
 /// Play sound feedback if enabled in settings. Non-blocking.
@@ -752,4 +787,33 @@ async fn stop_recording_internal(app: &AppHandle) -> Result<String, String> {
     let _ = app.emit("transcription-complete", &entry);
 
     Ok(transcription)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri_plugin_global_shortcut::{Code, Modifiers};
+
+    /// A settings file written before the paste shortcut existed has to keep
+    /// parsing: `load_config` drops the whole file on an error and hands back
+    /// the defaults, which would take the two shortcuts already in it with it.
+    #[test]
+    fn a_config_without_a_paste_shortcut_takes_the_default() {
+        let stored = r#"{"shortcut":"Ctrl+F2","cancel_shortcut":"Ctrl+F1","mode":"toggle"}"#;
+
+        let config: HotkeyConfig = serde_json::from_str(stored).expect("should parse");
+
+        assert_eq!(config.shortcut, "Ctrl+F2");
+        assert_eq!(config.paste_shortcut, default_paste_shortcut());
+    }
+
+    #[test]
+    fn two_modifiers_and_a_key_parse_into_one_shortcut() {
+        let parsed = parse_shortcut("Ctrl+Shift+Space").expect("should parse");
+
+        assert_eq!(
+            parsed,
+            Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space)
+        );
+    }
 }
