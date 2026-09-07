@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { RecordingMode } from "@/App";
-import { Keyboard, Edit3, Check, X } from "lucide-react";
+import { Keyboard, Edit3, Check, X, ClipboardPaste } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ShortcutsSectionProps {
@@ -9,17 +9,53 @@ interface ShortcutsSectionProps {
   onShortcutChange: (shortcut: string) => Promise<void>;
   cancelShortcut: string;
   onCancelShortcutChange: (shortcut: string) => Promise<void>;
+  pasteShortcut: string;
+  onPasteShortcutChange: (shortcut: string) => Promise<void>;
   recordingMode: RecordingMode;
 }
+
+type ShortcutKind = "main" | "cancel" | "paste";
+
+// One colour per card, so which of the three is on screen reads without the
+// label. Spelled out rather than built from an accent variable: only class
+// names written in full reach the stylesheet.
+const KIND_STYLE: Record<
+  ShortcutKind,
+  { icon: typeof Keyboard; iconBg: string; iconColor: string; field: string; button: string }
+> = {
+  main: {
+    icon: Keyboard,
+    iconBg: "bg-[var(--color-active)]/15",
+    iconColor: "text-[var(--color-active)]",
+    field: "border-[var(--color-active)] focus:ring-[var(--color-active)]/30",
+    button: "bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90",
+  },
+  cancel: {
+    icon: X,
+    iconBg: "bg-[var(--color-destructive)]/15",
+    iconColor: "text-[var(--color-destructive)]",
+    field: "border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30",
+    button: "bg-[var(--color-destructive)] text-white hover:bg-[var(--color-destructive)]/90",
+  },
+  paste: {
+    icon: ClipboardPaste,
+    iconBg: "bg-[var(--color-success)]/15",
+    iconColor: "text-[var(--color-success)]",
+    field: "border-[var(--color-success)] focus:ring-[var(--color-success)]/30",
+    button: "bg-[var(--color-success)] text-background hover:bg-[var(--color-success)]/90",
+  },
+};
 
 export default function ShortcutsSection({
   shortcut,
   onShortcutChange,
   cancelShortcut,
   onCancelShortcutChange,
+  pasteShortcut,
+  onPasteShortcutChange,
   recordingMode,
 }: ShortcutsSectionProps) {
-  const [editingShortcut, setEditingShortcut] = useState<"main" | "cancel" | null>(null);
+  const [editingShortcut, setEditingShortcut] = useState<ShortcutKind | null>(null);
   const [pendingShortcut, setPendingShortcut] = useState<string[]>([]);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
   const inputRef = useRef<HTMLDivElement>(null);
@@ -69,7 +105,7 @@ export default function ShortcutsSection({
     setPendingShortcut(keys);
   };
 
-  const startEdit = async (type: "main" | "cancel") => {
+  const startEdit = async (type: ShortcutKind) => {
     await invoke("disable_shortcuts");
     setEditingShortcut(type);
     setPendingShortcut([]);
@@ -103,6 +139,8 @@ export default function ShortcutsSection({
         await onShortcutChange(newShortcut);
       } else if (editingShortcut === "cancel") {
         await onCancelShortcutChange(newShortcut);
+      } else if (editingShortcut === "paste") {
+        await onPasteShortcutChange(newShortcut);
       }
       setEditingShortcut(null);
       setShortcutError(null);
@@ -115,27 +153,26 @@ export default function ShortcutsSection({
   };
 
   const renderShortcutCard = (
-    type: "main" | "cancel",
+    type: ShortcutKind,
     currentShortcut: string,
     label: string,
-    description: string
+    description: string,
+    className?: string
   ) => {
     const isEditing = editingShortcut === type;
     const shortcutParts = currentShortcut.split("+");
+    const style = KIND_STYLE[type];
+    const Icon = style.icon;
 
     return (
-      <div className="p-5 rounded-xl border border-border-card bg-surface-inset">
+      <div className={cn("p-5 rounded-xl border border-border-card bg-surface-inset", className)}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex gap-3">
             <div className={cn(
               "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-              type === "main" ? "bg-[var(--color-active)]/15" : "bg-[var(--color-destructive)]/15"
+              style.iconBg
             )}>
-              {type === "main" ? (
-                <Keyboard className="h-5 w-5 text-[var(--color-active)]" />
-              ) : (
-                <X className="h-5 w-5 text-[var(--color-destructive)]" />
-              )}
+              <Icon className={cn("h-5 w-5", style.iconColor)} />
             </div>
             <div>
               <label className="font-medium">{label}</label>
@@ -160,9 +197,7 @@ export default function ShortcutsSection({
               onKeyDown={handleKeyDown}
               className={cn(
                 "flex gap-2 items-center min-h-[48px] p-3 rounded-lg border-2 bg-surface-inset focus:outline-none focus:ring-2",
-                type === "main"
-                  ? "border-[var(--color-active)] focus:ring-[var(--color-active)]/30"
-                  : "border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30"
+                style.field
               )}
             >
               {pendingShortcut.length > 0 ? (
@@ -182,9 +217,7 @@ export default function ShortcutsSection({
                 disabled={pendingShortcut.length === 0}
                 className={cn(
                   "cursor-pointer flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors",
-                  type === "main"
-                    ? "bg-[var(--color-active)] text-background hover:bg-[var(--color-active)]/90"
-                    : "bg-[var(--color-destructive)] text-white hover:bg-[var(--color-destructive)]/90"
+                  style.button
                 )}
               >
                 <Check className="h-4 w-4" />
@@ -228,6 +261,13 @@ export default function ShortcutsSection({
         cancelShortcut,
         "Cancel",
         "Stops the recording and throws it away"
+      )}
+      {renderShortcutCard(
+        "paste",
+        pasteShortcut,
+        "Paste the last one",
+        "Puts the last transcription back in, wherever you are typing",
+        "col-span-2"
       )}
       </div>
     </div>

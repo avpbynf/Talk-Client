@@ -94,6 +94,7 @@ interface SavedSettings {
 interface HotkeyConfig {
   shortcut: string;
   cancel_shortcut: string;
+  paste_shortcut: string;
   mode: RecordingMode;
 }
 
@@ -126,6 +127,7 @@ function App() {
   const [, setIsRecording] = useState(false);
   const [shortcut, setShortcut] = useState("Ctrl+Space");
   const [cancelShortcut, setCancelShortcut] = useState("Ctrl+F1");
+  const [pasteShortcut, setPasteShortcut] = useState("Ctrl+Shift+Space");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
   const [currentGpuVendor, setCurrentGpuVendor] = useState<GpuVendor>("cpu");
   const [gpuDevices, setGpuDevices] = useState<GpuDevice[]>([]);
@@ -337,6 +339,7 @@ function App() {
     setRecordingMode(hotkeyConfig.mode);
     setShortcut(hotkeyConfig.shortcut);
     setCancelShortcut(hotkeyConfig.cancel_shortcut || "Ctrl+F1");
+    setPasteShortcut(hotkeyConfig.paste_shortcut || "Ctrl+Shift+Space");
     setGpus(availableGpus);
     setCurrentGpuVendor(currentVendor);
     void loadGpuDevices(currentVendor);
@@ -730,6 +733,11 @@ function App() {
             onCancelShortcutChange={async (newShortcut) => {
               await invoke("update_cancel_shortcut", { shortcut: newShortcut });
               setCancelShortcut(newShortcut);
+            }}
+            pasteShortcut={pasteShortcut}
+            onPasteShortcutChange={async (newShortcut) => {
+              await invoke("update_paste_shortcut", { shortcut: newShortcut });
+              setPasteShortcut(newShortcut);
             }}
             autostartEnabled={autostartEnabled}
             onAutostartChange={async (enabled) => {

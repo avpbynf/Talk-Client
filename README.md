@@ -71,6 +71,10 @@ overlay shows what is being heard, and it can be dragged wherever it is not in t
 focused window is the default and needs no paste. The clipboard route is there for the
 applications that refuse synthetic input.
 
+**The last transcription goes back in on a shortcut.** Dictating into the wrong window used to
+mean coming back to Talk to copy the card. Ctrl+Shift+Space pastes it wherever the caret is,
+whether it was dictated a minute ago or before the last restart.
+
 **A vocabulary biases the model toward your words.** Product names, colleagues,
 libraries, anything Whisper would otherwise turn into the nearest common word. It is a
 plain list, typed once.

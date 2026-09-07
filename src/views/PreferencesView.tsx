@@ -18,6 +18,8 @@ interface PreferencesViewProps {
   onShortcutChange: (shortcut: string) => Promise<void>;
   cancelShortcut: string;
   onCancelShortcutChange: (shortcut: string) => Promise<void>;
+  pasteShortcut: string;
+  onPasteShortcutChange: (shortcut: string) => Promise<void>;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
   startMinimized: boolean;
@@ -46,6 +48,8 @@ export default function PreferencesView({
   onShortcutChange,
   cancelShortcut,
   onCancelShortcutChange,
+  pasteShortcut,
+  onPasteShortcutChange,
   autostartEnabled,
   onAutostartChange,
   startMinimized,
@@ -92,6 +96,8 @@ export default function PreferencesView({
               onShortcutChange={onShortcutChange}
               cancelShortcut={cancelShortcut}
               onCancelShortcutChange={onCancelShortcutChange}
+              pasteShortcut={pasteShortcut}
+              onPasteShortcutChange={onPasteShortcutChange}
               recordingMode={recordingMode}
             />
             <SoundFeedbackSection
